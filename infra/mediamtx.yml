@@ -1,0 +1,47 @@
+# Local-development media gateway. Production needs authenticated publishing,
+# TLS, a public ICE/TURN design, and network policy before internet exposure.
+logLevel: info
+logDestinations: [stdout]
+logStructured: true
+
+authMethod: internal
+authInternalUsers:
+  - user: any
+    pass:
+    ips: []
+    permissions:
+      - action: publish
+      - action: read
+      - action: playback
+      - action: api
+      - action: metrics
+
+api: true
+apiAddress: :9997
+metrics: true
+metricsAddress: :9998
+
+rtsp: true
+rtspAddress: :8554
+rtspTransports: [tcp]
+rtmp: false
+hls: false
+srt: false
+moq: false
+
+webrtc: true
+webrtcAddress: :8889
+webrtcAllowOrigins:
+  - http://127.0.0.1:3000
+  - http://localhost:3000
+webrtcLocalUDPAddress: :8189
+webrtcAdditionalHosts:
+  - 127.0.0.1
+  - localhost
+
+pathDefaults:
+  source: publisher
+  sourceOnDemand: false
+
+paths:
+  all_others:

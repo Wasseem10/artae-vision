@@ -1,0 +1,101 @@
+[
+  {
+    "name": "canonical_loading_zone_dwell",
+    "prompt": "Alert me if a person enters the loading zone and remains there for more than 30 seconds.",
+    "zones": ["loading-zone", "parking lot"],
+    "expected_status": "compiled",
+    "expected_rule_type": "zone_dwell",
+    "expected_object_class": "person",
+    "expected_zone": "loading-zone",
+    "expected_duration_seconds": 30
+  },
+  {
+    "name": "minutes_are_normalized",
+    "prompt": "Notify me when a car stays in the parking lot for 2 minutes.",
+    "zones": ["loading-zone", "parking lot"],
+    "expected_status": "compiled",
+    "expected_rule_type": "zone_dwell",
+    "expected_object_class": "car",
+    "expected_zone": "parking lot",
+    "expected_duration_seconds": 120
+  },
+  {
+    "name": "confidence_is_extracted",
+    "prompt": "Detect a truck in the loading zone for 15 seconds with confidence above 70%.",
+    "zones": ["loading-zone"],
+    "expected_status": "compiled",
+    "expected_rule_type": "zone_presence",
+    "expected_object_class": "truck",
+    "expected_zone": "loading-zone",
+    "expected_confirmation_seconds": 15,
+    "expected_minimum_confidence": 0.7
+  },
+  {
+    "name": "missing_duration_needs_clarification",
+    "prompt": "Alert me when a person stays in the loading zone.",
+    "zones": ["loading-zone"],
+    "expected_status": "needs_clarification"
+  },
+  {
+    "name": "unknown_zone_needs_clarification",
+    "prompt": "Alert me when a person stays in the back entrance for 30 seconds.",
+    "zones": ["loading-zone"],
+    "expected_status": "needs_clarification"
+  },
+  {
+    "name": "multiple_objects_need_clarification",
+    "prompt": "Alert me when a person or truck stays in the loading zone for 30 seconds.",
+    "zones": ["loading-zone"],
+    "expected_status": "needs_clarification"
+  },
+  {
+    "name": "masked_person_entry_uses_visual_reasoning",
+    "prompt": "Alert me when a masked person enters the store.",
+    "zones": ["Full frame (automatic)"],
+    "expected_status": "compiled",
+    "expected_rule_type": "semantic_vision",
+    "expected_object_class": "visual_event",
+    "expected_zone": "Full frame (automatic)",
+    "expected_strategy": "semantic_window"
+  },
+  {
+    "name": "tailgating_uses_temporal_visual_reasoning",
+    "prompt": "Alert me when someone tailgates through the main lobby gate.",
+    "zones": ["Full frame (automatic)"],
+    "expected_status": "compiled",
+    "expected_rule_type": "semantic_vision",
+    "expected_object_class": "visual_event",
+    "expected_zone": "Full frame (automatic)",
+    "expected_strategy": "semantic_window"
+  },
+  {
+    "name": "equipment_screen_shutdown_uses_visual_reasoning",
+    "prompt": "Notify me when one of the treadmill screens shuts off.",
+    "zones": ["Full frame (automatic)"],
+    "expected_status": "compiled",
+    "expected_rule_type": "semantic_vision",
+    "expected_object_class": "visual_event",
+    "expected_zone": "Full frame (automatic)",
+    "expected_strategy": "semantic_window"
+  },
+  {
+    "name": "robot_fall_uses_visual_reasoning",
+    "prompt": "Alert me if the humanoid robot falls to the ground.",
+    "zones": ["Full frame (automatic)"],
+    "expected_status": "compiled",
+    "expected_rule_type": "semantic_vision",
+    "expected_object_class": "visual_event",
+    "expected_zone": "Full frame (automatic)",
+    "expected_strategy": "semantic_window"
+  },
+  {
+    "name": "unusual_action_uses_visual_reasoning",
+    "prompt": "Alert me when a person does a triple backflip.",
+    "zones": ["Full frame (automatic)"],
+    "expected_status": "compiled",
+    "expected_rule_type": "semantic_vision",
+    "expected_object_class": "visual_event",
+    "expected_zone": "Full frame (automatic)",
+    "expected_strategy": "semantic_window"
+  }
+]

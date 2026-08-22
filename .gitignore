@@ -1,0 +1,33 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Python virtual environments
+.venv/
+venv/
+
+# Local configuration and downloaded model weights
+.env
+.env.local
+*.pt
+artifacts/
+.runtime/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Future JavaScript dependencies and build output
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo

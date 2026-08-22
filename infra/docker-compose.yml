@@ -1,0 +1,145 @@
+name: video-intelligence
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:1.19.3
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    ports:
+      - "127.0.0.1:8554:8554"
+      - "127.0.0.1:8889:8889"
+      - "127.0.0.1:8189:8189/udp"
+      - "127.0.0.1:9997:9997"
+      - "127.0.0.1:9998:9998"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: video_intelligence
+      POSTGRES_USER: video_intelligence
+      POSTGRES_PASSWORD: video_intelligence_local
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U video_intelligence -d video_intelligence"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    environment:
+      VIDEO_INTEL_API_ENVIRONMENT: development
+      VIDEO_INTEL_API_DATABASE_URL: postgresql+psycopg://video_intelligence:video_intelligence_local@postgres:5432/video_intelligence
+      VIDEO_INTEL_API_AGENT_KEY: ${VIDEO_INTEL_API_AGENT_KEY:-local-agent-key-change-me}
+      VIDEO_INTEL_API_EDGE_AUTH_MODE: ${VIDEO_INTEL_API_EDGE_AUTH_MODE:-development}
+      VIDEO_INTEL_API_DASHBOARD_KEY: ${VIDEO_INTEL_API_DASHBOARD_KEY:-local-dashboard-key-change-me}
+      VIDEO_INTEL_API_DASHBOARD_AUTH_MODE: ${VIDEO_INTEL_API_DASHBOARD_AUTH_MODE:-development}
+      # Public local-development key only. Generate a private Fernet key for every real deployment.
+      VIDEO_INTEL_API_ALERT_ENCRYPTION_KEY: ${VIDEO_INTEL_API_ALERT_ENCRYPTION_KEY:-AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=}
+      VIDEO_INTEL_API_MEDIA_SIGNING_KEY: ${VIDEO_INTEL_API_MEDIA_SIGNING_KEY:-local-media-signing-key-change-before-production}
+      VIDEO_INTEL_API_OIDC_ISSUER: ${VIDEO_INTEL_API_OIDC_ISSUER:-}
+      VIDEO_INTEL_API_OIDC_AUDIENCE: ${VIDEO_INTEL_API_OIDC_AUDIENCE:-}
+      VIDEO_INTEL_API_OIDC_JWKS_URL: ${VIDEO_INTEL_API_OIDC_JWKS_URL:-}
+      VIDEO_INTEL_API_OIDC_ORGANIZATION_CLAIM: ${VIDEO_INTEL_API_OIDC_ORGANIZATION_CLAIM:-org_id}
+      VIDEO_INTEL_API_OIDC_ROLE_CLAIM: ${VIDEO_INTEL_API_OIDC_ROLE_CLAIM:-role}
+      VIDEO_INTEL_API_OIDC_AUTO_PROVISION_MEMBERSHIPS: ${VIDEO_INTEL_API_OIDC_AUTO_PROVISION_MEMBERSHIPS:-false}
+      VIDEO_INTEL_API_HOST: 0.0.0.0
+      VIDEO_INTEL_API_PORT: 8000
+      VIDEO_INTEL_API_LOG_LEVEL: INFO
+      VIDEO_INTEL_API_CORS_ORIGINS: '["http://127.0.0.1:3000","http://localhost:3000"]'
+      VIDEO_INTEL_API_MEDIA_GATEWAY_API_URL: http://mediamtx:9997
+      VIDEO_INTEL_API_MEDIA_GATEWAY_WEBRTC_URL: http://127.0.0.1:8889
+      VIDEO_INTEL_API_MEDIA_GATEWAY_RTSP_URL: rtsp://127.0.0.1:8554
+      VIDEO_INTEL_API_EVIDENCE_DIRECTORY: /data/evidence
+      VIDEO_INTEL_API_RULE_COMPILER_PROVIDER: ${VIDEO_INTEL_API_RULE_COMPILER_PROVIDER:-auto}
+      VIDEO_INTEL_API_OPENAI_API_KEY: ${VIDEO_INTEL_API_OPENAI_API_KEY:-}
+      VIDEO_INTEL_API_OPENAI_RULE_COMPILER_MODEL: ${VIDEO_INTEL_API_OPENAI_RULE_COMPILER_MODEL:-gpt-5-mini}
+      VIDEO_INTEL_API_DETECTOR_MODEL: ${VIDEO_INTEL_API_DETECTOR_MODEL:-yolo26n.pt}
+      VIDEO_INTEL_API_OBJECT_CLASSES: '${VIDEO_INTEL_API_OBJECT_CLASSES:-["person","bicycle","car","motorcycle","bus","truck","dog","cat"]}'
+      VIDEO_INTEL_API_EVENT_TYPES: '${VIDEO_INTEL_API_EVENT_TYPES:-["zone_dwell","zone_presence","zone_entry","zone_exit","count_threshold","line_crossing","semantic_vision"]}'
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - evidence-data:/data/evidence
+    depends_on:
+      mediamtx:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  alert-worker:
+    build:
+      context: ..
+      dockerfile: services/alerts/Dockerfile
+    environment:
+      VIDEO_INTEL_ALERT_CONTROL_PLANE_URL: http://api:8000
+      VIDEO_INTEL_ALERT_AGENT_KEY: ${VIDEO_INTEL_API_AGENT_KEY:-local-agent-key-change-me}
+      VIDEO_INTEL_ALERT_WORKER_ID: ${VIDEO_INTEL_ALERT_WORKER_ID:-docker-alert-worker}
+      VIDEO_INTEL_ALERT_POLL_SECONDS: ${VIDEO_INTEL_ALERT_POLL_SECONDS:-1}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  evidence-worker:
+    profiles: ["artae"]
+    build:
+      context: ..
+      dockerfile: services/evidence/Dockerfile
+    environment:
+      VIDEO_INTEL_EVIDENCE_CONTROL_PLANE_URL: http://api:8000
+      VIDEO_INTEL_EVIDENCE_AGENT_KEY: ${VIDEO_INTEL_API_AGENT_KEY:-local-agent-key-change-me}
+      ARTAE_LABS_API_KEY: ${ARTAE_LABS_API_KEY:-}
+      ARTAE_LABS_BASE_URL: ${ARTAE_LABS_BASE_URL:-https://api.cadere.studio/api/v1/labs}
+      ARTAE_LABS_INDEX_ID: ${ARTAE_LABS_INDEX_ID:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+        NEXT_PUBLIC_DASHBOARD_KEY: ${VIDEO_INTEL_API_DASHBOARD_KEY:-local-dashboard-key-change-me}
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  evidence-data:
