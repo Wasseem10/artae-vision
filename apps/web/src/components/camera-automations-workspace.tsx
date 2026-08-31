@@ -102,7 +102,8 @@ export function CameraAutomationsWorkspace({
   const activeRule = rules.find((rule) => rule.id === selectedRuleId) ?? null;
   const running = agent?.desired_status === "running";
   const operating = agent?.observed_status === "running";
-  const nativePreviewEnabled = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "native" && running && Boolean(selectedCamera);
+  const nativeDeployment = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "native";
+  const nativePreviewEnabled = nativeDeployment && running && Boolean(selectedCamera);
   const telegramConnector = connectors.find((connector) => connector.enabled && connector.connector_type === "telegram") ?? null;
   const selectedActionConnector = actionDestination === "computer"
     ? null
@@ -379,7 +380,7 @@ export function CameraAutomationsWorkspace({
           <span><strong>{identity?.display_name ?? identity?.email ?? "Local preview"}</strong><small>{identity ? `${identity.role} workspace` : "Development session"}</small></span>
           <button onClick={() => void onSignOut()} type="button">Sign out</button>
         </div>
-        <div className="visionSidebarStatus"><i className={operating ? "isOnline" : ""} /><span><strong>{operating ? "Monitoring live" : "Ready on this computer"}</strong><small>No separate station required</small></span></div>
+        <div className="visionSidebarStatus"><i className={operating ? "isOnline" : ""} /><span><strong>{operating ? "Monitoring live" : nativeDeployment ? "Ready on this computer" : "Browser preview mode"}</strong><small>{nativeDeployment ? "Camera service available locally" : "Run the Artae camera service for AI detection"}</small></span></div>
       </aside>
 
       <main className="visionMain">
