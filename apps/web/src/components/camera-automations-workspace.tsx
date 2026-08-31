@@ -367,7 +367,13 @@ export function CameraAutomationsWorkspace({
         </nav>
         <section className="visionConversationList">
           <header><span>CONVERSATIONS</span><button aria-label="New conversation" onClick={startNewConversation} type="button"><Icon name="plus" /></button></header>
-          {sessionStarted ? <button className="isCurrent" onClick={() => setView("conversation")} type="button"><span><strong>{ruleTitle(activeRule)}</strong><small>{submittedPrompt || prompt}</small></span></button> : <p>Your monitoring chats will appear here.</p>}
+          {rules.length > 0 ? rules.map((rule) => (
+            <button className={activeRule?.id === rule.id ? "isCurrent" : ""} key={rule.id} onClick={() => openAgent(rule)} type="button">
+              <span><strong>{ruleTitle(rule)}</strong><small>{rule.original_prompt ?? rule.name}</small></span>
+            </button>
+          )) : sessionStarted ? (
+            <button className="isCurrent" onClick={() => setView("conversation")} type="button"><span><strong>{ruleTitle(activeRule)}</strong><small>{submittedPrompt || prompt}</small></span></button>
+          ) : <p>Your saved monitoring conversations will appear here.</p>}
         </section>
         <div className="visionAccount">
           <span><strong>{identity?.display_name ?? identity?.email ?? "Local preview"}</strong><small>{identity ? `${identity.role} workspace` : "Development session"}</small></span>

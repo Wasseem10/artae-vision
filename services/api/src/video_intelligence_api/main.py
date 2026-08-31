@@ -8,7 +8,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 from video_intelligence_api import __version__
 from video_intelligence_api.audit import audit_operator_request
@@ -110,12 +110,28 @@ def create_app(
         allow_headers=["*"],
     )
 
+    @application.exception_handler(IntegrityError)
+    async def database_integrity_error(_request: Request, exc: IntegrityError) -> JSONResponse:
+        logger.exception("Database integrity request failed", exc_info=exc)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Artae could not save this request. Please retry."},
+        )
+
+    @application.exception_handler(OperationalError)
+    async def database_unavailable(_request: Request, exc: OperationalError) -> JSONResponse:
+        logger.exception("Database connection failed", exc_info=exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "The cloud database is temporarily unavailable. Please retry."},
+        )
+
     @application.exception_handler(SQLAlchemyError)
     async def database_error(_request: Request, exc: SQLAlchemyError) -> JSONResponse:
         logger.exception("Database request failed", exc_info=exc)
         return JSONResponse(
-            status_code=503,
-            content={"detail": "The cloud database is temporarily unavailable. Please retry."},
+            status_code=500,
+            content={"detail": "Artae could not complete this database operation. Please retry."},
         )
 
     for router in (

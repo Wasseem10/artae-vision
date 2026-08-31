@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/icon";
+import { BrowserWebcamPreview } from "@/components/browser-webcam-preview";
 import { NativePreview } from "@/components/native-preview";
 import { StatusPill } from "@/components/status-pill";
 import { api } from "@/lib/api";
@@ -172,6 +173,7 @@ export function GuidedAgentWorkspace({
   );
   const running = agent?.desired_status === "running";
   const deployed = currentPlan?.status === "approved";
+  const nativePreviewEnabled = process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "native";
   const cameraAlerts = selectedCamera
     ? alerts.filter((alert) =>
       alert.event.camera_id === selectedCamera.id &&
@@ -549,9 +551,15 @@ export function GuidedAgentWorkspace({
 
         <div className="webcamQuickStart">
           <div className="webcamPreviewFrame">
-            {process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "native" && running && (
+            {nativePreviewEnabled && running && (
               <NativePreview
                 cameraId={selectedCamera.id}
+                name={selectedCamera.name}
+                onAvailabilityChange={setPreviewReady}
+              />
+            )}
+            {!nativePreviewEnabled && running && (
+              <BrowserWebcamPreview
                 name={selectedCamera.name}
                 onAvailabilityChange={setPreviewReady}
               />
@@ -588,7 +596,21 @@ export function GuidedAgentWorkspace({
             <div>
               <span className="eyebrow">This computer</span>
               <strong>{selectedCamera.name}</strong>
-              <p>{previewReady ? "Your webcam is on and the camera agent is receiving frames." : running ? "The camera agent is connecting to your webcam." : "Turn on the webcam when you are ready to begin analysis."}</p>
+              <p>{previewReady ? nativePreviewEnabled ? "Your webcam is on and the camera agent is receiving frames." : "Your webcam is visible here. Install and run the Artae camera service on this computer to send these frames to the AI agent." : running ? "The camera is requesting access to your webcam." : "Turn on the webcam when you are ready to begin analysis."}</p>
+            </div>
+            <div className="cameraActivityLog" aria-live="polite">
+              <header><span>Detection log</span><b>{cameraAlerts.length}</b></header>
+              {cameraAlerts.length ? cameraAlerts.slice(0, 3).map((alert) => (
+                <article key={alert.id}>
+                  <i />
+                  <div><strong>{alertTitle(alert)}</strong><small>{formatLocalTimestamp(alert.event.occurred_at)}</small></div>
+                </article>
+              )) : (
+                <div className="cameraActivityEmpty">
+                  <Icon name="activity" />
+                  <span><strong>No matches yet</strong><small>{running ? "Confirmed detections and sent alerts will appear here." : "Start the camera to begin watching."}</small></span>
+                </div>
+              )}
             </div>
             <div className="webcamControlButtons">
               <button className="buttonPrimary buttonWithIcon" disabled={busy || running || !deployed} onClick={() => void onStart()} type="button"><Icon name="camera" /> Start camera</button>

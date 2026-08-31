@@ -1,80 +1,60 @@
-# Design QA — Screenpipe light-mode clone for Artae
+# Camera Jobs Section — Design QA
 
-## Evidence
+- Source visual truth: `C:\Users\wasse\AppData\Local\Temp\codex-clipboard-7f3ca1b9-7578-4a7c-8c34-ebd06d7f2149.png`
+- Desktop implementation: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts-camera-jobs-desktop.png`
+- Mobile implementation: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts-camera-jobs-mobile.png`
+- Combined comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\camera-jobs-design-comparison.png`
+- Desktop viewport: 1265 px wide, browser density 1; captured section is 1265 × 1590 px.
+- Mobile viewport: 390 × 844 CSS px, browser density 1; captured section content is 375 × 2762 px after page gutters.
+- Source pixels: 1896 × 1177 px. The source is a before-state used to preserve the established page language while correcting the repeated-card hierarchy requested by the user.
+- State: landing page `#features`, light theme, default interaction state.
 
-- Source visual truth: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\screenpipe-light\desktop-full.png`
-- Source mobile truth: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\screenpipe-light\mobile-full-final.png`
-- Implementation desktop: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\desktop-full-final.png`
-- Implementation mobile: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\mobile-full-v2.png`
-- Full desktop comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\desktop-comparison-final.png`
-- Full mobile comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\mobile-comparison-v1.png`
-- Focused desktop navigation state: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\desktop-explore-tested.png`
-- Focused mobile navigation state: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\mobile-menu-tested.png`
-- Focused completed-agent state: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.design-reference\implementation-light\mobile-agent-complete.png`
+## Full-view comparison evidence
 
-## Normalization
+The source and desktop implementation were combined into `camera-jobs-design-comparison.png` and reviewed together. The update preserves the light technical grid, square borders, Geist typography, restrained green/yellow states, and numbered-section framing. It replaces six nearly identical abstract capability cards with a three-step product explanation, one detailed factory-flow example, and a readable directory of six operational uses.
 
-- Desktop CSS viewport: 1440 × 900 at device scale 1.
-- Desktop source pixels: 1425 × 7102 after browser scrollbar gutter.
-- Desktop implementation pixels: 1425 × 7147 after browser scrollbar gutter.
-- Mobile CSS viewport: 390 × 844 at device scale 1.
-- Mobile source pixels: 375 × 10244 after browser scrollbar gutter.
-- Mobile implementation pixels: 375 × 10383 after browser scrollbar gutter.
-- Default page state was used for the full comparisons. Menu, comparison, agent-complete, FAQ, and navigation states were tested separately.
+## Focused region evidence
 
-## Findings
-
-- No actionable P0, P1, or P2 findings remain.
-- P3: Artae-specific camera content creates small density differences inside the comparison and agent demos. The overall frame, component proportions, and section rhythm remain aligned with the source.
-- P3: The hero uses the exact source type system and scale but replaces Screenpipe's product statement with the equivalent Artae camera statement, as required to avoid misleading product identity.
+The whole section was captured at desktop and mobile sizes, so the important details remain readable without a second crop: product inputs, camera jobs, connected actions, camera overlays, WhatsApp-via-webhook copy, saved evidence, and the six-use-case directory.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: The source IBM Plex Mono weights and Space Grotesk font were copied locally and mapped to the same display/body roles. The desktop hero computes to 60px, 60px line height, 700 weight, and -1.5px tracking, matching the source.
-- Spacing and layout rhythm: Sticky header, orange promotion strip, geometric hero, numbered editorial sections, framed product demonstrations, three-column desktop feature grid, CTA, grouped FAQ, and stacked light footer match the source order and proportions. Desktop page heights differ by 45px and mobile heights by 139px.
-- Colors and visual tokens: Warm off-white paper, black controls, gray secondary text, hairline borders, dotted editorial sections, and orange signal strip match the source palette. No dark-theme surfaces remain on the landing page.
-- Image quality and asset fidelity: The source overview poster, video, integration logos, and fonts were copied locally. Artae-specific operational camera images remain full-resolution and properly cropped inside the equivalent source layouts.
-- Copy and content: Section hierarchy mirrors Screenpipe while product claims, CTAs, FAQs, and agent examples correctly describe Artae rather than presenting Screenpipe's brand as Artae's.
-
-## Interaction and accessibility verification
-
-- Desktop Explore menu opens and closes.
-- Mobile menu and nested Explore section open and close.
-- With/Without Artae comparison switches correctly.
-- Model picker opens and closes.
-- Agent tabs change the active job.
-- Agent simulation completes the Detect → Confirm → Act sequence and produces the alert.
-- FAQ entries expand and collapse.
-- Open Artae navigates to `/login` and browser Back returns to the landing page.
-- Final browser console check returned no warnings or errors.
-- Controls use semantic buttons/links, expanded and pressed states are exposed, content images have useful alt text, and reduced-motion preferences are respected.
+- Fonts and typography: Geist and the existing weight hierarchy are preserved. The product statement, featured factory example, and use-case directory create three clear reading levels. No clipping or unintended truncation was observed.
+- Spacing and layout rhythm: the desktop section moves from a three-step feature flow to one visual example and then a continuous use-case directory; mobile stacks each part with consistent gutters and readable action rows.
+- Colors and visual tokens: existing paper, gray, border, green detection, and yellow warning tokens remain consistent with the rest of the landing page.
+- Image quality and asset fidelity: the existing Artae-owned factory camera asset is used at a natural crop. Live-camera labels, the monitored queue, evidence states, and alert output clearly show the product in action.
+- Copy and content: the section now explains what footage can be connected, what jobs can be described, what actions Artae can perform, and what teams use it for. WhatsApp is accurately described as a webhook-delivered action rather than a native integration claim.
 
 ## Comparison history
 
-1. Initial dark adaptation
-   - [P1] Palette and overall visual identity did not match the requested Screenpipe light site.
-   - Fix: replaced the dark canvas with the captured warm light theme, orange promotion bar, geometric hero, editorial section system, and light footer.
+### Initial finding
 
-2. First light comparison
-   - [P1] The implementation inherited Geist for the hero while the source uses IBM Plex Mono.
-   - Fix: copied and mapped the source IBM Plex Mono 400/500/600 assets and applied the exact 60px desktop hero metrics.
-   - [P1] Feature content rendered in two columns and the footer was oversized and dark.
-   - Fix: changed the feature grid to three columns and rebuilt the footer as the source's compact light stacked composition.
+- [P1] Six repeated capability boxes made every feature look identical and did not quickly explain that a camera can be assigned a job.
+- [P1] The section did not summarize the platform's core features or explain the breadth of operational use cases.
 
-3. Second light comparison
-   - [P2] Global footer layout caused CTA and navigation content to appear side by side instead of stacked.
-   - Fix: explicitly restored block flow and added FAQ content to match the source's page length and grouping.
-   - Post-fix evidence: `desktop-comparison-final.png` and `mobile-comparison-v1.png`.
+### Fixes made
 
-## Implementation checklist
+- Added a three-step explanation covering live/uploaded video, plain-language jobs, and alerts/actions.
+- Made factory bottleneck detection the dominant visual example with a complete watch-and-do workflow.
+- Added a six-item use-case directory covering workplace safety, factory flow, process compliance, loading docks, security/vehicle access, and recorded-footage search.
+- Preserved responsive behavior without returning to a grid of identical boxes.
 
-- [x] Match the source light mode and palette.
-- [x] Use the source font roles and desktop hero metrics.
-- [x] Preserve header, promotion strip, hero, section order, FAQ, and footer composition.
-- [x] Preserve desktop and mobile interaction states.
-- [x] Use locally bundled source assets instead of hotlinks.
-- [x] Verify desktop and mobile browser renders.
-- [x] Pass TypeScript and production build.
-- [x] Check final browser console.
+### Post-fix evidence
+
+- Desktop and mobile captures show clear hierarchy, readable features, a non-repetitive composition, product-in-action imagery, and a complete use-case summary.
+- TypeScript typecheck passed.
+- Browser console showed no errors. Two Next.js LCP warnings occurred only because QA opened the deep `#features` anchor, making below-the-fold images temporarily count as above-the-fold; this does not affect normal page entry.
+- No actionable P0, P1, or P2 issues remain.
+
+## Primary interactions tested
+
+- Anchor navigation to `#features`.
+- Desktop rendering.
+- Mobile responsive stacking at 390 × 844 CSS px.
+- Browser console error check.
+
+## Follow-up polish
+
+- [P3] A future real factory-line video could replace the current warehouse still when original production footage is available.
 
 final result: passed

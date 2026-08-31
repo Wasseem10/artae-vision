@@ -11,7 +11,9 @@ from fastapi import Depends, Header, HTTPException, Request, WebSocket, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from video_intelligence_api.dependencies import SessionDependency
 from video_intelligence_api.models import (
@@ -79,6 +81,145 @@ def _personal_workspace_details(
     return f"workspace-{digest[:20]}", f"{label}'s workspace", f"oidc:{digest}"
 
 
+async def _identity_for_claims(
+    session: AsyncSession,
+    *,
+    issuer: str,
+    subject: str,
+    email: str | None,
+    display_name: str | None,
+) -> UserIdentity:
+    """Create or refresh one OIDC identity without racing parallel page requests."""
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        now = utc_now()
+        candidate = postgres_insert(UserIdentity).values(
+            id=new_id(),
+            issuer=issuer,
+            subject=subject,
+            email=email,
+            display_name=display_name,
+            created_at=now,
+            last_seen_at=now,
+        )
+        statement = candidate.on_conflict_do_update(
+            constraint="uq_user_identities_issuer_subject",
+            set_={
+                "email": func.coalesce(candidate.excluded.email, UserIdentity.email),
+                "display_name": func.coalesce(
+                    candidate.excluded.display_name, UserIdentity.display_name
+                ),
+                "last_seen_at": now,
+            },
+        ).returning(UserIdentity.id)
+        identity_id = await session.scalar(statement)
+        identity = await session.get(UserIdentity, identity_id)
+        if identity is None:  # pragma: no cover - defensive guard for a broken DB transaction
+            raise RuntimeError("OIDC identity upsert did not return a row")
+        return identity
+
+    identity = await session.scalar(
+        select(UserIdentity).where(
+            UserIdentity.issuer == issuer,
+            UserIdentity.subject == subject,
+        )
+    )
+    if identity is None:
+        identity = UserIdentity(
+            id=new_id(),
+            issuer=issuer,
+            subject=subject,
+            email=email,
+            display_name=display_name,
+        )
+        session.add(identity)
+        await session.flush()
+    else:
+        identity.email = email or identity.email
+        identity.display_name = display_name or identity.display_name
+        identity.last_seen_at = utc_now()
+    return identity
+
+
+async def _personal_organization(
+    session: AsyncSession, *, slug: str, name: str, external_id: str
+) -> Organization:
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        now = utc_now()
+        candidate = postgres_insert(Organization).values(
+            id=new_id(),
+            slug=slug,
+            name=name,
+            external_id=external_id,
+            enabled=True,
+            created_at=now,
+            updated_at=now,
+        )
+        organization_id = await session.scalar(
+            candidate.on_conflict_do_update(
+                index_elements=[Organization.external_id],
+                set_={"enabled": True, "updated_at": now},
+            ).returning(Organization.id)
+        )
+        organization = await session.get(Organization, organization_id)
+        if organization is None:  # pragma: no cover - defensive guard
+            raise RuntimeError("Personal workspace upsert did not return a row")
+        return organization
+
+    organization = await session.scalar(
+        select(Organization).where(Organization.external_id == external_id)
+    )
+    if organization is None:
+        organization = Organization(
+            id=new_id(), slug=slug, name=name, external_id=external_id, enabled=True
+        )
+        session.add(organization)
+        await session.flush()
+    return organization
+
+
+async def _membership_for_actor(
+    session: AsyncSession,
+    *,
+    organization_id: str,
+    user_id: str,
+    role: OrganizationRole,
+) -> OrganizationMembership:
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        candidate = postgres_insert(OrganizationMembership).values(
+            id=new_id(),
+            organization_id=organization_id,
+            user_id=user_id,
+            role=role,
+            created_at=utc_now(),
+        )
+        membership_id = await session.scalar(
+            candidate.on_conflict_do_nothing(
+                constraint="uq_organization_memberships_member"
+            ).returning(OrganizationMembership.id)
+        )
+        if membership_id is not None:
+            membership = await session.get(OrganizationMembership, membership_id)
+        else:
+            membership = await session.scalar(
+                select(OrganizationMembership).where(
+                    OrganizationMembership.organization_id == organization_id,
+                    OrganizationMembership.user_id == user_id,
+                )
+            )
+        if membership is None:  # pragma: no cover - defensive guard
+            raise RuntimeError("Workspace membership upsert did not return a row")
+        return membership
+
+    membership = OrganizationMembership(
+        id=new_id(),
+        organization_id=organization_id,
+        user_id=user_id,
+        role=role,
+    )
+    session.add(membership)
+    return membership
+
+
 async def get_current_actor(
     request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
@@ -122,26 +263,14 @@ async def get_current_actor(
     issuer = settings.oidc_issuer or ""
     email = str(claims["email"]) if claims.get("email") else None
     display_name = str(claims["name"]) if claims.get("name") else None
-    identity = await session.scalar(
-        select(UserIdentity).where(
-            UserIdentity.issuer == issuer,
-            UserIdentity.subject == subject,
-        )
+
+    identity = await _identity_for_claims(
+        session,
+        issuer=issuer,
+        subject=subject,
+        email=email,
+        display_name=display_name,
     )
-    if identity is None:
-        identity = UserIdentity(
-            id=new_id(),
-            issuer=issuer,
-            subject=subject,
-            email=email,
-            display_name=display_name,
-        )
-        session.add(identity)
-        await session.flush()
-    else:
-        identity.email = email or identity.email
-        identity.display_name = display_name or identity.display_name
-        identity.last_seen_at = utc_now()
 
     organization_claim = claims.get(settings.oidc_organization_claim)
     organization_id = str(organization_claim).strip() if organization_claim else ""
@@ -186,34 +315,26 @@ async def get_current_actor(
         slug, name, external_id = _personal_workspace_details(
             issuer, subject, identity.email, identity.display_name
         )
-        organization = await session.scalar(
-            select(Organization).where(Organization.external_id == external_id)
+        organization = await _personal_organization(
+            session, slug=slug, name=name, external_id=external_id
         )
-        if organization is None:
-            organization = Organization(
-                id=new_id(), slug=slug, name=name, external_id=external_id, enabled=True
-            )
-            session.add(organization)
-            await session.flush()
         organization_id = organization.id
-        membership = OrganizationMembership(
-            id=new_id(),
+        membership = await _membership_for_actor(
+            session,
             organization_id=organization_id,
             user_id=identity.id,
             role=OrganizationRole.OWNER,
         )
-        session.add(membership)
 
     if membership is None:
         if not settings.oidc_auto_provision_memberships:
             raise HTTPException(status_code=403, detail="User is not a member of this organization")
-        membership = OrganizationMembership(
-            id=new_id(),
+        membership = await _membership_for_actor(
+            session,
             organization_id=organization_id,
             user_id=identity.id,
             role=_claimed_role(claims, settings.oidc_role_claim),
         )
-        session.add(membership)
     await session.commit()
     actor = Actor(
         subject=subject,

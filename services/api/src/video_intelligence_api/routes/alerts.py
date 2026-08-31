@@ -317,6 +317,10 @@ async def create_test_alert(
         details=details,
     )
     session.add(event)
+    # Event and Alert are connected by scalar ids rather than an ORM
+    # relationship, so SQLAlchemy cannot infer their insert order.  Persist the
+    # event first to satisfy alerts_event_id_fkey on PostgreSQL.
+    await session.flush()
     alert = (
         await enqueue_event_alert(session, event, connector_id=payload.connector_id)
         if payload.deliver_outbound

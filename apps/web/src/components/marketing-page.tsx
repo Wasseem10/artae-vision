@@ -15,8 +15,10 @@ import {
   FiFileText,
   FiGrid,
   FiMenu,
+  FiMessageCircle,
   FiSearch,
   FiShield,
+  FiTrendingDown,
   FiVideo,
   FiX,
   FiZap,
@@ -34,15 +36,6 @@ const agents: Record<AgentKey, { name: string; description: string; condition: s
   occupancy: { name: "Occupancy", description: "Watch a waiting area and alert when it exceeds its safe limit.", condition: "occupancy_above_12", action: "manager alert", image: "/assets/camera-shipping-office.png" },
   upload: { name: "Video review", description: "Review uploaded footage and save every matching moment.", condition: "blocked_emergency_route", action: "investigation log", image: "/assets/camera-warehouse-aisle.png" },
 };
-
-const featureCards = [
-  { eyebrow: "Camera job · live", icon: FiEye, label: "Watch", title: "Watch for what matters", copy: "Describe one event in plain language. Artae watches the camera or uploaded video for it.", lines: ["Worker without a hard hat", "Delivery truck arriving", "Person entering after hours"] },
-  { eyebrow: "Event · confirmed", icon: FiBell, label: "Alert", title: "Know when it happens", copy: "Artae saves the matching moment and tells the person who needs to respond.", lines: ["Exact camera and time", "Short evidence clip", "In-app or Telegram alert"] },
-  { eyebrow: "History · searchable", icon: FiSearch, label: "Find", title: "Find any moment quickly", copy: "Ask a question about past footage and go directly to the video that answers it.", lines: ["When did the truck arrive?", "Show every PPE event", "Who entered after closing?"] },
-  { eyebrow: "Action · connected", icon: FiZap, label: "Act", title: "Trigger the next step", copy: "Turn a confirmed visual event into the follow-up your operation already uses.", lines: ["Notify the operations team", "Create an incident", "Call an approved webhook"] },
-  { eyebrow: "Evidence · account saved", icon: FiVideo, label: "Save", title: "Keep the useful footage", copy: "Store the clip, timestamp, camera, and agent decision together for later review.", lines: ["Event clips stay organized", "History follows your account", "Retention stays configurable"] },
-  { eyebrow: "Workspace · managed", icon: FiShield, label: "Manage", title: "Run every camera in one place", copy: "See camera jobs, alerts, footage, and connected actions from one workspace.", lines: ["Multiple cameras and sites", "Team access controls", "One searchable event log"] },
-];
 
 const faqGroups = [
   { title: "the product", items: [
@@ -173,8 +166,45 @@ export function MarketingPage() {
       </section>
 
       <section className={styles.features} id="features">
-        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>Capabilities</small><p>Six things Artae does</p></div><div><h2>Everything between seeing an event and handling it.</h2><p>Artae gives each camera a job, keeps the matching evidence, and connects the result to the people and systems that need it.</p></div></header>
-        <div className={styles.featureGrid}>{featureCards.map(({ eyebrow, icon: Icon, label, title, copy, lines }) => <article key={title}><div className={styles.miniWindow}><div><small>{eyebrow}</small><b>READY</b></div>{lines.map((line) => <span key={line}><FiCheck /> {line}</span>)}</div><p><Icon /> {label}</p><h3>{title}</h3><div className={styles.featureCopy}>{copy}</div></article>)}</div>
+        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>What Artae does</small><p>Features + use cases</p></div><div><h2>Turn any camera into an AI worker for your operation.</h2><p>Artae watches live or recorded video, understands the job you describe, keeps the evidence, and performs the response you choose.</p></div></header>
+
+        <div className={styles.productFlow} aria-label="How Artae works">
+          <div><span>01</span><FiVideo /><strong>Connect the video</strong><p>Use a live camera, an IP feed, or upload recorded footage.</p></div>
+          <div><span>02</span><FiEye /><strong>Describe the job</strong><p>Ask for a safety event, queue, vehicle, behavior, or process check in plain language.</p></div>
+          <div><span>03</span><FiZap /><strong>Choose what happens</strong><p>Send an alert, save the clip, create an incident, or call a connected webhook.</p></div>
+        </div>
+
+        <article className={styles.featureStory}>
+          <div className={styles.jobVisual}>
+            <Image src="/assets/camera-warehouse-aisle.png" alt="Factory camera watching a production line for a growing bottleneck" fill sizes="(max-width: 760px) 100vw, 58vw" />
+            <div className={styles.jobCameraBar}><span><i /> ARTAE VISION · LIVE</span><b>LINE 4</b></div>
+            <div className={styles.bottleneckZone}><span>QUEUE GROWING</span></div>
+            <div className={styles.queueCount}><FiTrendingDown /><span><b>12 items waiting</b>4m 12s above target</span></div>
+            <div className={styles.jobSweep} />
+          </div>
+          <div className={styles.jobCopy}>
+            <small>Example · factory operations</small>
+            <h3>Catch a bottleneck before it stops the line.</h3>
+            <p>The camera agent watches Station 4 continuously, confirms that the queue is actually growing, and sends the shift manager the exact moment that needs attention.</p>
+            <div className={styles.jobRule}>
+              <div><b>WATCH</b><span>Parts waiting at Station 4 for more than 2 minutes</span></div>
+              <div><b>DO</b><span><FiMessageCircle /> Send a WhatsApp alert via webhook and save the evidence clip</span></div>
+            </div>
+            <div className={styles.jobResults}><span><FiCheck /> event verified</span><span><FiVideo /> footage saved</span><span><FiMessageCircle /> manager notified</span></div>
+          </div>
+        </article>
+
+        <div className={styles.useCaseDirectory}>
+          <header><small>What teams use Artae for</small><h3>One platform. Many camera jobs.</h3><p>Start with one useful job, then add more agents to the cameras and footage you already have.</p></header>
+          <div className={styles.useCaseRows}>
+            <div><FiShield /><span><b>Workplace safety</b><small>Detect missing hard hats, blocked exits, unsafe zones, and PPE violations.</small></span><em>Alert safety lead</em></div>
+            <div><FiActivity /><span><b>Factory flow</b><small>Spot bottlenecks, stalled work, growing queues, and abnormal downtime.</small></span><em>Notify shift manager</em></div>
+            <div><FiCheck /><span><b>Process compliance</b><small>Confirm required checks, handoffs, cleaning steps, and operating procedures.</small></span><em>Create incident log</em></div>
+            <div><FiGrid /><span><b>Loading docks</b><small>Know when trucks arrive, bays become blocked, or loading runs late.</small></span><em>Message operations</em></div>
+            <div><FiEye /><span><b>Security + vehicle access</b><small>Watch after-hours entry, tailgating, vehicles, and approved license plates.</small></span><em>Trigger access webhook</em></div>
+            <div><FiSearch /><span><b>Recorded footage search</b><small>Ask what happened and jump to the matching clip, camera, and timestamp.</small></span><em>Find evidence fast</em></div>
+          </div>
+        </div>
       </section>
 
       <section className={styles.downloadCta} id="use-cases"><h2>Build your visual workflow memory.</h2><p>Live cameras · uploaded video · account-saved agents · connected actions</p><Link className={styles.heroPrimary} href="/login"><FiVideo /> Start monitoring</Link></section>

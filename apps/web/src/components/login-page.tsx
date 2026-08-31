@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -111,13 +110,8 @@ export function LoginPage() {
   return (
     <main className={styles.page}>
       <section className={styles.visual}>
-        <Image src="/assets/camera-loading-dock.png" alt="Loading dock camera analyzed by Artae Vision" fill priority sizes="(max-width: 820px) 100vw, 54vw" />
         <div className={styles.visualShade} />
         <Link className={styles.wordmark} href="/"><span><FiActivity /></span>artae</Link>
-        <div className={styles.analysisBar}><span><i /> Artae Vision scanning</span><b>CAM-02 · Loading dock</b></div>
-        <div className={styles.trackingBox}><span>delivery truck · 97%</span></div>
-        <div className={styles.arrivalMarker}><span>arrival line</span></div>
-        <div className={styles.scanBeam} />
         <div className={styles.visualCopy}>
           <p>AI VIDEO AGENTS</p>
           <h1>Give every<br />camera a job.</h1>
