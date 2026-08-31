@@ -68,7 +68,7 @@ export function CameraAutomationsWorkspace({
   agent, alerts, busy, cameras, detections, events, loading, onAddWebcam, recordings,
   onClarify, onCompile, onDecideVerification, onOpenAdvanced, onRuleCreated, onRuleStatusChange,
   onRefreshRecordings, onSafeTest, onSelectCamera, onStart, rules, selectedCamera, stream,
-  verificationCases, identity, onSignOut,
+  verificationCases, identity, onSignOut, onStop,
 }: Props) {
   const [view, setView] = useState<WorkspaceView>("conversation");
   const [prompt, setPrompt] = useState("");
@@ -115,7 +115,7 @@ export function CameraAutomationsWorkspace({
   const currentExecutions = executions.filter((execution) => currentAlertIds.has(execution.alert_id));
   const visibleRecordings = recordings.filter((recording) => recording.status !== "expired");
   const activeBinding = bindings.find((binding) => binding.enabled) ?? null;
-  const activeRuleLive = Boolean(activeRule?.status === "active" && running);
+  const activeRuleLive = Boolean(activeRule?.status === "active" && operating);
   const currentCases = activeRule
     ? verificationCases.filter((item) => item.event.rule_id === activeRule.id && !["confirmed", "rejected"].includes(item.status))
     : [];
@@ -221,6 +221,10 @@ export function CameraAutomationsWorkspace({
     const connector = await resolveActionConnector();
     if (!connector) { setMessage("Connect an action destination in Settings, then deploy this agent again."); setView("settings"); return; }
     const binding = await ensureAgentAction(rule, connector);
+    if (running) {
+      setMessage("Updating the camera agent…");
+      await onStop();
+    }
     await onRuleStatusChange(rule.id, "active"); setBindings((current) => [binding, ...current.filter((item) => item.id !== binding.id)]);
     if (sourceMode === "live") {
       await onStart();
@@ -268,9 +272,13 @@ export function CameraAutomationsWorkspace({
     setWorking(true); setSelectedRuleId(rule.id);
     try {
       if (rule.status === "active" && running) {
+        await onStop();
         await onRuleStatusChange(rule.id, "paused");
-        setMessage(`${ruleTitle(rule)} is paused. Other agents on this camera can keep running.`);
+        const anotherAgentIsActive = rules.some((item) => item.id !== rule.id && item.status === "active");
+        if (anotherAgentIsActive) await onStart();
+        setMessage(`${ruleTitle(rule)} is paused.`);
       } else {
+        if (running) await onStop();
         if (rule.status !== "active") {
           await onRuleStatusChange(rule.id, "active");
         }
@@ -427,9 +435,9 @@ export function CameraAutomationsWorkspace({
               <article className="visionAssistantMessage"><div><strong>What should we watch for?</strong><p>Describe the condition and the action you want me to take.</p></div></article>
               <article className="visionUserMessage"><p>{submittedPrompt}</p></article>
               <article className="visionAssistantMessage"><div>
-                <strong>{working ? "Building your monitoring agent…" : compilation?.status === "needs_clarification" ? "One quick question" : running || uploadEvaluation ? "Your monitoring agent is running" : "Your monitoring rule is ready"}</strong>
-                {compilation?.status === "needs_clarification" ? <div className="visionClarification"><p>{compilation.clarification_question?.includes("named zones or lines") ? "Which part of the camera should I watch?" : compilation.clarification_question}</p>{compilation.clarification_question?.includes("named zones or lines") && <button className="visionEntireViewChoice" disabled={working} onClick={() => void chooseEntireCameraView()} type="button">Use the entire camera view</button>}<form onSubmit={(event) => { event.preventDefault(); void answerClarification(); }}><input aria-label="Rule clarification" onChange={(event) => setClarification(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && clarification.trim()) { event.preventDefault(); void answerClarification(); } }} placeholder="Or type the name of a saved camera area" value={clarification} /><button disabled={working || !clarification.trim()} type="submit">{working ? "Applying…" : "Continue"}</button></form></div> : <div className="visionBuildSteps" aria-label="Monitoring setup progress"><span className="isDone"><i>1</i><b>Rule described</b></span><span className={activeRule ? "isDone" : ""}><i>2</i><b>Agent built</b></span><span className={activeRule ? "isDone" : ""}><i>3</i><b>Action reviewed</b></span><span className={running || uploadEvaluation ? "isDone" : ""}><i>4</i><b>Running</b></span></div>}
-                {activeRule && <div className="visionDeployedAgent"><header><span><i className={activeRuleLive ? "isOnline" : ""} />{activeRuleLive ? "AGENT LIVE" : activeRule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div><b>IF</b><p>{activeRule.original_prompt ?? activeRule.name}</p></div><div><b>THEN</b><p>{bindingActionLabel(activeBinding)}</p></div><footer><span>{Math.round(activeRule.minimum_confidence * 100)}% minimum confidence</span><button disabled={!activeBinding || working} onClick={() => void runSafeTest()} type="button">Test action</button></footer></div>}
+                <strong>{working ? "Building your monitoring agent…" : compilation?.status === "needs_clarification" ? "One quick question" : operating || uploadEvaluation ? "Your monitoring agent is running" : running ? "Waiting for the camera service" : "Your monitoring rule is ready"}</strong>
+                {compilation?.status === "needs_clarification" ? <div className="visionClarification"><p>{compilation.clarification_question?.includes("named zones or lines") ? "Which part of the camera should I watch?" : compilation.clarification_question}</p>{compilation.clarification_question?.includes("named zones or lines") && <button className="visionEntireViewChoice" disabled={working} onClick={() => void chooseEntireCameraView()} type="button">Use the entire camera view</button>}<form onSubmit={(event) => { event.preventDefault(); void answerClarification(); }}><input aria-label="Rule clarification" onChange={(event) => setClarification(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && clarification.trim()) { event.preventDefault(); void answerClarification(); } }} placeholder="Or type the name of a saved camera area" value={clarification} /><button disabled={working || !clarification.trim()} type="submit">{working ? "Applying…" : "Continue"}</button></form></div> : <div className="visionBuildSteps" aria-label="Monitoring setup progress"><span className="isDone"><i>1</i><b>Rule described</b></span><span className={activeRule ? "isDone" : ""}><i>2</i><b>Agent built</b></span><span className={activeRule ? "isDone" : ""}><i>3</i><b>Action reviewed</b></span><span className={operating || uploadEvaluation ? "isDone" : ""}><i>4</i><b>{running && !operating ? "Connecting" : "Running"}</b></span></div>}
+                {activeRule && <div className="visionDeployedAgent"><header><span><i className={activeRuleLive ? "isOnline" : ""} />{activeRuleLive ? "AGENT LIVE" : running ? "WAITING FOR CAMERA SERVICE" : activeRule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div><b>IF</b><p>{activeRule.original_prompt ?? activeRule.name}</p></div><div><b>THEN</b><p>{bindingActionLabel(activeBinding)}</p></div><footer><span>{Math.round(activeRule.minimum_confidence * 100)}% minimum confidence</span><button disabled={!activeBinding || working} onClick={() => void runSafeTest()} type="button">Test action</button></footer></div>}
                 {conversationMessage && <p className="visionStatusMessage" role="status">{conversationMessage}</p>}
               </div></article>
               {(running || uploadEvaluation || uploadedVideoUrl) && sourceMode === "upload" && <section className="visionRealPreview"><header><span><i className={uploadEvaluation?.status === "running" ? "isOnline" : ""} /><strong>{uploadedVideo?.name}</strong></span><em>{uploadEvaluation?.status?.replaceAll("_", " ") ?? "ready"}</em></header><div className="visionVideoStage">{uploadedVideoUrl && <video controls preload="metadata" src={uploadedVideoUrl} />}</div></section>}

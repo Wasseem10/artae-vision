@@ -2397,7 +2397,7 @@ textarea:focus {
   background: #111814;
   border: 0;
   display: block;
-  object-fit: fill;
+  object-fit: cover;
   z-index: 1;
 }
 

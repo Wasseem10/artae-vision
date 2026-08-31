@@ -14,7 +14,15 @@ export function BrowserWebcamPreview({ name, onAvailabilityChange }: BrowserWebc
     let cancelled = false;
     let media: MediaStream | null = null;
 
-    void navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then((stream) => {
+    void navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        aspectRatio: { ideal: 16 / 9 },
+        frameRate: { ideal: 30 },
+      },
+      audio: false,
+    }).then((stream) => {
       if (cancelled) {
         stream.getTracks().forEach((track) => track.stop());
         return;
