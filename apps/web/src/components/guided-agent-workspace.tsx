@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/icon";
+import { NativePreview } from "@/components/native-preview";
 import { StatusPill } from "@/components/status-pill";
 import { api } from "@/lib/api";
+import { formatLocalTimestamp } from "@/lib/dates";
 import type {
   ActionExecution,
+  AgentTelemetry,
   AlertIncident,
   Camera,
   CameraAgent,
@@ -15,6 +18,7 @@ import type {
   CorrelationEvaluation,
   IntegrationConnector,
   InvestigationResult,
+  LiveDetection,
   ReplaySuite,
   Rule,
   RuleCompilation,
@@ -24,6 +28,7 @@ import type {
   SceneMemoryItem,
   Site,
   SiteMap,
+  TelegramChat,
   VisualAgentPlan,
   VisualAgentSimulation,
 } from "@/lib/types";
@@ -33,13 +38,16 @@ interface GuidedAgentWorkspaceProps {
   selectedCamera: Camera | null;
   agent: CameraAgent | null;
   alerts: AlertIncident[];
+  detections: LiveDetection[];
+  telemetry: AgentTelemetry | null;
   busy: boolean;
+  onAddWebcam: () => Promise<void>;
   onSelectCamera: (cameraId: string) => void;
   onCompile: (input: { camera_id: string; prompt: string }) => Promise<RuleCompilation>;
   onClarify: (compilationId: string, answer: string) => Promise<RuleCompilation>;
   onRuleCreated: (rule: Rule) => void;
-  onStart: () => void;
-  onStop: () => void;
+  onStart: () => Promise<void>;
+  onStop: () => Promise<void>;
   onOpenAdvanced: () => void;
   onError: (message: string) => void;
 }
@@ -50,12 +58,27 @@ const examples = [
   "Tell me when a product falls off the production line.",
 ];
 
+function alertTitle(alert: AlertIncident) {
+  const objectName = alert.event.object_class.replaceAll("_", " ");
+  if (objectName === "visual event") return "Activity matched your alert";
+  return `${objectName.charAt(0).toUpperCase()}${objectName.slice(1)} detected`;
+}
+
+function alertLocation(alert: AlertIncident) {
+  return alert.event.zone_name.toLowerCase().includes("full frame")
+    ? "Seen in the camera view"
+    : `Seen in ${alert.event.zone_name}`;
+}
+
 export function GuidedAgentWorkspace({
   cameras,
   selectedCamera,
   agent,
   alerts,
+  detections,
+  telemetry,
   busy,
+  onAddWebcam,
   onSelectCamera,
   onCompile,
   onClarify,
@@ -88,6 +111,11 @@ export function GuidedAgentWorkspace({
   const [connectorType, setConnectorType] = useState<Exclude<ConnectorType, "mock">>("messaging_webhook");
   const [connectorUrl, setConnectorUrl] = useState("");
   const [connectorCredential, setConnectorCredential] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [telegramChats, setTelegramChats] = useState<TelegramChat[]>([]);
+  const [telegramDiscoveryMessage, setTelegramDiscoveryMessage] = useState("");
+  const [previewReady, setPreviewReady] = useState(false);
+  const [showAllAlerts, setShowAllAlerts] = useState(false);
   const selectedCameraId = selectedCamera?.id ?? null;
 
   const loadPlans = useCallback(async () => {
@@ -145,8 +173,13 @@ export function GuidedAgentWorkspace({
   const running = agent?.desired_status === "running";
   const deployed = currentPlan?.status === "approved";
   const cameraAlerts = selectedCamera
-    ? alerts.filter((alert) => alert.event.camera_id === selectedCamera.id).slice(0, 3)
+    ? alerts.filter((alert) =>
+      alert.event.camera_id === selectedCamera.id &&
+      (!currentPlan || alert.event.rule_id === currentPlan.rule_id),
+    )
     : [];
+  const visibleAlerts = showAllAlerts ? cameraAlerts : cameraAlerts.slice(0, 3);
+  const previewDetections = detections.filter((detection) => detection.confidence >= 0.5);
   const currentCorrelationEvaluation = correlationEvaluations.find((evaluation) =>
     correlationPolicies.some((policy) => policy.id === evaluation.policy_id),
   );
@@ -182,11 +215,31 @@ export function GuidedAgentWorkspace({
     try {
       const rule = await api.acceptRuleCompilation(compilation.id);
       onRuleCreated(rule);
-      const plan = await api.createAgentPlan(rule.id);
+      let plan = await api.createAgentPlan(rule.id);
+      const planSimulation = await api.simulateAgentPlan(plan.id);
+      setSimulation(planSimulation);
+      if (
+        passedRun &&
+        plan.unsupported_capabilities.length === 0 &&
+        plan.plan.support?.deployable !== false
+      ) {
+        plan = await api.approveAgentPlan(plan.id, passedRun.id);
+      }
       setPlans((current) => [plan, ...current]);
       setCompilation(null);
       setPrompt("");
-      setSimulation(null);
+      if (plan.status === "approved") {
+        if (running) {
+          await onStop();
+          for (let attempt = 0; attempt < 20; attempt += 1) {
+            const status = await api.getCameraAgent(plan.camera_id);
+            if (status.observed_status === "stopped" || status.observed_status === "waiting") break;
+            await new Promise((resolve) => window.setTimeout(resolve, 250));
+          }
+        }
+        await onStart();
+      }
+      await loadPlans();
     } catch (failure) {
       onError(failure instanceof Error ? failure.message : "Could not create the camera plan.");
     } finally {
@@ -260,19 +313,28 @@ export function GuidedAgentWorkspace({
   }
 
   async function connectRealTool() {
-    if (!currentPlan || !connectorName.trim() || !connectorUrl.trim() || !connectorCredential.trim()) return;
+    const isTelegram = connectorType === "telegram";
+    if (
+      !currentPlan ||
+      !connectorName.trim() ||
+      !connectorCredential.trim() ||
+      (!isTelegram && !connectorUrl.trim()) ||
+      (isTelegram && !telegramChatId.trim())
+    ) return;
     setWorking(true);
     try {
       const definition = {
         messaging_webhook: { scope: "notifications:write", action: "send_notification" as const },
+        telegram: { scope: "notifications:write", action: "send_notification" as const },
         ticket_webhook: { scope: "tickets:write", action: "create_ticket" as const },
         generic_webhook: { scope: "webhooks:invoke", action: "invoke_webhook" as const },
       }[connectorType];
       const connector = await api.createConnector({
         name: connectorName.trim(),
         connector_type: connectorType,
-        endpoint_url: connectorUrl.trim(),
+        endpoint_url: isTelegram ? undefined : connectorUrl.trim(),
         credential: connectorCredential.trim(),
+        configuration: isTelegram ? { chat_id: telegramChatId.trim() } : undefined,
         scopes: [definition.scope],
       });
       await api.createRuleAction(currentPlan.rule_id, {
@@ -284,9 +346,46 @@ export function GuidedAgentWorkspace({
       setConnectorName("");
       setConnectorUrl("");
       setConnectorCredential("");
+      setTelegramChatId("");
+      setTelegramChats([]);
+      setTelegramDiscoveryMessage("");
       await refreshActions();
     } catch (failure) {
       onError(failure instanceof Error ? failure.message : "Could not connect the external tool.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function sendTelegramTest(connectorId: string) {
+    if (!currentPlan) return;
+    setWorking(true);
+    try {
+      await api.createOutboundTestAlert(currentPlan.rule_id, connectorId);
+      await refreshActions();
+    } catch (failure) {
+      onError(failure instanceof Error ? failure.message : "Could not queue the Telegram test.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function discoverTelegramChats() {
+    if (connectorCredential.trim().length < 8) return;
+    setWorking(true);
+    try {
+      const chats = await api.discoverTelegramChats(connectorCredential.trim());
+      setTelegramChats(chats);
+      setTelegramDiscoveryMessage(
+        chats.length
+          ? "Found " + chats.length + " recent " + (chats.length === 1 ? "chat." : "chats.")
+          : "No chats found yet. Send /start to the bot in Telegram, then try again.",
+      );
+      if (chats.length === 1) setTelegramChatId(chats[0].chat_id);
+    } catch (failure) {
+      setTelegramChats([]);
+      setTelegramDiscoveryMessage("");
+      onError(failure instanceof Error ? failure.message : "Could not discover Telegram chats.");
     } finally {
       setWorking(false);
     }
@@ -414,9 +513,18 @@ export function GuidedAgentWorkspace({
     return (
       <section className="guidedEmpty">
         <span className="guidedIcon"><Icon name="camera" /></span>
-        <h2>Connect your first camera</h2>
-        <p>Add a webcam, video file, or RTSP camera before giving it a job.</p>
-        <button className="buttonPrimary" onClick={onOpenAdvanced} type="button">Add a camera</button>
+        <h2>Start with your webcam</h2>
+        <p>Use the webcam connected to this computer now. You can add network cameras later.</p>
+        <button
+          className="buttonPrimary buttonWithIcon"
+          disabled={busy}
+          onClick={() => void onAddWebcam().catch(() => undefined)}
+          type="button"
+        >
+          <Icon name="camera" />
+          {busy ? "Connecting webcam…" : "Use my webcam"}
+        </button>
+        <button className="textButton" onClick={onOpenAdvanced} type="button">Add another camera source</button>
       </section>
     );
   }
@@ -426,46 +534,97 @@ export function GuidedAgentWorkspace({
       <section className="guidedHero">
         <div className="guidedHeroTop">
           <div>
-            <span className="eyebrow">Camera automation</span>
-            <h1>What should this camera watch for?</h1>
-            <p>Describe the event in plain English. You will review and test the plan before anything goes live.</p>
+            <span className="eyebrow">Camera monitor</span>
+            <h1>Live camera</h1>
+            <p>Tell the camera what to watch for. An alert appears below when it happens.</p>
           </div>
           <label className="cameraPicker">
             <span>Camera</span>
             <select value={selectedCamera.id} onChange={(event) => onSelectCamera(event.target.value)}>
               {cameras.map((camera) => <option key={camera.id} value={camera.id}>{camera.name}</option>)}
             </select>
-            <StatusPill status={selectedCamera.status} />
+            <StatusPill status={previewReady ? "online" : selectedCamera.status} />
           </label>
         </div>
 
+        <div className="webcamQuickStart">
+          <div className="webcamPreviewFrame">
+            {process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === "native" && running && (
+              <NativePreview
+                cameraId={selectedCamera.id}
+                name={selectedCamera.name}
+                onAvailabilityChange={setPreviewReady}
+              />
+            )}
+            {previewReady && previewDetections.length > 0 && (
+              <svg aria-label="Live object tracking" className="simpleTrackingOverlay" preserveAspectRatio="none" viewBox="0 0 100 100">
+                {previewDetections.map((detection, index) => (
+                  <g key={`${detection.track_id ?? "detection"}-${index}`}>
+                    <rect
+                      className="simpleTrackingBox"
+                      height={(detection.y2 - detection.y1) * 100}
+                      width={(detection.x2 - detection.x1) * 100}
+                      x={detection.x1 * 100}
+                      y={detection.y1 * 100}
+                    />
+                    <text className="simpleTrackingLabel" x={detection.x1 * 100} y={Math.max(3, detection.y1 * 100 - 1)}>
+                      {detection.label} {Math.round(detection.confidence * 100)}%
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            )}
+            {!previewReady && (
+              <div className="webcamPreviewWaiting">
+                <Icon name="camera" />
+                <strong>{running ? "Starting webcam preview…" : "Webcam is off"}</strong>
+              </div>
+            )}
+            <span className={`webcamLiveBadge ${previewReady ? "isLive" : ""}`}>
+              <i /> {previewReady ? "Live webcam" : "Not live"}
+            </span>
+          </div>
+          <div className="webcamControl">
+            <div>
+              <span className="eyebrow">This computer</span>
+              <strong>{selectedCamera.name}</strong>
+              <p>{previewReady ? "Your webcam is on and the camera agent is receiving frames." : running ? "The camera agent is connecting to your webcam." : "Turn on the webcam when you are ready to begin analysis."}</p>
+            </div>
+            <div className="webcamControlButtons">
+              <button className="buttonPrimary buttonWithIcon" disabled={busy || running || !deployed} onClick={() => void onStart()} type="button"><Icon name="camera" /> Start camera</button>
+              <button className="buttonSecondary" disabled={busy || !running} onClick={() => void onStop()} type="button">Stop camera</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="watchPromptLabel">
+          <strong>What should I watch for?</strong>
+          <span>Describe it in normal words.</span>
+        </div>
         <div className="instructionComposer">
           <textarea
             aria-label="Camera instruction"
             onChange={(event) => setPrompt(event.target.value)}
-            placeholder="Example: Alert me when a person enters without a hard hat."
+            placeholder="Example: Tell me when someone enters the room."
             rows={3}
             value={prompt}
           />
           <div className="composerFooter">
             <span>{prompt.length}/2000</span>
             <button className="buttonPrimary" disabled={busy || working || prompt.trim().length < 5} onClick={() => void compile()} type="button">
-              Build the plan
+              Watch for this
             </button>
           </div>
         </div>
         <div className="exampleRow">
-          <span>Try an example:</span>
+          <span>Examples:</span>
           {examples.map((example) => <button key={example} onClick={() => setPrompt(example)} type="button">{example}</button>)}
         </div>
       </section>
 
       {compilation && (
         <section className="reviewCard">
-          <div className="reviewHeader">
-            <span className="stepNumber">1</span>
-            <div><small>Review</small><h2>{compilation.status === "needs_clarification" ? "One detail is missing" : "Here is how the camera will do it"}</h2></div>
-          </div>
+          <div className="reviewHeader"><div><small>New alert</small><h2>{compilation.status === "needs_clarification" ? "One quick question" : "Start watching for this?"}</h2></div></div>
           {compilation.status === "needs_clarification" ? (
             <div className="clarificationBox">
               <p>{compilation.clarification_question}</p>
@@ -473,43 +632,20 @@ export function GuidedAgentWorkspace({
             </div>
           ) : (
             <>
-              <p className="planExplanation">{compilation.explanation}</p>
-              <div className="miniPlan">
-                {compilation.execution_plan?.stages.map((stage, index) => (
-                  <article key={stage.id}><span>{index + 1}</span><div><strong>{stage.label}</strong><p>{stage.purpose}</p></div></article>
-                ))}
-              </div>
-              <button className="buttonPrimary" disabled={working} onClick={() => void createPlan()} type="button">Save this plan</button>
+              <div className="simpleAlertReview"><Icon name="camera" /><div><small>Your camera will watch for</small><strong>{compilation.prompt}</strong></div></div>
+              <button className="buttonPrimary" disabled={working} onClick={() => void createPlan()} type="button">{working ? "Starting…" : "Start watching"}</button>
             </>
           )}
         </section>
       )}
 
-      {currentPlan ? (
-        <section className="planBoard">
-          <div className="planBoardHeader">
-            <div><span className="eyebrow">Current plan · version {currentPlan.revision}</span><h2>{currentPlan.prompt}</h2><p>{currentPlan.plan.summary}</p></div>
-            <span className={`deploymentBadge deployment-${currentPlan.status}`}>{currentPlan.status}</span>
-          </div>
-          <div className="planFlow">
-            {currentPlan.plan.nodes.map((node, index) => (
-              <article className={node.side_effect ? "planNode actionNode" : "planNode"} key={node.id}>
-                <span>{index + 1}</span><small>{node.kind}</small><strong>{node.title}</strong><p>{node.description}</p>
-              </article>
-            ))}
-          </div>
-          {currentPlan.unsupported_capabilities.length > 0 && (
-            <div className="capabilityWarning"><Icon name="shield" /><div><strong>This plan needs a connection before it can go live</strong><p>{currentPlan.unsupported_capabilities.join(", ")}</p></div></div>
-          )}
-          <div className="releaseSteps">
-            <article className="releaseStep"><span className={simulation ? "done" : ""}>{simulation ? "✓" : "1"}</span><div><strong>Safe simulation</strong><p>Checks every step without sending alerts or operating another system.</p></div><button className="buttonSecondary" disabled={working} onClick={() => void simulate()} type="button">{simulation ? "Run again" : "Run simulation"}</button></article>
-            <article className="releaseStep"><span className={passedRun ? "done" : ""}>{passedRun ? "✓" : "2"}</span><div><strong>Replay safety test</strong><p>{passedRun ? `Passed: ${passedRun.metrics.macro_f1 ?? 0} F1 score` : "No passed regression test yet. Open Advanced tools to create one."}</p></div>{!passedRun && <button className="buttonSecondary" onClick={onOpenAdvanced} type="button">Open tests</button>}</article>
-            <article className="releaseStep"><span className={deployed ? "done" : ""}>{deployed ? "✓" : "3"}</span><div><strong>Deploy</strong><p>{deployed ? "This version is approved and its rule is active." : "Makes the tested version the active camera job."}</p></div>{!deployed && <button className="buttonPrimary" disabled={working || !simulation || !passedRun || currentPlan.unsupported_capabilities.length > 0} onClick={() => void deploy()} type="button">Deploy plan</button>}</article>
-          </div>
-          {simulation && <p className="simulationSummary"><Icon name="shield" /> {simulation.summary}</p>}
+      {currentPlan && (
+        <section className="simpleWatchCard">
+          <div><span className={`simpleWatchDot ${deployed && running ? "active" : ""}`} /><div><small>{deployed && running ? "Watching now" : "Saved alert"}</small><strong>{currentPlan.prompt}</strong><span className={`watchCadence ${telemetry?.analysis_error ? "watchCadenceError" : ""}`}>{!running ? "Camera stopped — press Start camera to continue." : telemetry?.analysis_error ? `AI check failed: ${telemetry.analysis_error}` : telemetry?.analysis_state === "complete" || telemetry?.analysis_state === "analyzing" ? `AI check ${telemetry.analysis_sequence ?? ""} · 8 snapshots · ${telemetry.analysis_triggered ? "match found" : "no match in the latest check"}` : "Collecting the next 8 snapshots…"}</span></div></div>
+          {!deployed && passedRun && !simulation && <button className="buttonPrimary" disabled={working} onClick={() => void simulate()} type="button">Check alert</button>}
+          {!deployed && passedRun && simulation && <button className="buttonPrimary" disabled={working} onClick={() => void deploy()} type="button">Turn on alert</button>}
+          {!deployed && !passedRun && <button className="buttonSecondary" onClick={onOpenAdvanced} type="button">Finish setup</button>}
         </section>
-      ) : (
-        <section className="firstPlanHint"><span>1</span><div><strong>Describe a job above</strong><p>Your readable plan, safe simulation, test gate, and deploy control will appear here.</p></div></section>
       )}
 
       <section className="sceneMemoryPanel">
@@ -535,7 +671,7 @@ export function GuidedAgentWorkspace({
             ))}
           </div>
         ) : <p className="emptyCopy">No scene memory yet. Preview the safe discovery workflow or start a deployed camera job later.</p>}
-        {sceneChanges.length > 0 && <p className="sceneChangeSummary"><Icon name="event" /> {sceneChanges.length} recorded scene {sceneChanges.length === 1 ? "change" : "changes"}; latest state: {sceneChanges[0].new_state}.</p>}
+        {sceneChanges.length > 0 && <p className="sceneChangeSummary">{sceneChanges.length} recorded scene {sceneChanges.length === 1 ? "change" : "changes"}; latest state: {sceneChanges[0].new_state}.</p>}
       </section>
 
       <section className="operationsPanel">
@@ -637,7 +773,7 @@ export function GuidedAgentWorkspace({
 
       <section className="operationStrip">
         <div><span className={`operationDot ${running ? "running" : ""}`} /><div><small>Camera analysis</small><strong>{running ? "Running" : "Stopped — no vision usage"}</strong></div></div>
-        {running ? <button className="buttonSecondary" disabled={busy} onClick={onStop} type="button">Stop analysis</button> : <button className="buttonPrimary" disabled={busy || !deployed} onClick={onStart} type="button">Start analysis</button>}
+        {running ? <button className="buttonSecondary" disabled={busy} onClick={() => void onStop()} type="button">Stop analysis</button> : <button className="buttonPrimary" disabled={busy || !deployed} onClick={() => void onStart()} type="button">Start analysis</button>}
       </section>
 
       <section className="actionCenter">
@@ -679,6 +815,9 @@ export function GuidedAgentWorkspace({
                     <span className={`riskDot risk-${binding.risk_level}`} />
                     <div><strong>{binding.action_type.replaceAll("_", " ")}</strong><p>{binding.connector_name} · {binding.approval_mode} approval · {binding.rate_limit_per_minute}/minute</p></div>
                     <span className="actionReady">Ready</span>
+                    {connectors.find((connector) => connector.id === binding.connector_id)?.connector_type === "telegram" && (
+                      <button className="buttonSecondary" disabled={working} onClick={() => void sendTelegramTest(binding.connector_id)} type="button">Send Telegram test</button>
+                    )}
                   </article>
                 ))}
               </div>
@@ -690,11 +829,26 @@ export function GuidedAgentWorkspace({
             <details className="connectorSetup">
               <summary>Connect a real messaging, ticket, or webhook tool</summary>
               <div className="connectorForm">
-                <label><span>Tool type</span><select value={connectorType} onChange={(event) => setConnectorType(event.target.value as Exclude<ConnectorType, "mock">)}><option value="messaging_webhook">Messaging webhook</option><option value="ticket_webhook">Ticket webhook</option><option value="generic_webhook">Generic webhook</option></select></label>
-                <label><span>Name</span><input value={connectorName} onChange={(event) => setConnectorName(event.target.value)} placeholder="Operations Slack" /></label>
-                <label className="connectorWide"><span>HTTPS endpoint</span><input value={connectorUrl} onChange={(event) => setConnectorUrl(event.target.value)} placeholder="https://…" /></label>
-                <label className="connectorWide"><span>Signing credential</span><input type="password" value={connectorCredential} onChange={(event) => setConnectorCredential(event.target.value)} placeholder="Stored encrypted; never shown again" /></label>
-                <button className="buttonPrimary" disabled={working || !connectorName.trim() || !connectorUrl.trim() || connectorCredential.trim().length < 8} onClick={() => void connectRealTool()} type="button">Connect and attach</button>
+                <label><span>Tool type</span><select value={connectorType} onChange={(event) => setConnectorType(event.target.value as Exclude<ConnectorType, "mock">)}><option value="telegram">Telegram</option><option value="messaging_webhook">Messaging webhook</option><option value="ticket_webhook">Ticket webhook</option><option value="generic_webhook">Generic webhook</option></select></label>
+                <label><span>Name</span><input value={connectorName} onChange={(event) => setConnectorName(event.target.value)} placeholder={connectorType === "telegram" ? "Security Telegram" : "Operations Slack"} /></label>
+                {connectorType === "telegram" ? (
+                  <>
+                    <label className="connectorWide"><span>BotFather token</span><input type="password" value={connectorCredential} onChange={(event) => setConnectorCredential(event.target.value)} placeholder="Stored encrypted; never shown again" /></label>
+                    <button className="buttonSecondary" disabled={working || connectorCredential.trim().length < 8} onClick={() => void discoverTelegramChats()} type="button">Find recent chats</button>
+                    {telegramChats.length ? (
+                      <label className="connectorWide"><span>Destination chat</span><select value={telegramChatId} onChange={(event) => setTelegramChatId(event.target.value)}><option value="">Choose a chat</option>{telegramChats.map((chat) => <option key={chat.chat_id} value={chat.chat_id}>{chat.title} · {chat.chat_type}</option>)}</select></label>
+                    ) : (
+                      <label className="connectorWide"><span>Chat ID</span><input value={telegramChatId} onChange={(event) => setTelegramChatId(event.target.value)} placeholder="Send /start to the bot, then find recent chats" /></label>
+                    )}
+                    {telegramDiscoveryMessage && <small className="connectorWide" aria-live="polite">{telegramDiscoveryMessage}</small>}
+                  </>
+                ) : (
+                  <>
+                    <label className="connectorWide"><span>HTTPS endpoint</span><input value={connectorUrl} onChange={(event) => setConnectorUrl(event.target.value)} placeholder="https://…" /></label>
+                    <label className="connectorWide"><span>Signing credential</span><input type="password" value={connectorCredential} onChange={(event) => setConnectorCredential(event.target.value)} placeholder="Stored encrypted; never shown again" /></label>
+                  </>
+                )}
+                <button className="buttonPrimary" disabled={working || !connectorName.trim() || (connectorType === "telegram" ? !telegramChatId.trim() : !connectorUrl.trim()) || connectorCredential.trim().length < 8} onClick={() => void connectRealTool()} type="button">Connect and attach</button>
               </div>
             </details>
           </>
@@ -717,8 +871,8 @@ export function GuidedAgentWorkspace({
       </section>
 
       <section className="recentAlertsSimple">
-        <div className="simpleSectionHeader"><div><span className="eyebrow">Results</span><h2>Latest alerts</h2></div><button className="buttonGhost" onClick={onOpenAdvanced} type="button">View all activity</button></div>
-        {cameraAlerts.length ? cameraAlerts.map((alert) => <article key={alert.id}><span className="alertMarker"><Icon name="event" /></span><div><strong>{alert.event.object_class} · {alert.event.event_type.replaceAll("_", " ")}</strong><p>{alert.event.zone_name} · {Math.round(alert.event.confidence * 100)}% confidence</p></div><time>{new Date(alert.created_at).toLocaleString()}</time></article>) : <p className="emptyCopy">No alerts yet. Confirmed events will appear here with their evidence.</p>}
+        <div className="simpleSectionHeader"><div><span className="eyebrow">Alerts</span><h2>What happened</h2></div>{cameraAlerts.length > 3 && <button className="buttonGhost" onClick={() => setShowAllAlerts((current) => !current)} type="button">{showAllAlerts ? "Show latest" : "See all"}</button>}</div>
+        {visibleAlerts.length ? visibleAlerts.map((alert) => <article key={alert.id}><span className="alertMarker"><Icon name="event" /></span><div><strong>{alertTitle(alert)}</strong><p>{alertLocation(alert)}</p></div><time dateTime={alert.event.occurred_at}>{formatLocalTimestamp(alert.event.occurred_at)}</time></article>) : <p className="emptyCopy">No alerts for this instruction yet. When the camera sees what you described, it will appear here.</p>}
       </section>
     </div>
   );

@@ -36,6 +36,9 @@ def test_visual_skill_registry_explains_fallback_and_benchmarks(
     assert response.status_code == 200
     skills = {skill["id"]: skill for skill in response.json()["skills"]}
     assert skills["ppe_compliance"]["fallback_executor"] == "Temporal VLM windows"
+    assert skills["ppe_compliance"]["status"] == "fallback_only"
+    assert skills["change_anomaly"]["temporal_support"] == ["transition", "sequence"]
+    assert "source-frame" in skills["ocr_text"]["output_contract"]
     assert "replay gate" in skills["pose_action"]["benchmark_policy"]
     assert len(skills) == 8
 

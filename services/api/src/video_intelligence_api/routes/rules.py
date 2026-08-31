@@ -124,7 +124,7 @@ async def update_rule_status(
                 status_code=409,
                 detail="The stored job specification is invalid",
             ) from exc
-        capability = check_job_capability(spec, settings)
+        capability = check_job_capability(spec, settings, rule.original_prompt or rule.name)
         if not capability.supported:
             raise HTTPException(status_code=409, detail=capability.reason)
     rule.status = payload.status

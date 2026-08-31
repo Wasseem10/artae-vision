@@ -17,6 +17,8 @@ class AlertWorkerSettings(BaseSettings):
     agent_key: SecretStr = Field(min_length=16)
     worker_id: str | None = Field(default=None, min_length=1, max_length=120)
     poll_seconds: float = Field(default=1, ge=0.25, le=60)
+    health_evaluation_seconds: float = Field(default=10, ge=1, le=300)
+    evidence_sampling_seconds: float = Field(default=30, ge=5, le=3600)
     control_plane_timeout_seconds: float = Field(default=30, gt=0, le=300)
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 

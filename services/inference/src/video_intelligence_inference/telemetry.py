@@ -45,6 +45,12 @@ class FrameTelemetry:
     analysis_requests_today: int = 0
     analysis_request_limit_day: int = 0
     analysis_request_limit_minute: int = 0
+    frames_processed: int = 0
+    reconnect_count: int = 0
+    recording_state: str = "disabled"
+    recording_segments_completed: int = 0
+    recording_dropped_frames: int = 0
+    recording_error: str | None = None
 
 
 def normalize_detections(

@@ -6,6 +6,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, HTTPException, Path
 
 from video_intelligence_api.auth import Actor, ActorDependency, EditorDependency
+from video_intelligence_api.camera_secrets import CameraSecretError, resolved_camera_source
 from video_intelligence_api.config import ApiSettings
 from video_intelligence_api.dependencies import (
     MediaGatewayDependency,
@@ -32,7 +33,9 @@ def stream_response(
     path = camera_path(camera.id)
     encoded_path = quote(path, safe="")
     mode: Literal["proxy", "publisher"] = (
-        "proxy" if camera.source_type == SourceType.RTSP else "publisher"
+        "proxy"
+        if camera.source_type == SourceType.RTSP and camera.edge_device_id is None
+        else "publisher"
     )
     webrtc_base = settings.media_gateway_webrtc_url.rstrip("/")
     rtsp_base = settings.media_gateway_rtsp_url.rstrip("/")
@@ -68,7 +71,14 @@ async def provision_camera_stream(
     actor: EditorDependency,
 ) -> CameraStreamRead:
     camera = await _camera_or_404(camera_id, session, actor)
-    source = camera.source_uri if camera.source_type == SourceType.RTSP else "publisher"
+    try:
+        source = (
+            resolved_camera_source(camera, settings)
+            if camera.source_type == SourceType.RTSP and camera.edge_device_id is None
+            else "publisher"
+        )
+    except CameraSecretError as exc:
+        raise HTTPException(status_code=503, detail="Camera credentials are unavailable") from exc
     try:
         state = await gateway.provision(camera_path(camera.id), source)
     except MediaGatewayError as exc:

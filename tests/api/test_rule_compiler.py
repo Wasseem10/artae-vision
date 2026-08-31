@@ -74,9 +74,28 @@ def test_deterministic_rule_compiler_eval_cases() -> None:
                 "expected_minimum_confidence", default_confidence
             )
             if "expected_strategy" in case:
-                assert (
-                    plan_job(result.compiled_rule).strategy == case["expected_strategy"]
+                execution = plan_job(result.compiled_rule, case["prompt"])
+                assert execution.strategy == case["expected_strategy"]
+            else:
+                execution = plan_job(result.compiled_rule, case["prompt"])
+            if "expected_support_tier" in case:
+                assert execution.support.tier == case["expected_support_tier"], case[
+                    "name"
+                ]
+                assert execution.support.deployable is case.get(
+                    "expected_deployable", True
                 )
+            if "expected_temporal_mode" in case:
+                assert (
+                    execution.support.temporal_mode == case["expected_temporal_mode"]
+                ), case["name"]
+                assert (
+                    result.compiled_rule.temporal_mode == case["expected_temporal_mode"]
+                ), case["name"]
+            if "expected_skills" in case:
+                assert {skill.id for skill in execution.visual_skills} == set(
+                    case["expected_skills"]
+                ), case["name"]
         else:
             assert result.compiled_rule is None
             assert result.candidate.clarification_question
@@ -237,13 +256,46 @@ def test_compile_review_accept_and_activate_lifecycle(api_client: TestClient) ->
     assert activated.json()["status"] == "active"
 
 
+def test_context_dependent_job_cannot_be_activated_without_its_connector(
+    api_client: TestClient,
+) -> None:
+    camera = api_client.post(
+        "/api/v1/cameras",
+        json={"name": "context-camera", "source_uri": "0"},
+    ).json()
+    compilation_response = api_client.post(
+        "/api/v1/rule-compilations",
+        json={
+            "camera_id": camera["id"],
+            "prompt": "Alert me when an unauthorized person enters the facility.",
+        },
+    )
+    assert compilation_response.status_code == 201
+    compilation = compilation_response.json()
+    assert compilation["execution_plan"]["support"]["tier"] == "requires_context"
+    assert compilation["execution_plan"]["support"]["deployable"] is False
+
+    rule = api_client.post(
+        f"/api/v1/rule-compilations/{compilation['id']}/accept",
+        json={},
+    ).json()
+    activated = api_client.patch(
+        f"/api/v1/rules/{rule['id']}/status",
+        json={"status": "active"},
+    )
+
+    assert activated.status_code == 409
+    assert "access-control system" in activated.json()["detail"]
+
+
 def test_clarification_creates_a_new_revision(api_client: TestClient) -> None:
     camera, _ = _camera_and_zone(api_client)
+    original_prompt = "Alert me if a person remains in the loading zone."
     first = api_client.post(
         "/api/v1/rule-compilations",
         json={
             "camera_id": camera["id"],
-            "prompt": "Alert me if a person remains in the loading zone.",
+            "prompt": original_prompt,
         },
     ).json()
 
@@ -260,6 +312,19 @@ def test_clarification_creates_a_new_revision(api_client: TestClient) -> None:
     assert revision["revision"] == 2
     assert revision["parent_id"] == first["id"]
     assert revision["compiled_rule"]["duration_seconds"] == 30.0
+
+    accepted = api_client.post(
+        f"/api/v1/rule-compilations/{revision['id']}/accept",
+        json={},
+    )
+    assert accepted.status_code == 201, accepted.text
+    rule = accepted.json()
+    assert rule["original_prompt"] == original_prompt
+    assert "Clarification answer" not in rule["original_prompt"]
+
+    plan = api_client.post("/api/v1/agent-plans", json={"rule_id": rule["id"]})
+    assert plan.status_code == 201, plan.text
+    assert plan.json()["prompt"] == original_prompt
 
 
 def test_clarification_resolves_an_ambiguous_choice(api_client: TestClient) -> None:
@@ -379,8 +444,51 @@ def test_compiler_creates_full_frame_semantic_job_without_manual_zone(
     assert event.status_code == 201
     assert event.json()["event_type"] == "semantic_vision"
     assert event.json()["details"]["first_frame"] == 4
+    assert event.json()["verification_status"] == "pending"
+    alerts = api_client.get("/api/v1/alerts").json()
+    assert not any(alert["event_id"] == event.json()["id"] for alert in alerts)
+    assert not any(
+        item["id"] == event.json()["id"]
+        for item in api_client.get("/api/v1/events").json()
+    )
+
+    cases = api_client.get("/api/v1/verification-cases").json()
+    verification = next(item for item in cases if item["event_id"] == event.json()["id"])
+    assert verification["status"] == "pending"
+    confirmed = api_client.post(
+        f"/api/v1/verification-cases/{verification['id']}/decision",
+        json={
+            "status": "confirmed",
+            "reasoning": "The worker is visibly missing required head protection.",
+        },
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["status"] == "confirmed"
     alerts = api_client.get("/api/v1/alerts").json()
     assert any(alert["event_id"] == event.json()["id"] for alert in alerts)
+
+
+def test_compiler_uses_full_frame_for_spatial_job_without_manual_zone(
+    api_client: TestClient,
+) -> None:
+    camera = api_client.post(
+        "/api/v1/cameras",
+        json={"name": "loading-dock-camera", "source_uri": "webcam:0"},
+    ).json()
+    response = api_client.post(
+        "/api/v1/rule-compilations",
+        json={
+            "camera_id": camera["id"],
+            "prompt": "Notify operations when a delivery truck arrives at the loading dock.",
+        },
+    )
+
+    assert response.status_code == 201
+    compilation = response.json()
+    assert compilation["status"] == "ready_for_review"
+    assert compilation["compiled_rule"]["rule_type"] == "zone_entry"
+    assert compilation["compiled_rule"]["object_class"] == "truck"
+    assert compilation["compiled_rule"]["zone_name"] == "Full frame (automatic)"
 
 
 @pytest.mark.parametrize(

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from video_intelligence_api.config import ApiSettings
 from video_intelligence_api.job_specs import SUPPORTED_JOB_TYPES, CameraJobSpec
+from video_intelligence_api.visual_intelligence import assess_visual_job
 from video_intelligence_api.visual_skills import registry_payload as visual_skill_registry
 
 
@@ -19,7 +20,12 @@ def configured_object_classes(settings: ApiSettings) -> tuple[str, ...]:
     return tuple(dict.fromkeys(value.strip().casefold() for value in settings.object_classes))
 
 
-def check_job_capability(spec: CameraJobSpec, settings: ApiSettings) -> CapabilityResult:
+def check_job_capability(
+    spec: CameraJobSpec, settings: ApiSettings, prompt: str | None = None
+) -> CapabilityResult:
+    support = assess_visual_job(spec, prompt)
+    if not support.deployable:
+        return CapabilityResult(False, support.reason)
     if spec.rule_type == "object_dwell":
         event_supported = "zone_dwell" in settings.event_types
     else:

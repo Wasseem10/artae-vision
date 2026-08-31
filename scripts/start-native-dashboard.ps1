@@ -1,10 +1,11 @@
+[CmdletBinding()]
+param([switch]$NoBrowser)
+
 $ErrorActionPreference = "Stop"
 
 $workspaceRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $runtimeDirectory = Join-Path $workspaceRoot ".runtime"
-$apiExecutable = Join-Path $workspaceRoot ".venv\Scripts\video-intelligence-api.exe"
-$workerExecutable = Join-Path $workspaceRoot ".venv\Scripts\video-intelligence-worker.exe"
-$alertWorkerExecutable = Join-Path $workspaceRoot ".venv\Scripts\video-intelligence-alert-worker.exe"
+$pythonExecutable = Join-Path $workspaceRoot ".venv\Scripts\python.exe"
 $alembicExecutable = Join-Path $workspaceRoot ".venv\Scripts\alembic.exe"
 $webDirectory = Join-Path $workspaceRoot "apps\web"
 $nextScript = Join-Path $webDirectory "node_modules\next\dist\bin\next"
@@ -17,7 +18,7 @@ $apiHealthUrl = "http://127.0.0.1:8000/api/v1/health/live"
 $localAgentKey = "local-agent-key-development-only"
 $localDashboardKey = "local-dashboard-key-development-only"
 
-foreach ($required in @($apiExecutable, $workerExecutable, $alertWorkerExecutable, $alembicExecutable, $nextScript)) {
+foreach ($required in @($pythonExecutable, $alembicExecutable, $nextScript)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "A required local dependency is missing: $required"
     }
@@ -44,21 +45,44 @@ if (Test-Path -LiteralPath $pidFile) {
         $_ -and (Get-Process -Id $_ -ErrorAction SilentlyContinue)
     }
     if ($live.Count -gt 0) {
-        Start-Process $dashboardUrl
+        if (-not $NoBrowser) { Start-Process $dashboardUrl }
         Write-Host "The native dashboard is already running at $dashboardUrl" -ForegroundColor Green
         exit 0
     }
     Remove-Item -LiteralPath $pidFile -Force
 }
 
+$occupiedLocalPorts = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object {
+    $_.LocalAddress -eq "127.0.0.1" -and $_.LocalPort -in @(3000, 8000)
+})
+if ($occupiedLocalPorts.Count -gt 0) {
+    & (Join-Path $PSScriptRoot "stop-native-dashboard.ps1")
+    Start-Sleep -Milliseconds 750
+    $remainingLocalPorts = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object {
+        $_.LocalAddress -eq "127.0.0.1" -and $_.LocalPort -in @(3000, 8000)
+    })
+    if ($remainingLocalPorts.Count -gt 0) {
+        throw "Ports 3000 or 8000 are already in use by another application."
+    }
+}
+
 $databaseUrl = "sqlite+aiosqlite:///" + $databasePath.Replace("\", "/")
 $env:VIDEO_INTEL_API_DATABASE_URL = $databaseUrl
 $env:VIDEO_INTEL_API_AGENT_KEY = $localAgentKey
 $env:VIDEO_INTEL_API_DASHBOARD_KEY = $localDashboardKey
+$env:VIDEO_INTEL_API_DASHBOARD_AUTH_MODE = "hybrid"
+$env:VIDEO_INTEL_API_OIDC_ISSUER = "https://udtddtoghuuazlczgkuf.supabase.co/auth/v1"
+$env:VIDEO_INTEL_API_OIDC_AUDIENCE = "authenticated"
+$env:VIDEO_INTEL_API_OIDC_JWKS_URL = "https://udtddtoghuuazlczgkuf.supabase.co/auth/v1/.well-known/jwks.json"
+$env:VIDEO_INTEL_API_OIDC_ALGORITHMS = '["ES256"]'
+$env:VIDEO_INTEL_API_OIDC_AUTO_PROVISION_ORGANIZATIONS = "true"
 $env:VIDEO_INTEL_API_MEDIA_SIGNING_KEY = "local-media-signing-key-development-only-1234"
 $env:VIDEO_INTEL_API_ALERT_ENCRYPTION_KEY = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
 $env:VIDEO_INTEL_API_MEDIA_GATEWAY_MODE = "disabled"
 $env:VIDEO_INTEL_API_REPLAY_DIRECTORY = (Join-Path $runtimeDirectory "replays")
+$env:VIDEO_INTEL_API_RECORDING_ARCHIVE_DIRECTORY = (Join-Path $runtimeDirectory "recording-archive")
+$env:VIDEO_INTEL_API_RECORDING_RETENTION_HOURS = "2"
+$env:VIDEO_INTEL_API_RECORDING_STORAGE_BACKEND = "local"
 $env:VIDEO_INTEL_API_RULE_COMPILER_PROVIDER = "deterministic"
 $env:NEXT_PUBLIC_API_URL = "http://127.0.0.1:8000"
 $env:NEXT_PUBLIC_DASHBOARD_KEY = $localDashboardKey
@@ -66,6 +90,21 @@ $env:NEXT_PUBLIC_DEPLOYMENT_MODE = "native"
 $env:VIDEO_INTEL_CONTROL_PLANE_URL = "http://127.0.0.1:8000"
 $env:VIDEO_INTEL_CONTROL_PLANE_AGENT_KEY = $localAgentKey
 $env:VIDEO_INTEL_WORKER_ID = "native-windows-worker"
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_ENABLED = "true"
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_ARCHIVE_ENABLED = "true"
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_DIRECTORY = (Join-Path $runtimeDirectory "continuous-recordings")
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_SPOOL_DIRECTORY = (Join-Path $runtimeDirectory "recording-upload-spool")
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_SEGMENT_SECONDS = "60"
+$env:VIDEO_INTEL_CONTINUOUS_RECORDING_RETENTION_HOURS = "2"
+$env:VIDEO_INTEL_OBSERVER_SAMPLE_FPS = "2"
+$env:VIDEO_INTEL_OBSERVER_WINDOW_FRAMES = "8"
+$env:VIDEO_INTEL_OBSERVER_OVERLAP_FRAMES = "4"
+$env:VIDEO_INTEL_OBSERVER_SHEET_COLUMNS = "4"
+# An overlapping eight-frame window completes about every two seconds at the
+# local two-frame-per-second observer rate. Permit each completed window to be
+# evaluated so short actions such as a hand clap are not silently skipped.
+$env:VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_MINUTE = "30"
+$env:VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_DAY = "1000"
 $env:VIDEO_INTEL_ALERT_CONTROL_PLANE_URL = "http://127.0.0.1:8000"
 $env:VIDEO_INTEL_ALERT_AGENT_KEY = $localAgentKey
 $env:VIDEO_INTEL_ALERT_WORKER_ID = "native-windows-alert-worker"
@@ -85,8 +124,10 @@ $workerErr = Join-Path $runtimeDirectory "native-worker-error.log"
 $alertWorkerOut = Join-Path $runtimeDirectory "native-alert-worker.log"
 $alertWorkerErr = Join-Path $runtimeDirectory "native-alert-worker-error.log"
 
-$api = Start-Process -FilePath $apiExecutable -PassThru -WindowStyle Hidden `
-    -WorkingDirectory $workspaceRoot -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
+$apiCode = '"from video_intelligence_api.main import run_server; raise SystemExit(run_server())"'
+$api = Start-Process -FilePath $pythonExecutable -ArgumentList @("-c", $apiCode) `
+    -PassThru -WindowStyle Hidden -WorkingDirectory $workspaceRoot `
+    -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
 
 $apiReady = $false
 for ($attempt = 0; $attempt -lt 30; $attempt++) {
@@ -110,14 +151,15 @@ if (-not $apiReady) {
 # operator explicitly starts each camera session from the dashboard instead.
 $dashboardHeaders = @{ "X-Dashboard-Key" = $localDashboardKey }
 try {
-    $cameras = @(Invoke-RestMethod -Uri "$apiBaseUrl/cameras" -Headers $dashboardHeaders -TimeoutSec 5)
-    foreach ($camera in $cameras) {
+    $cameraResponse = Invoke-RestMethod -Uri "$apiBaseUrl/cameras" `
+        -Headers $dashboardHeaders -TimeoutSec 5
+    foreach ($camera in $cameraResponse) {
         $stopBody = @{ desired_status = "stopped" } | ConvertTo-Json
         Invoke-RestMethod -Method Put -Uri "$apiBaseUrl/cameras/$($camera.id)/agent" `
             -Headers $dashboardHeaders -ContentType "application/json" -Body $stopBody `
             -TimeoutSec 5 | Out-Null
     }
-    if ($cameras.Count -gt 0) {
+    if (@($cameraResponse).Count -gt 0) {
         Write-Host "Local safety: all camera analysis sessions start stopped." -ForegroundColor Yellow
     }
 } catch {
@@ -125,18 +167,60 @@ try {
     throw "Could not place cameras in the safe stopped state: $($_.Exception.Message)"
 }
 
+# Discovery and credentialed ONVIF onboarding intentionally reject the shared
+# development key. Bootstrap a dedicated native edge identity on each launch and
+# keep its one-time token only in this process tree; it is never written to disk.
+try {
+    $nativeEdgeName = "Native Windows station"
+    $edgeDevices = Invoke-RestMethod -Uri "$apiBaseUrl/edge-devices" `
+        -Headers $dashboardHeaders -TimeoutSec 5
+    $nativeEdge = $null
+    $nativeEdgeNameExists = $false
+    foreach ($edgeDevice in $edgeDevices) {
+        if ($edgeDevice.name -eq $nativeEdgeName) {
+            $nativeEdgeNameExists = $true
+            if ($edgeDevice.status -eq "active" -and $null -eq $nativeEdge) {
+                $nativeEdge = $edgeDevice
+            }
+        }
+    }
+    if ($null -eq $nativeEdge) {
+        if ($nativeEdgeNameExists) {
+            $nativeEdgeName = "$nativeEdgeName $([DateTimeOffset]::UtcNow.ToUnixTimeSeconds())"
+        }
+        $enrollmentBody = @{
+            name = $nativeEdgeName
+            max_concurrent_streams = 4
+        } | ConvertTo-Json
+        $nativeCredential = Invoke-RestMethod -Method Post -Uri "$apiBaseUrl/edge-devices" `
+            -Headers $dashboardHeaders -ContentType "application/json" -Body $enrollmentBody `
+            -TimeoutSec 5
+    } else {
+        $nativeCredential = Invoke-RestMethod -Method Post `
+            -Uri "$apiBaseUrl/edge-devices/$($nativeEdge.id)/rotate-credential" `
+            -Headers $dashboardHeaders -ContentType "application/json" -Body "{}" `
+            -TimeoutSec 5
+    }
+    $env:VIDEO_INTEL_CONTROL_PLANE_DEVICE_TOKEN = $nativeCredential.token
+} catch {
+    if (-not $api.HasExited) { Stop-Process -Id $api.Id -Force }
+    throw "Could not prepare the native edge identity: $($_.Exception.Message)"
+}
+
 $quotedNextScript = '"' + $nextScript + '"'
 $web = Start-Process -FilePath $nodePath -ArgumentList @($quotedNextScript, "dev", "--hostname", "127.0.0.1") `
     -PassThru -WindowStyle Hidden -WorkingDirectory $webDirectory `
     -RedirectStandardOutput $webOut -RedirectStandardError $webErr
 
-$worker = Start-Process -FilePath $workerExecutable -PassThru -WindowStyle Hidden `
-    -WorkingDirectory $workspaceRoot -RedirectStandardOutput $workerOut `
-    -RedirectStandardError $workerErr
+$workerCode = '"from video_intelligence_inference.worker import main; raise SystemExit(main())"'
+$worker = Start-Process -FilePath $pythonExecutable -ArgumentList @("-c", $workerCode) `
+    -PassThru -WindowStyle Hidden -WorkingDirectory $workspaceRoot `
+    -RedirectStandardOutput $workerOut -RedirectStandardError $workerErr
 
-$alertWorker = Start-Process -FilePath $alertWorkerExecutable -PassThru -WindowStyle Hidden `
-    -WorkingDirectory $workspaceRoot -RedirectStandardOutput $alertWorkerOut `
-    -RedirectStandardError $alertWorkerErr
+$alertWorkerCode = '"from video_intelligence_alerts.worker import main; raise SystemExit(main())"'
+$alertWorker = Start-Process -FilePath $pythonExecutable -ArgumentList @("-c", $alertWorkerCode) `
+    -PassThru -WindowStyle Hidden -WorkingDirectory $workspaceRoot `
+    -RedirectStandardOutput $alertWorkerOut -RedirectStandardError $alertWorkerErr
 
 @{ api = $api.Id; web = $web.Id; worker = $worker.Id; alertWorker = $alertWorker.Id } |
     ConvertTo-Json |
@@ -165,7 +249,7 @@ if (-not $webReady) {
     throw "The native web dashboard did not start. See $webErr"
 }
 
-Start-Process $dashboardUrl
+if (-not $NoBrowser) { Start-Process $dashboardUrl }
 Write-Host "Native dashboard started at $dashboardUrl" -ForegroundColor Green
 Write-Host "SQLite data: $databasePath" -ForegroundColor Gray
 Write-Host "Use Stop-Native-Dashboard.cmd when you are finished." -ForegroundColor Gray

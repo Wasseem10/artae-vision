@@ -47,8 +47,13 @@ export function AgentControl({
       </div>
       <div className="agentMetrics">
         <span><small>Status</small><StatusPill status={status} /></span>
+        <span><small>Stream health</small><strong>{agent?.health_status ?? "offline"}</strong></span>
         <span><small>Throughput</small><strong>{agent?.fps?.toFixed(1) ?? "—"} FPS</strong></span>
         <span><small>Inference</small><strong>{agent?.inference_latency_ms?.toFixed(0) ?? "—"} ms</strong></span>
+        <span><small>Frames</small><strong>{agent?.frames_processed.toLocaleString() ?? "—"}</strong></span>
+        <span><small>Reconnects</small><strong>{agent?.reconnect_count ?? "—"}</strong></span>
+        <span><small>Recording</small><strong>{agent?.recording_state ?? "disabled"}</strong></span>
+        <span><small>Segments</small><strong>{agent?.recording_segments_completed ?? "—"}</strong></span>
         <span><small>Edge device</small><strong>{agent?.edge_device_id?.slice(0, 8) ?? "local"}</strong></span>
         <span><small>Worker</small><strong>{agent?.worker_id ?? "unclaimed"}</strong></span>
       </div>

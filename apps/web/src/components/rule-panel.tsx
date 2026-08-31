@@ -77,6 +77,12 @@ export function RulePanel({
   );
   const [answer, setAnswer] = useState("");
   const [compilation, setCompilation] = useState<RuleCompilation | null>(null);
+  const [showOlderRules, setShowOlderRules] = useState(false);
+
+  const activeRules = rules.filter((rule) => rule.status === "active");
+  const visibleRules = activeRules.length > 0 ? activeRules : rules.slice(0, 1);
+  const visibleRuleIds = new Set(visibleRules.map((rule) => rule.id));
+  const olderRules = rules.filter((rule) => !visibleRuleIds.has(rule.id));
 
   function closeBuilder() {
     setShowForm(false);
@@ -109,6 +115,31 @@ export function RulePanel({
     } catch {
       // The dashboard displays the API error and keeps the review visible.
     }
+  }
+
+  function renderRuleCard(rule: Rule) {
+    const geometry = zones.find((candidate) => candidate.id === rule.zone_id);
+    const nextStatus: RuleStatus = rule.status === "active" ? "paused" : "active";
+    return (
+      <article className="ruleCard" key={rule.id}>
+        <div className="ruleIcon"><Icon name="rule" /></div>
+        <div className="ruleSummary">
+          <div className="ruleTitle"><strong>{rule.name}</strong><StatusPill status={rule.status} /></div>
+          <p>{rule.original_prompt ?? "Explicit object dwell configuration"}</p>
+          <div className="ruleFacts">
+            <span><Icon name="map" /> {geometry?.name ?? "Unknown geometry"}</span>
+            <span><Icon name="clock" /> {rule.spec ? jobCondition(rule.spec) : `${rule.duration_seconds}s dwell`}</span>
+            <span>{rule.spec ? jobLabels[rule.spec.rule_type] : rule.rule_type}</span>
+            {rule.execution_plan && <span className="routeBadge">{rule.execution_plan.strategy === "semantic_window" ? "VLM windows" : "YOLO + tracking"}</span>}
+            <span>{Math.round(rule.minimum_confidence * 100)}% confidence</span>
+            <span>IR v{rule.spec_version}</span>
+          </div>
+        </div>
+        <button className={rule.status === "active" ? "buttonSecondary" : "buttonPrimary"} disabled={busy} onClick={() => onStatusChange(rule.id, nextStatus)} type="button">
+          {rule.status === "active" ? "Pause" : "Activate"}
+        </button>
+      </article>
+    );
   }
 
   return (
@@ -258,6 +289,37 @@ export function RulePanel({
                     </span>
                   </div>
                   <p>{compilation.execution_plan.summary}</p>
+                  <div
+                    className={`supportAssessment support-${compilation.execution_plan.support.tier}`}
+                  >
+                    <div>
+                      <small>Current support level</small>
+                      <strong>{compilation.execution_plan.support.label}</strong>
+                      <p>{compilation.execution_plan.support.reason}</p>
+                    </div>
+                    <span>
+                      {compilation.execution_plan.support.deployable
+                        ? "Replay test required"
+                        : "Blocked from deployment"}
+                    </span>
+                  </div>
+                  {compilation.execution_plan.visual_skills.length > 0 && (
+                    <div className="routeSkills" aria-label="Selected visual skills">
+                      {compilation.execution_plan.visual_skills.map((skill) => (
+                        <span key={skill.id} title={skill.benchmark_policy}>
+                          {skill.label} · fallback
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <details className="routeLimitations">
+                    <summary>Accuracy limits and validation</summary>
+                    <ul>
+                      {compilation.execution_plan.support.limitations.map((limitation) => (
+                        <li key={limitation}>{limitation}</li>
+                      ))}
+                    </ul>
+                  </details>
                   <ol className="modelStages" aria-label="Execution stages">
                     {compilation.execution_plan.stages.map((stage) => (
                       <li key={stage.id} title={stage.purpose}>
@@ -277,8 +339,8 @@ export function RulePanel({
               <div className="reviewNotice">
                 <Icon name="shield" />
                 <span>
-                  Accepting deploys this reviewed job as <strong>active</strong>. Camera analysis
-                  still starts only when you explicitly press Start.
+                  Accepting saves this reviewed job as a <strong>draft</strong>. It can only be
+                  activated after its capability and replay checks pass.
                 </span>
               </div>
             </div>
@@ -289,8 +351,13 @@ export function RulePanel({
               Cancel
             </button>
             {compilation?.status === "ready_for_review" ? (
-              <button className="buttonPrimary" disabled={busy} onClick={accept} type="button">
-                {busy ? "Deploying job…" : "Accept and activate job"}
+              <button
+                className="buttonPrimary"
+                disabled={busy || compilation.execution_plan?.support.deployable === false}
+                onClick={accept}
+                type="button"
+              >
+                {busy ? "Saving job…" : "Accept as draft"}
               </button>
             ) : (
               <button
@@ -325,50 +392,18 @@ export function RulePanel({
             </div>
           </div>
         ) : (
-          rules.map((rule) => {
-            const geometry = zones.find((candidate) => candidate.id === rule.zone_id);
-            const nextStatus: RuleStatus = rule.status === "active" ? "paused" : "active";
-            return (
-              <article className="ruleCard" key={rule.id}>
-                <div className="ruleIcon">
-                  <Icon name="rule" />
-                </div>
-                <div className="ruleSummary">
-                  <div className="ruleTitle">
-                    <strong>{rule.name}</strong>
-                    <StatusPill status={rule.status} />
-                  </div>
-                  <p>{rule.original_prompt ?? "Explicit object dwell configuration"}</p>
-                  <div className="ruleFacts">
-                    <span>
-                      <Icon name="map" /> {geometry?.name ?? "Unknown geometry"}
-                    </span>
-                    <span>
-                      <Icon name="clock" /> {rule.spec ? jobCondition(rule.spec) : `${rule.duration_seconds}s dwell`}
-                    </span>
-                    <span>{rule.spec ? jobLabels[rule.spec.rule_type] : rule.rule_type}</span>
-                    {rule.execution_plan && (
-                      <span className="routeBadge">
-                        {rule.execution_plan.strategy === "semantic_window"
-                          ? "VLM windows"
-                          : "YOLO + tracking"}
-                      </span>
-                    )}
-                    <span>{Math.round(rule.minimum_confidence * 100)}% confidence</span>
-                    <span>IR v{rule.spec_version}</span>
-                  </div>
-                </div>
-                <button
-                  className={rule.status === "active" ? "buttonSecondary" : "buttonPrimary"}
-                  disabled={busy}
-                  onClick={() => onStatusChange(rule.id, nextStatus)}
-                  type="button"
-                >
-                  {rule.status === "active" ? "Pause" : "Activate"}
+          <>
+            {visibleRules.map(renderRuleCard)}
+            {olderRules.length > 0 && (
+              <div className="olderRules">
+                <button aria-expanded={showOlderRules} onClick={() => setShowOlderRules((current) => !current)} type="button">
+                  <span><strong>{showOlderRules ? "Hide older rules" : `Show ${olderRules.length} older and paused rule${olderRules.length === 1 ? "" : "s"}`}</strong><small>Kept for history; they are not currently running.</small></span>
+                  <Icon name="chevron" />
                 </button>
-              </article>
-            );
-          })
+                {showOlderRules && <div>{olderRules.map(renderRuleCard)}</div>}
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

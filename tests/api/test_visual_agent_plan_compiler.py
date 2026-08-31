@@ -59,3 +59,39 @@ def test_skill_router_selects_only_prompt_required_capabilities() -> None:
     assert "vision.skill.open_grounding" in capabilities
     assert "vision.skill.change_anomaly" in capabilities
     assert "vision.skill.ppe_compliance" not in capabilities
+
+
+def test_context_dependent_plan_is_explicitly_blocked() -> None:
+    plan = compile_visual_agent_plan(
+        SemanticVisionJob(
+            instruction="Alert when an unauthorized person enters",
+            zone_id="zone-1",
+            zone_name="Full frame (automatic)",
+        ),
+        "Alert when an unauthorized person enters",
+    )
+
+    assert plan.support is not None
+    assert plan.support.tier == "requires_context"
+    assert plan.support.deployable is False
+    assert "query.access_control" in {node.capability for node in plan.nodes}
+
+
+def test_unobservable_intent_is_not_presented_as_a_camera_capability() -> None:
+    plan = compile_visual_agent_plan(
+        SemanticVisionJob(
+            instruction="Alert when someone intends to steal",
+            zone_id="zone-1",
+            zone_name="Full frame (automatic)",
+        ),
+        "Alert when someone intends to steal",
+    )
+
+    assert plan.support is not None
+    assert plan.support.tier == "not_visually_verifiable"
+    assert plan.support.validation_required is False
+    assert "reasoning.not_visually_observable" in {
+        node.capability for node in plan.nodes
+    }
+    assert len(plan.nodes) == 2
+    assert all(node.side_effect is False for node in plan.nodes)

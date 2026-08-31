@@ -5,11 +5,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 
 from video_intelligence_api import __version__
 from video_intelligence_api.audit import audit_operator_request
+from video_intelligence_api.camera_secrets import migrate_legacy_camera_credentials
 from video_intelligence_api.config import ApiSettings, get_api_settings
 from video_intelligence_api.database import Database
 from video_intelligence_api.media_gateway import (
@@ -20,10 +23,15 @@ from video_intelligence_api.media_gateway import (
 from video_intelligence_api.previews import PreviewStore
 from video_intelligence_api.routes import (
     actions,
+    active_learning,
     agent_plans,
     agents,
     alerts,
     audit_logs,
+    calibration,
+    camera_commissioning,
+    camera_discovery,
+    camera_onboarding,
     cameras,
     capabilities,
     context,
@@ -32,16 +40,21 @@ from video_intelligence_api.routes import (
     event_stream,
     events,
     evidence,
+    field_accuracy,
     fleet,
     health,
     identity,
+    operational_health,
     operations,
     previews,
     production,
+    promotions,
+    recordings,
     rule_compilations,
     rules,
     scene_memory,
     streams,
+    verifications,
     zones,
 )
 from video_intelligence_api.websockets import EventConnectionManager
@@ -70,6 +83,9 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("Control-plane API starting: environment=%s", resolved_settings.environment)
+        migrated = await migrate_legacy_camera_credentials(resolved_database, resolved_settings)
+        if migrated:
+            logger.info("Encrypted legacy RTSP credentials for %d camera(s)", migrated)
         yield
         await app.state.media_gateway.close()
         await app.state.database.dispose()
@@ -94,28 +110,46 @@ def create_app(
         allow_headers=["*"],
     )
 
+    @application.exception_handler(SQLAlchemyError)
+    async def database_error(_request: Request, exc: SQLAlchemyError) -> JSONResponse:
+        logger.exception("Database request failed", exc_info=exc)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "The cloud database is temporarily unavailable. Please retry."},
+        )
+
     for router in (
         health.router,
         identity.router,
         devices.router,
         fleet.router,
         audit_logs.router,
+        calibration.router,
         capabilities.router,
         cameras.router,
+        camera_discovery.router,
+        camera_commissioning.router,
+        camera_onboarding.router,
         streams.router,
         previews.router,
         agents.router,
+        active_learning.router,
         actions.router,
         context.router,
         scene_memory.router,
         operations.router,
+        operational_health.router,
         production.router,
+        promotions.router,
+        recordings.router,
         agent_plans.router,
         alerts.router,
         zones.router,
         rule_compilations.router,
         rules.router,
         events.router,
+        verifications.router,
+        field_accuracy.router,
         evidence.router,
         evaluations.router,
         evaluations.suite_router,
@@ -142,5 +176,8 @@ def run_server() -> int:
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),
+        # WebSocket authentication currently arrives in the connection URL.
+        # Keep access logs disabled so bearer tokens are never written to disk.
+        access_log=False,
     )
     return 0

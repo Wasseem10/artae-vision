@@ -5,7 +5,7 @@ from typing import Annotated
 
 import jwt
 import pytest
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from fastapi import Header
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -170,6 +170,7 @@ def test_oidc_token_validation_and_viewer_write_denial(api_client: TestClient) -
     settings.oidc_issuer = "https://identity.example.test/"
     settings.oidc_audience = "video-intelligence-api"
     settings.oidc_jwks_url = "https://identity.example.test/.well-known/jwks.json"
+    settings.oidc_algorithms = ["RS256"]
     settings.oidc_auto_provision_memberships = True
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
@@ -217,6 +218,64 @@ def test_oidc_token_validation_and_viewer_write_denial(api_client: TestClient) -
     finally:
         settings.dashboard_auth_mode = "development"
         settings.oidc_auto_provision_memberships = False
+        del api_client.app.state.oidc_jwks_client
+
+
+def test_oidc_signup_creates_and_reuses_a_personal_workspace(api_client: TestClient) -> None:
+    settings = api_client.app.state.settings
+    settings.dashboard_auth_mode = "oidc"
+    settings.oidc_issuer = "https://project.supabase.test/auth/v1"
+    settings.oidc_audience = "authenticated"
+    settings.oidc_jwks_url = "https://project.supabase.test/auth/v1/.well-known/jwks.json"
+    settings.oidc_algorithms = ["ES256"]
+    settings.oidc_auto_provision_organizations = True
+    private_key = ec.generate_private_key(ec.SECP256R1())
+
+    class StaticJwksClient:
+        def get_signing_key_from_jwt(self, token: str) -> SimpleNamespace:
+            assert token
+            return SimpleNamespace(key=private_key.public_key())
+
+    api_client.app.state.oidc_jwks_client = StaticJwksClient()
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "sub": "supabase-user-1",
+            "role": "authenticated",
+            "email": "owner@example.com",
+            "iss": settings.oidc_issuer,
+            "aud": settings.oidc_audience,
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        },
+        private_key,
+        algorithm="ES256",
+        headers={"kid": "test-key"},
+    )
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        first = api_client.get("/api/v1/identity/me", headers=headers)
+        assert first.status_code == 200
+        assert first.json()["role"] == "owner"
+        assert first.json()["email"] == "owner@example.com"
+        organization_id = first.json()["organization_id"]
+
+        created = api_client.post(
+            "/api/v1/cameras",
+            headers=headers,
+            json={"name": "Saved camera", "source_uri": "webcam:0"},
+        )
+        assert created.status_code == 201
+
+        second = api_client.get("/api/v1/identity/me", headers=headers)
+        assert second.status_code == 200
+        assert second.json()["organization_id"] == organization_id
+        cameras = api_client.get("/api/v1/cameras", headers=headers)
+        assert cameras.status_code == 200
+        assert [camera["name"] for camera in cameras.json()] == ["Saved camera"]
+    finally:
+        settings.dashboard_auth_mode = "development"
+        settings.oidc_auto_provision_organizations = False
         del api_client.app.state.oidc_jwks_client
 
 

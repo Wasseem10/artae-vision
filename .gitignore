@@ -29,5 +29,10 @@ Thumbs.db
 # Future JavaScript dependencies and build output
 node_modules/
 .next/
+.vercel/
 coverage/
 *.tsbuildinfo
+
+# Local design research and Codex screenshots
+.codex-*.png
+.design-reference/

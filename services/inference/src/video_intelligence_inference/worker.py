@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import logging
 import os
 import socket
@@ -18,11 +19,24 @@ import numpy as np
 from pydantic import BaseModel, Field, ValidationError
 
 from video_intelligence_inference.agent import run as run_agent
+from video_intelligence_inference.camera_diagnostics import (
+    CameraDiagnosticOutput,
+    diagnose_camera_stream,
+)
 from video_intelligence_inference.config import Settings, get_settings
 from video_intelligence_inference.control_credentials import control_plane_headers
 from video_intelligence_inference.control_plane import ResolvedAgentConfig, resolve_rule_config
 from video_intelligence_inference.hardware import collect_edge_profile
 from video_intelligence_inference.logging_config import configure_logging
+from video_intelligence_inference.observer import RequestBudget
+from video_intelligence_inference.onvif_discovery import (
+    DiscoveredOnvifDevice,
+    discover_onvif_devices,
+)
+from video_intelligence_inference.onvif_onboarding import (
+    OnvifOnboardingOutput,
+    resolve_onvif_camera,
+)
 from video_intelligence_inference.replay import ReplayOutput, run_replay
 from video_intelligence_inference.telemetry import FrameTelemetry
 
@@ -75,6 +89,30 @@ class ReplayAssignment(BaseModel):
     rule: dict[str, object]
 
 
+class DiscoveryAssignment(BaseModel):
+    worker_id: str
+    discovery_id: str
+    timeout_seconds: float = Field(ge=1, le=15)
+
+
+class OnboardingAssignment(BaseModel):
+    worker_id: str
+    onboarding_id: str
+    endpoint_url: str
+    username: str
+    password: str
+    verify_tls: bool = True
+
+
+class CommissioningAssignment(BaseModel):
+    worker_id: str
+    commissioning_id: str
+    camera_id: str
+    source_uri: str
+    duration_seconds: float = Field(ge=2, le=30)
+    maximum_frames: int = Field(ge=10, le=300)
+
+
 def assignment_config(assignment: Assignment) -> ResolvedAgentConfig:
     return ResolvedAgentConfig(
         camera_id=assignment.camera_id,
@@ -104,6 +142,7 @@ class ManagedReporter:
         *,
         headers: Mapping[str, str] | None = None,
         interval_seconds: float,
+        heartbeat_seconds: float = 2.0,
         preview_fps: float = 2.0,
         preview_width: int = 960,
         preview_jpeg_quality: int = 75,
@@ -121,6 +160,16 @@ class ManagedReporter:
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="telemetry")
         self._future: Future[dict] | None = None
         self._last_submitted = 0.0
+        self._heartbeat_seconds = heartbeat_seconds
+        self._heartbeat_stop = threading.Event()
+        self._heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            name=f"camera-heartbeat-{assignment.camera_id}",
+            daemon=True,
+        )
+        self._latest_payload = self._payload("starting")
+        self._last_sent_at = 0.0
+        self._send_lock = threading.Lock()
         self._preview_interval_seconds = 1.0 / preview_fps
         self._preview_width = preview_width
         self._preview_jpeg_quality = preview_jpeg_quality
@@ -129,7 +178,8 @@ class ManagedReporter:
         self.stop_requested = threading.Event()
 
     def starting(self) -> None:
-        self._send(self._payload("starting"))
+        self._send(self._latest_payload)
+        self._heartbeat_thread.start()
 
     def submit(self, frame: FrameTelemetry) -> None:
         now = time.monotonic()
@@ -154,7 +204,14 @@ class ManagedReporter:
             analysis_requests_today=frame.analysis_requests_today,
             analysis_request_limit_day=frame.analysis_request_limit_day,
             analysis_request_limit_minute=frame.analysis_request_limit_minute,
+            frames_processed=frame.frames_processed,
+            reconnect_count=frame.reconnect_count,
+            recording_state=frame.recording_state,
+            recording_segments_completed=frame.recording_segments_completed,
+            recording_dropped_frames=frame.recording_dropped_frames,
+            recording_error=frame.recording_error,
         )
+        self._latest_payload = payload
         self._future = self._executor.submit(self._send, payload)
         self._future.add_done_callback(self._reported)
 
@@ -188,6 +245,9 @@ class ManagedReporter:
         self._preview_future.add_done_callback(self._preview_reported)
 
     def finish(self, observed_status: str, error: str | None = None) -> None:
+        self._heartbeat_stop.set()
+        if self._heartbeat_thread.is_alive():
+            self._heartbeat_thread.join(timeout=self._heartbeat_seconds + 1)
         self._executor.shutdown(wait=True)
         try:
             self._send(self._payload(observed_status, error=error))
@@ -204,12 +264,27 @@ class ManagedReporter:
         }
 
     def _send(self, payload: dict[str, object]) -> dict:
-        response = self._client.post(self._url, json=payload, headers=self._headers)
-        response.raise_for_status()
-        body = response.json()
-        if body.get("desired_status") == "stopped":
-            self.stop_requested.set()
-        return body
+        with self._send_lock:
+            response = self._client.post(self._url, json=payload, headers=self._headers)
+            response.raise_for_status()
+            body = response.json()
+            self._last_sent_at = time.monotonic()
+            if body.get("desired_status") == "stopped":
+                self.stop_requested.set()
+            return body
+
+    def _heartbeat_loop(self) -> None:
+        while not self._heartbeat_stop.wait(self._heartbeat_seconds):
+            if time.monotonic() - self._last_sent_at < self._heartbeat_seconds:
+                continue
+            try:
+                self._send(self._latest_payload)
+            except httpx.HTTPError as exc:
+                logger.warning(
+                    "Camera heartbeat delivery failed: camera=%s error=%s",
+                    self._assignment.camera_id,
+                    exc,
+                )
 
     def _send_preview(self, jpeg: bytes) -> None:
         response = self._client.put(
@@ -275,6 +350,136 @@ def claim_replay_assignment(
         return None
     response.raise_for_status()
     return ReplayAssignment.model_validate(response.json())
+
+
+def claim_discovery_assignment(
+    client: httpx.Client,
+    base_url: str,
+    agent_key: str | None,
+    worker_id: str,
+    *,
+    headers: Mapping[str, str] | None = None,
+) -> DiscoveryAssignment | None:
+    response = client.post(
+        base_url.rstrip("/") + "/api/v1/agent/camera-discovery-runs/claim",
+        json={"worker_id": worker_id},
+        headers=_headers(agent_key, headers),
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    return DiscoveryAssignment.model_validate(response.json())
+
+
+def report_discovery_result(
+    client: httpx.Client,
+    base_url: str,
+    assignment: DiscoveryAssignment,
+    *,
+    headers: Mapping[str, str],
+    devices: list[DiscoveredOnvifDevice] | None = None,
+    error: str | None = None,
+) -> None:
+    response = client.post(
+        base_url.rstrip("/")
+        + f"/api/v1/agent/camera-discovery-runs/{assignment.discovery_id}/result",
+        json={
+            "worker_id": assignment.worker_id,
+            "devices": [device.to_dict() for device in devices or []],
+            "error": error,
+        },
+        headers=dict(headers),
+    )
+    response.raise_for_status()
+
+
+def claim_onboarding_assignment(
+    client: httpx.Client,
+    base_url: str,
+    agent_key: str | None,
+    worker_id: str,
+    *,
+    headers: Mapping[str, str] | None = None,
+) -> OnboardingAssignment | None:
+    response = client.post(
+        base_url.rstrip("/") + "/api/v1/agent/camera-onboarding-runs/claim",
+        json={"worker_id": worker_id},
+        headers=_headers(agent_key, headers),
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    return OnboardingAssignment.model_validate(response.json())
+
+
+def report_onboarding_result(
+    client: httpx.Client,
+    base_url: str,
+    assignment: OnboardingAssignment,
+    *,
+    headers: Mapping[str, str],
+    output: OnvifOnboardingOutput | None = None,
+    error: str | None = None,
+) -> None:
+    response = client.post(
+        base_url.rstrip("/")
+        + f"/api/v1/agent/camera-onboarding-runs/{assignment.onboarding_id}/result",
+        json={
+            "worker_id": assignment.worker_id,
+            "profiles": [profile.to_dict() for profile in output.profiles] if output else [],
+            "selected_profile_token": output.selected_profile_token if output else None,
+            "stream_uri": output.stream_uri if output else None,
+            "preview_jpeg_base64": (
+                base64.b64encode(output.preview_jpeg).decode() if output else None
+            ),
+            "error": error,
+        },
+        headers=dict(headers),
+    )
+    response.raise_for_status()
+
+
+def claim_commissioning_assignment(
+    client: httpx.Client,
+    base_url: str,
+    worker_id: str,
+    *,
+    headers: Mapping[str, str],
+) -> CommissioningAssignment | None:
+    response = client.post(
+        base_url.rstrip("/") + "/api/v1/agent/camera-commissioning-runs/claim",
+        json={"worker_id": worker_id},
+        headers=dict(headers),
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    return CommissioningAssignment.model_validate(response.json())
+
+
+def report_commissioning_result(
+    client: httpx.Client,
+    base_url: str,
+    assignment: CommissioningAssignment,
+    *,
+    headers: Mapping[str, str],
+    output: CameraDiagnosticOutput | None = None,
+    error: str | None = None,
+) -> None:
+    response = client.post(
+        base_url.rstrip("/")
+        + f"/api/v1/agent/camera-commissioning-runs/{assignment.commissioning_id}/result",
+        json={
+            "worker_id": assignment.worker_id,
+            "metrics": output.metrics.to_dict() if output else None,
+            "preview_jpeg_base64": (
+                base64.b64encode(output.preview_jpeg).decode() if output else None
+            ),
+            "error": error,
+        },
+        headers=dict(headers),
+    )
+    response.raise_for_status()
 
 
 def report_replay_result(
@@ -364,6 +569,9 @@ def run_worker(
     transport: httpx.BaseTransport | None = None,
     run_camera: Callable[..., int] = run_agent,
     run_replay_job: Callable[..., ReplayOutput] = run_replay,
+    run_discovery_job: Callable[..., list[DiscoveredOnvifDevice]] = discover_onvif_devices,
+    run_onboarding_job: Callable[..., OnvifOnboardingOutput] = resolve_onvif_camera,
+    run_commissioning_job: Callable[..., CameraDiagnosticOutput] = diagnose_camera_stream,
 ) -> int:
     if settings.control_plane_url is None:
         raise WorkerError("VIDEO_INTEL_CONTROL_PLANE_URL is required")
@@ -382,6 +590,10 @@ def run_worker(
     failed = 0
     active: dict[str, ActiveCamera] = {}
     executor = ThreadPoolExecutor(max_workers=capacity, thread_name_prefix="camera-agent")
+    replay_budget = RequestBudget(
+        per_minute=settings.replay_max_requests_per_minute,
+        per_day=settings.replay_max_requests_per_day,
+    )
 
     try:
         with httpx.Client(timeout=settings.webhook_timeout_seconds, transport=transport) as client:
@@ -442,6 +654,7 @@ def run_worker(
                         assignment,
                         headers=auth_headers,
                         interval_seconds=settings.worker_telemetry_seconds,
+                        heartbeat_seconds=settings.worker_heartbeat_seconds,
                         preview_fps=settings.worker_preview_fps,
                         preview_width=settings.worker_preview_width,
                         preview_jpeg_quality=settings.worker_preview_jpeg_quality,
@@ -512,6 +725,7 @@ def run_worker(
                                     duration_seconds=replay_assignment.duration_seconds,
                                     rule=resolve_rule_config(replay_assignment.rule),
                                     on_progress=submit_replay_progress,
+                                    request_budget=replay_budget,
                                 )
                                 report_replay_result(
                                     client,
@@ -540,6 +754,184 @@ def run_worker(
                                     logger.exception(
                                         "Could not report replay failure: evaluation=%s",
                                         replay_assignment.evaluation_id,
+                                    )
+
+                if (
+                    not active
+                    and not claimed_any
+                    and not claim_failed
+                    and (max_assignments is None or started < max_assignments)
+                ):
+                    try:
+                        commissioning_assignment = claim_commissioning_assignment(
+                            client,
+                            base_url,
+                            worker_id,
+                            headers=auth_headers,
+                        )
+                    except (httpx.HTTPError, ValidationError) as exc:
+                        logger.warning("Could not claim camera commissioning work: %s", exc)
+                        claim_failed = True
+                    else:
+                        if commissioning_assignment is not None:
+                            started += 1
+                            claimed_any = True
+                            logger.info(
+                                "Claimed camera commissioning: commissioning=%s camera=%s",
+                                commissioning_assignment.commissioning_id,
+                                commissioning_assignment.camera_id,
+                            )
+                            try:
+                                diagnostic_output = run_commissioning_job(
+                                    source_uri=commissioning_assignment.source_uri,
+                                    duration_seconds=commissioning_assignment.duration_seconds,
+                                    maximum_frames=commissioning_assignment.maximum_frames,
+                                    timeout_seconds=settings.camera_open_timeout_seconds,
+                                )
+                                report_commissioning_result(
+                                    client,
+                                    base_url,
+                                    commissioning_assignment,
+                                    headers=auth_headers,
+                                    output=diagnostic_output,
+                                )
+                            except Exception as exc:
+                                failed += 1
+                                logger.exception(
+                                    "Camera commissioning failed: commissioning=%s",
+                                    commissioning_assignment.commissioning_id,
+                                )
+                                try:
+                                    report_commissioning_result(
+                                        client,
+                                        base_url,
+                                        commissioning_assignment,
+                                        headers=auth_headers,
+                                        error=str(exc),
+                                    )
+                                except httpx.HTTPError:
+                                    logger.exception(
+                                        "Could not report camera commissioning failure: "
+                                        "commissioning=%s",
+                                        commissioning_assignment.commissioning_id,
+                                    )
+
+                if (
+                    not active
+                    and not claimed_any
+                    and not claim_failed
+                    and (max_assignments is None or started < max_assignments)
+                ):
+                    try:
+                        onboarding_assignment = claim_onboarding_assignment(
+                            client,
+                            base_url,
+                            None,
+                            worker_id,
+                            headers=auth_headers,
+                        )
+                    except (httpx.HTTPError, ValidationError) as exc:
+                        logger.warning("Could not claim camera onboarding work: %s", exc)
+                        claim_failed = True
+                    else:
+                        if onboarding_assignment is not None:
+                            started += 1
+                            claimed_any = True
+                            logger.info(
+                                "Claimed ONVIF onboarding: onboarding=%s",
+                                onboarding_assignment.onboarding_id,
+                            )
+                            try:
+                                onboarding_output = run_onboarding_job(
+                                    endpoint_url=onboarding_assignment.endpoint_url,
+                                    username=onboarding_assignment.username,
+                                    password=onboarding_assignment.password,
+                                    verify_tls=onboarding_assignment.verify_tls,
+                                    timeout_seconds=settings.camera_onboarding_timeout_seconds,
+                                )
+                                report_onboarding_result(
+                                    client,
+                                    base_url,
+                                    onboarding_assignment,
+                                    headers=auth_headers,
+                                    output=onboarding_output,
+                                )
+                            except Exception as exc:
+                                failed += 1
+                                logger.exception(
+                                    "ONVIF onboarding failed: onboarding=%s",
+                                    onboarding_assignment.onboarding_id,
+                                )
+                                try:
+                                    report_onboarding_result(
+                                        client,
+                                        base_url,
+                                        onboarding_assignment,
+                                        headers=auth_headers,
+                                        error=str(exc),
+                                    )
+                                except httpx.HTTPError:
+                                    logger.exception(
+                                        "Could not report ONVIF onboarding failure: onboarding=%s",
+                                        onboarding_assignment.onboarding_id,
+                                    )
+
+                if (
+                    not active
+                    and not claimed_any
+                    and not claim_failed
+                    and (max_assignments is None or started < max_assignments)
+                ):
+                    try:
+                        discovery_assignment = claim_discovery_assignment(
+                            client,
+                            base_url,
+                            None,
+                            worker_id,
+                            headers=auth_headers,
+                        )
+                    except (httpx.HTTPError, ValidationError) as exc:
+                        logger.warning("Could not claim camera discovery work: %s", exc)
+                        claim_failed = True
+                    else:
+                        if discovery_assignment is not None:
+                            started += 1
+                            claimed_any = True
+                            logger.info(
+                                "Claimed ONVIF discovery: discovery=%s timeout=%.1fs",
+                                discovery_assignment.discovery_id,
+                                discovery_assignment.timeout_seconds,
+                            )
+                            try:
+                                discovered = run_discovery_job(
+                                    timeout_seconds=discovery_assignment.timeout_seconds,
+                                    maximum_devices=settings.camera_discovery_max_devices,
+                                )
+                                report_discovery_result(
+                                    client,
+                                    base_url,
+                                    discovery_assignment,
+                                    headers=auth_headers,
+                                    devices=discovered,
+                                )
+                            except Exception as exc:
+                                failed += 1
+                                logger.exception(
+                                    "ONVIF discovery failed: discovery=%s",
+                                    discovery_assignment.discovery_id,
+                                )
+                                try:
+                                    report_discovery_result(
+                                        client,
+                                        base_url,
+                                        discovery_assignment,
+                                        headers=auth_headers,
+                                        error=str(exc),
+                                    )
+                                except httpx.HTTPError:
+                                    logger.exception(
+                                        "Could not report ONVIF discovery failure: discovery=%s",
+                                        discovery_assignment.discovery_id,
                                     )
 
                 if once and started == 0 and not active and not claim_failed:

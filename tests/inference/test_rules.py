@@ -59,6 +59,26 @@ def test_dwell_rule_fires_once_per_continuous_visit() -> None:
     assert len(evaluate(engine, [person(7)], 15)) == 1
 
 
+def test_presence_does_not_refire_when_tracker_changes_identity() -> None:
+    zone = Zone.parse("room", "0.2,0.2;0.8,0.2;0.8,0.9;0.2,0.9")
+    engine = DwellRuleEngine(
+        DwellRule(
+            "presence",
+            "person",
+            zone,
+            0,
+            absence_grace_seconds=1,
+            event_type="zone_presence",
+        )
+    )
+
+    assert len(evaluate(engine, [person(7)], 0)) == 1
+    assert evaluate(engine, [], 0.5) == []
+    assert evaluate(engine, [person(91)], 0.75) == []
+    assert evaluate(engine, [], 1.8) == []
+    assert len(evaluate(engine, [person(22)], 2)) == 1
+
+
 def test_short_tracking_gap_does_not_reset_dwell_timer() -> None:
     engine = make_engine(duration=2, grace=1)
 

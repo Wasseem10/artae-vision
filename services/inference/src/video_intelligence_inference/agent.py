@@ -19,6 +19,7 @@ from video_intelligence_inference.actions import (
     BackgroundWebhookDispatcher,
 )
 from video_intelligence_inference.config import Settings, get_settings
+from video_intelligence_inference.continuous_recording import BackgroundSegmentRecorder
 from video_intelligence_inference.control_credentials import control_plane_headers
 from video_intelligence_inference.control_plane import (
     ControlPlaneConfigError,
@@ -46,6 +47,7 @@ from video_intelligence_inference.observer import (
     QwenVisionClient,
     VisionObserverProvider,
 )
+from video_intelligence_inference.recording_archive import BackgroundRecordingArchiveUploader
 from video_intelligence_inference.routing import route_rules
 from video_intelligence_inference.rules import (
     CountThresholdRule,
@@ -74,6 +76,10 @@ class _SemanticTrigger:
     rule: ResolvedRuleConfig
     window: ObservationWindow
     decision: ObserverDecision
+    proposer_model: str | None = None
+    verifier_decision: ObserverDecision | None = None
+    verifier_model: str | None = None
+    verification_error: str | None = None
 
 
 class _SemanticDecisionGate:
@@ -83,14 +89,45 @@ class _SemanticDecisionGate:
         self,
         rule: ResolvedRuleConfig,
         outbox: queue.SimpleQueue[_SemanticTrigger],
+        *,
+        proposer_model: str | None = None,
+        verifier: VisionObserverProvider | None = None,
     ) -> None:
         self._rule = rule
         self._outbox = outbox
+        self._proposer_model = proposer_model
+        self._verifier = verifier
         self._positive_windows = 0
+        self._baseline_windows = 0
+        self._in_window_baseline_allowed = True
         self._last_emitted_at = float("-inf")
 
     def __call__(self, window: ObservationWindow, decision: ObserverDecision) -> None:
-        if not decision.triggered or decision.confidence < self._rule.minimum_confidence:
+        if not decision.triggered:
+            self._positive_windows = 0
+            if (
+                self._rule.temporal_mode == "transition"
+                and decision.confidence >= self._rule.minimum_confidence
+            ):
+                self._baseline_windows = min(
+                    self._baseline_windows + 1,
+                    self._rule.baseline_windows,
+                )
+                self._in_window_baseline_allowed = True
+            return
+        if decision.confidence < self._rule.minimum_confidence:
+            self._positive_windows = 0
+            return
+        has_in_window_baseline = (
+            self._in_window_baseline_allowed
+            and decision.first_frame is not None
+            and decision.first_frame > 1
+        )
+        if (
+            self._rule.temporal_mode == "transition"
+            and self._baseline_windows < self._rule.baseline_windows
+            and not has_in_window_baseline
+        ):
             self._positive_windows = 0
             return
         self._positive_windows += 1
@@ -100,7 +137,38 @@ class _SemanticDecisionGate:
         if window.ended_at - self._last_emitted_at < self._rule.cooldown_seconds:
             return
         self._last_emitted_at = window.ended_at
-        self._outbox.put(_SemanticTrigger(self._rule, window, decision))
+        if self._rule.temporal_mode == "transition":
+            self._baseline_windows = 0
+            self._in_window_baseline_allowed = False
+        verifier_decision = None
+        verification_error = None
+        if self._verifier is not None:
+            try:
+                verifier_decision = self._verifier.analyze(
+                    window,
+                    (
+                        "Independently verify this proposed event using only direct visual "
+                        f"evidence. Original rule: {self._rule.instruction or ''}. "
+                        f"Proposer summary: {decision.summary}"
+                    ),
+                )
+            except Exception as exc:
+                verification_error = type(exc).__name__
+                logger.exception(
+                    "Independent semantic verification failed for rule=%s",
+                    self._rule.rule_id,
+                )
+        self._outbox.put(
+            _SemanticTrigger(
+                self._rule,
+                window,
+                decision,
+                proposer_model=self._proposer_model,
+                verifier_decision=verifier_decision,
+                verifier_model=self._verifier.name if self._verifier is not None else None,
+                verification_error=verification_error,
+            )
+        )
 
 
 def _semantic_provider(settings: Settings) -> VisionObserverProvider:
@@ -125,10 +193,65 @@ def _semantic_provider(settings: Settings) -> VisionObserverProvider:
     return DryRunVisionClient(settings.observer_dry_run_trigger_every)
 
 
+def _semantic_verifier(settings: Settings) -> VisionObserverProvider | None:
+    """Return a genuinely distinct verifier, or require operator review downstream."""
+    if (
+        settings.observer_provider != "gemini"
+        or settings.gemini_api_key is None
+        or settings.gemini_verifier_model.casefold() == settings.gemini_model.casefold()
+    ):
+        return None
+    return GeminiVisionClient(
+        api_key=settings.gemini_api_key.get_secret_value(),
+        base_url=str(settings.gemini_base_url),
+        model=settings.gemini_verifier_model,
+        timeout_seconds=settings.observer_request_timeout_seconds,
+    )
+
+
 def _semantic_match(trigger: _SemanticTrigger) -> RuleMatch:
     rule = trigger.rule
     window = trigger.window
     decision = trigger.decision
+    independent_verification = None
+    if trigger.verifier_decision is not None:
+        verifier_decision = trigger.verifier_decision
+        if verifier_decision.confidence < rule.minimum_confidence:
+            verifier_status = "uncertain"
+        else:
+            verifier_status = "confirmed" if verifier_decision.triggered else "rejected"
+        independent_verification = {
+            "status": verifier_status,
+            "triggered": verifier_decision.triggered,
+            "confidence": verifier_decision.confidence,
+            "summary": verifier_decision.summary,
+            "verifier_model": trigger.verifier_model,
+        }
+    elif trigger.verifier_model is not None or trigger.verification_error is not None:
+        independent_verification = {
+            "status": "uncertain",
+            "triggered": None,
+            "confidence": None,
+            "summary": "Independent verification was unavailable; operator review is required.",
+            "verifier_model": trigger.verifier_model,
+            "error": trigger.verification_error,
+        }
+    details: dict[str, object] = {
+        "instruction": rule.instruction or "",
+        "summary": decision.summary,
+        "first_frame": decision.first_frame,
+        "window_sequence": window.sequence,
+        "window_started_at_seconds": window.started_at,
+        "window_ended_at_seconds": window.ended_at,
+        "temporal_mode": rule.temporal_mode,
+        "baseline_windows": rule.baseline_windows,
+        "proposer_model": trigger.proposer_model,
+        "scene_observations": [
+            observation.model_dump(mode="json") for observation in decision.scene_observations
+        ],
+    }
+    if independent_verification is not None:
+        details["independent_verification"] = independent_verification
     return RuleMatch(
         rule_id=rule.rule_id,
         track_id=None,
@@ -139,17 +262,7 @@ def _semantic_match(trigger: _SemanticTrigger) -> RuleMatch:
         dwell_seconds=max(0, window.ended_at - window.started_at),
         confidence=decision.confidence,
         event_type="semantic_vision",
-        details={
-            "instruction": rule.instruction or "",
-            "summary": decision.summary,
-            "first_frame": decision.first_frame,
-            "window_sequence": window.sequence,
-            "window_started_at_seconds": window.started_at,
-            "window_ended_at_seconds": window.ended_at,
-            "scene_observations": [
-                observation.model_dump(mode="json") for observation in decision.scene_observations
-            ],
-        },
+        details=details,
     )
 
 
@@ -264,14 +377,21 @@ def run(
         detector_rules = deterministic_rules
     engine = RuleSetEngine(engines) if engines else None
     geometries = list(dict.fromkeys(geometries))
+    # Semantic rules still use the vision-language observer for the actual
+    # decision, but a lightweight local detector keeps the live preview
+    # understandable by drawing tracked people and objects for the operator.
     detector = (
         YoloDetector(
             model_name=settings.model_name,
-            confidence_threshold=min(rule.minimum_confidence for rule in detector_rules),
+            confidence_threshold=(
+                min(rule.minimum_confidence for rule in detector_rules)
+                if detector_rules
+                else settings.confidence_threshold
+            ),
             iou_threshold=settings.iou_threshold,
             device=settings.device,
         )
-        if detector_rules
+        if detector_rules or semantic_rules
         else None
     )
     source = OpenCVVideoSource(
@@ -279,6 +399,10 @@ def run(
         width=settings.camera_width,
         height=settings.camera_height,
         fps=settings.camera_fps,
+        open_timeout_seconds=settings.camera_open_timeout_seconds,
+        read_timeout_seconds=settings.camera_read_timeout_seconds,
+        reconnect_attempts=settings.camera_reconnect_attempts,
+        reconnect_backoff_seconds=settings.camera_reconnect_backoff_seconds,
     )
     event_sink = JsonlEventSink(settings.events_directory / "events.jsonl")
     webhook_url = str(settings.webhook_url) if settings.webhook_url else None
@@ -309,11 +433,16 @@ def run(
         else None
     )
     semantic_observers: list[ContinuousObserver] = []
+    semantic_verifiers: list[VisionObserverProvider] = []
     for rule in semantic_rules:
         assert rule.instruction is not None
+        proposer = _semantic_provider(settings)
+        verifier = _semantic_verifier(settings)
+        if verifier is not None:
+            semantic_verifiers.append(verifier)
         semantic_observers.append(
             ContinuousObserver(
-                _semantic_provider(settings),
+                proposer,
                 rule.instruction,
                 queue_size=settings.observer_queue_size,
                 max_requests_per_minute=settings.observer_max_requests_per_minute,
@@ -322,7 +451,12 @@ def run(
                     settings.observer_artifacts_directory / camera_id / rule.rule_id,
                     settings.observer_artifact_mode,
                 ),
-                on_decision=_SemanticDecisionGate(rule, semantic_outbox),
+                on_decision=_SemanticDecisionGate(
+                    rule,
+                    semantic_outbox,
+                    proposer_model=proposer.name,
+                    verifier=verifier,
+                ),
             )
         )
 
@@ -337,6 +471,24 @@ def run(
     try:
         with (
             source,
+            BackgroundRecordingArchiveUploader(
+                control_plane_api_base,
+                enabled=settings.continuous_recording_archive_enabled,
+                headers=control_headers,
+                spool_directory=settings.continuous_recording_spool_directory / camera_id,
+                timeout_seconds=settings.webhook_timeout_seconds,
+            ) as recording_uploads,
+            BackgroundSegmentRecorder(
+                enabled=settings.continuous_recording_enabled,
+                camera_id=camera_id,
+                output_directory=settings.continuous_recording_directory,
+                fps=source.fps,
+                segment_seconds=settings.continuous_recording_segment_seconds,
+                retention_hours=settings.continuous_recording_retention_hours,
+                maximum_bytes=settings.continuous_recording_max_bytes,
+                queue_size=settings.continuous_recording_queue_size,
+                on_segment=recording_uploads.submit,
+            ) as continuous_recorder,
             BackgroundFramePublisher(publish_url, fps=source.fps) as stream_publisher,
             BackgroundWebhookDispatcher(
                 webhook_url,
@@ -379,6 +531,7 @@ def run(
                         break
 
                     frame = packet.image
+                    continuous_recorder.submit(frame, packet.timestamp_seconds)
                     stream_publisher.submit(frame)
                     if on_preview is not None:
                         on_preview(frame)
@@ -397,6 +550,7 @@ def run(
                     )
                     last_frame_at = frame_at
                     if on_frame is not None:
+                        recording = continuous_recorder.snapshot()
                         observer_snapshots = [
                             observer.snapshot() for observer in semantic_observers
                         ]
@@ -436,6 +590,12 @@ def run(
                                 analysis_request_limit_minute=sum(
                                     snapshot.request_limit_minute for snapshot in observer_snapshots
                                 ),
+                                frames_processed=processed_frames + 1,
+                                reconnect_count=source.reconnect_count,
+                                recording_state=recording.state,
+                                recording_segments_completed=recording.segments_completed,
+                                recording_dropped_frames=recording.dropped_frames,
+                                recording_error=recording.error,
                             )
                         )
                     matches = (
@@ -506,6 +666,8 @@ def run(
     finally:
         for observer in semantic_observers:
             observer.close()
+        for verifier in semantic_verifiers:
+            verifier.close()
         if display:
             cv2.destroyAllWindows()
 

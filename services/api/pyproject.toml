@@ -11,6 +11,7 @@ requires-python = ">=3.11,<3.13"
 dependencies = [
     "alembic>=1.19,<2",
     "anyio>=4.4,<5",
+    "boto3>=1.40,<2",
     "cryptography>=45,<47",
     "fastapi>=0.141,<1",
     "httpx>=0.28,<1",

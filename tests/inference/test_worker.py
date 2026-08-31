@@ -3,7 +3,16 @@ import threading
 
 import httpx
 import numpy as np
+from video_intelligence_inference.camera_diagnostics import (
+    CameraDiagnosticMetrics,
+    CameraDiagnosticOutput,
+)
 from video_intelligence_inference.config import Settings
+from video_intelligence_inference.onvif_discovery import DiscoveredOnvifDevice
+from video_intelligence_inference.onvif_onboarding import (
+    OnvifMediaProfile,
+    OnvifOnboardingOutput,
+)
 from video_intelligence_inference.replay import ReplayInterval, ReplayOutput
 from video_intelligence_inference.telemetry import FrameTelemetry, NormalizedDetection
 from video_intelligence_inference.worker import (
@@ -148,6 +157,35 @@ def test_reporter_uploads_bounded_jpeg_preview() -> None:
     assert previews[0].content.endswith(b"\xff\xd9")
 
 
+def test_reporter_renews_camera_lease_when_frames_stall() -> None:
+    payloads: list[dict] = []
+    heartbeat_received = threading.Event()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/telemetry"):
+            payloads.append(json.loads(request.content))
+            if len(payloads) >= 2:
+                heartbeat_received.set()
+        return httpx.Response(200, json={"desired_status": "running"})
+
+    reporter = ManagedReporter(
+        "http://control.test",
+        "agent-secret",
+        Assignment.model_validate(assignment_payload()),
+        interval_seconds=1,
+        heartbeat_seconds=0.01,
+        timeout_seconds=1,
+        transport=httpx.MockTransport(handler),
+    )
+
+    reporter.starting()
+    assert heartbeat_received.wait(timeout=1)
+    reporter.finish("stopped")
+
+    assert payloads[0]["observed_status"] == "starting"
+    assert payloads[1]["observed_status"] == "starting"
+
+
 def test_worker_runs_two_camera_assignments_concurrently() -> None:
     assignments = [
         assignment_payload()
@@ -166,6 +204,8 @@ def test_worker_runs_two_camera_assignments_concurrently() -> None:
                     return httpx.Response(200, json=assignments.pop(0))
             return httpx.Response(204)
         if request.url.path.endswith("/evaluations/claim"):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-commissioning-runs/claim"):
             return httpx.Response(204)
         return httpx.Response(200, json={"desired_status": "running"})
 
@@ -254,3 +294,197 @@ def test_idle_worker_claims_and_reports_replay_evaluation() -> None:
     assert result_payloads[0]["provider_requests"] == 2
     assert result_payloads[0]["input_price_per_million_usd"] == 0.1
     assert [payload["processed_seconds"] for payload in heartbeat_payloads] == [0, 10]
+
+
+def test_idle_worker_executes_edge_camera_discovery() -> None:
+    result_payloads: list[dict] = []
+    discovery_claimed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal discovery_claimed
+        if request.url.path.endswith("/assignments/claim"):
+            return httpx.Response(204)
+        if request.url.path.endswith("/evaluations/claim"):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-commissioning-runs/claim"):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-onboarding-runs/claim"):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-discovery-runs/claim"):
+            if discovery_claimed:
+                return httpx.Response(204)
+            discovery_claimed = True
+            return httpx.Response(
+                200,
+                json={
+                    "worker_id": "edge-1",
+                    "discovery_id": "discovery-1",
+                    "timeout_seconds": 2,
+                },
+            )
+        if request.url.path.endswith("/result"):
+            result_payloads.append(json.loads(request.content))
+            return httpx.Response(200, json={})
+        return httpx.Response(200, json={})
+
+    def discovery_stub(**kwargs: object) -> list[DiscoveredOnvifDevice]:
+        assert kwargs == {"timeout_seconds": 2, "maximum_devices": 100}
+        return [
+            DiscoveredOnvifDevice(
+                endpoint_reference="urn:uuid:camera-one",
+                xaddrs=("http://192.0.2.10/onvif/device_service",),
+                scopes=("onvif://www.onvif.org/name/LoadingDock",),
+                remote_address="192.0.2.10",
+            )
+        ]
+
+    result = run_worker(
+        Settings(
+            control_plane_url="http://control.test",
+            control_plane_device_token="vid1.device.test-secret",
+            worker_id="edge-1",
+            worker_poll_seconds=0.25,
+        ),
+        max_assignments=1,
+        transport=httpx.MockTransport(handler),
+        run_discovery_job=discovery_stub,
+    )
+
+    assert result == 0
+    assert (
+        result_payloads[0]["devices"][0]["endpoint_reference"] == "urn:uuid:camera-one"
+    )
+    assert result_payloads[0]["error"] is None
+
+
+def test_idle_worker_resolves_and_reports_onvif_onboarding() -> None:
+    result_payloads: list[dict] = []
+    onboarding_claimed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal onboarding_claimed
+        if request.url.path.endswith(("/assignments/claim", "/evaluations/claim")):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-onboarding-runs/claim"):
+            if onboarding_claimed:
+                return httpx.Response(204)
+            onboarding_claimed = True
+            return httpx.Response(
+                200,
+                json={
+                    "worker_id": "edge-1",
+                    "onboarding_id": "onboarding-1",
+                    "endpoint_url": "http://192.0.2.10/onvif/device_service",
+                    "username": "operator",
+                    "password": "secret",
+                    "verify_tls": True,
+                },
+            )
+        if request.url.path.endswith("/result"):
+            result_payloads.append(json.loads(request.content))
+            return httpx.Response(200, json={})
+        return httpx.Response(204)
+
+    def onboarding_stub(**kwargs: object) -> OnvifOnboardingOutput:
+        assert kwargs == {
+            "endpoint_url": "http://192.0.2.10/onvif/device_service",
+            "username": "operator",
+            "password": "secret",
+            "verify_tls": True,
+            "timeout_seconds": 10,
+        }
+        profile = OnvifMediaProfile(
+            token="main",
+            name="Main stream",
+            encoding="H264",
+            width=1920,
+            height=1080,
+            frame_rate=30,
+            stream_uri="rtsp://192.0.2.10/main",
+        )
+        return OnvifOnboardingOutput(
+            profiles=(profile,),
+            selected_profile_token="main",
+            stream_uri=profile.stream_uri,
+            preview_jpeg=b"\xff\xd8preview\xff\xd9",
+        )
+
+    result = run_worker(
+        Settings(
+            control_plane_url="http://control.test",
+            control_plane_device_token="vid1.device.test-secret",
+            worker_id="edge-1",
+            worker_poll_seconds=0.25,
+        ),
+        max_assignments=1,
+        transport=httpx.MockTransport(handler),
+        run_onboarding_job=onboarding_stub,
+    )
+
+    assert result == 0
+    assert result_payloads[0]["selected_profile_token"] == "main"
+    assert result_payloads[0]["stream_uri"] == "rtsp://192.0.2.10/main"
+    assert result_payloads[0]["preview_jpeg_base64"] is not None
+
+
+def test_idle_worker_executes_camera_commissioning() -> None:
+    result_payloads: list[dict] = []
+    claimed = False
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal claimed
+        if request.url.path.endswith(("/assignments/claim", "/evaluations/claim")):
+            return httpx.Response(204)
+        if request.url.path.endswith("/camera-commissioning-runs/claim"):
+            if claimed:
+                return httpx.Response(204)
+            claimed = True
+            return httpx.Response(
+                200,
+                json={
+                    "worker_id": "edge-1",
+                    "commissioning_id": "commissioning-1",
+                    "camera_id": "camera-1",
+                    "source_uri": "rtsp://camera.test/live",
+                    "duration_seconds": 5,
+                    "maximum_frames": 60,
+                },
+            )
+        if request.url.path.endswith("/result"):
+            result_payloads.append(json.loads(request.content))
+            return httpx.Response(200, json={})
+        return httpx.Response(204)
+
+    def diagnostic_stub(**kwargs: object) -> CameraDiagnosticOutput:
+        assert kwargs["source_uri"] == "rtsp://camera.test/live"
+        return CameraDiagnosticOutput(
+            metrics=CameraDiagnosticMetrics(
+                frame_count=60,
+                read_failures=0,
+                width=1920,
+                height=1080,
+                observed_fps=20,
+                brightness_mean=100,
+                contrast_mean=40,
+                sharpness_mean=120,
+                frozen_frame_ratio=0,
+                black_frame_ratio=0,
+            ),
+            preview_jpeg=b"\xff\xd8preview\xff\xd9",
+        )
+
+    result = run_worker(
+        Settings(
+            control_plane_url="http://control.test",
+            control_plane_device_token="vid1.device.test-secret",
+            worker_id="edge-1",
+            worker_poll_seconds=0.25,
+        ),
+        max_assignments=1,
+        transport=httpx.MockTransport(handler),
+        run_commissioning_job=diagnostic_stub,
+    )
+
+    assert result == 0
+    assert result_payloads[0]["metrics"]["frame_count"] == 60
+    assert result_payloads[0]["preview_jpeg_base64"] is not None

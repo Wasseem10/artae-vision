@@ -132,6 +132,81 @@ def test_replay_evaluation_compiles_routes_and_scores(api_client) -> None:
     assert [evaluation["id"] for evaluation in listed] == [created["id"]]
 
 
+def test_completed_upload_dispatches_real_incident_and_evidence(api_client) -> None:
+    camera = api_client.post(
+        "/api/v1/cameras",
+        json={"name": "Upload Action Camera", "source_uri": "webcam:0"},
+    ).json()
+    api_client.post(
+        "/api/v1/zones",
+        json={
+            "camera_id": camera["id"],
+            "name": "safety floor",
+            "points": [{"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}],
+        },
+    )
+    upload = api_client.post(
+        "/api/v1/evaluations/uploads",
+        content=b"uploaded-video-evidence",
+        headers={"Content-Type": "video/mp4", "X-Replay-Filename": "shift.mp4"},
+    ).json()
+    evaluation = api_client.post(
+        "/api/v1/evaluations",
+        json={
+            "name": "shift.mp4",
+            "camera_id": camera["id"],
+            "source_uri": upload["source_uri"],
+            "prompt": "Alert me when a person stays in the safety floor for 2 seconds.",
+            "duration_seconds": 12,
+            "expected_intervals": [],
+        },
+    ).json()
+    scored = api_client.post(
+        f"/api/v1/evaluations/{evaluation['id']}/score",
+        json={
+            "predicted_intervals": [
+                {
+                    "start_seconds": 3,
+                    "end_seconds": 7,
+                    "detected_at_seconds": 5,
+                    "confidence": 0.91,
+                }
+            ]
+        },
+    ).json()
+    assert scored["status"] == "scored"
+
+    rule = api_client.post(
+        f"/api/v1/rule-compilations/{evaluation['compilation_id']}/accept",
+        json={},
+    ).json()
+    api_client.patch(f"/api/v1/rules/{rule['id']}/status", json={"status": "active"})
+
+    dispatched_response = api_client.post(
+        f"/api/v1/evaluations/{evaluation['id']}/dispatch",
+        json={"rule_id": rule["id"]},
+    )
+    assert dispatched_response.status_code == 201, dispatched_response.text
+    dispatched = dispatched_response.json()
+    assert dispatched["details"]["uploaded_video"] is True
+    assert dispatched["details"]["match_count"] == 1
+    assert dispatched["confidence"] == 0.91
+
+    alerts = api_client.get("/api/v1/alerts").json()
+    assert alerts[0]["event_id"] == dispatched["id"]
+    evidence = api_client.get("/api/v1/evidence").json()
+    assert evidence[0]["event_id"] == dispatched["id"]
+    assert evidence[0]["size_bytes"] == len(b"uploaded-video-evidence")
+
+    duplicate = api_client.post(
+        f"/api/v1/evaluations/{evaluation['id']}/dispatch",
+        json={"rule_id": rule["id"]},
+    )
+    assert duplicate.status_code == 201
+    assert duplicate.json()["id"] == dispatched["id"]
+    assert len(api_client.get("/api/v1/alerts").json()) == 1
+
+
 def test_replay_evaluation_rejects_intervals_outside_duration(api_client) -> None:
     camera = api_client.post(
         "/api/v1/cameras",
@@ -377,6 +452,16 @@ def test_regression_suite_preserves_failed_and_passed_gate_history(api_client) -
     ).json()
     assert passed_result["status"] == "passed"
     assert passed_result["metrics"]["macro_f1"] == 1
+    assert passed_result["metrics"]["scenario_metrics"]["unclassified"] == {
+        "evaluation_count": 2,
+        "macro_precision": 1.0,
+        "macro_recall": 1.0,
+        "macro_f1": 1.0,
+        "false_positives": 0,
+        "source_kinds": ["unclassified"],
+        "variants": ["unclassified"],
+    }
+    assert passed_result["results"][0]["scenario_key"] is None
     assert all(gate["passed"] for gate in passed_result["gate_results"])
 
     history = api_client.get(f"/api/v1/evaluation-suites/{suite['id']}/runs").json()

@@ -17,7 +17,13 @@ class Database:
     """Own the async SQLAlchemy engine and create one session per request."""
 
     def __init__(self, database_url: str) -> None:
-        self.engine: AsyncEngine = create_async_engine(database_url, pool_pre_ping=True)
+        engine_options: dict[str, object] = {"pool_pre_ping": True}
+        if database_url.startswith("postgresql+psycopg://"):
+            # Vercel uses Supabase's transaction-mode Supavisor pool. A later
+            # request can land on a different server connection, so psycopg's
+            # automatic prepared-statement cache must be disabled.
+            engine_options["connect_args"] = {"prepare_threshold": None}
+        self.engine: AsyncEngine = create_async_engine(database_url, **engine_options)
         self.session_factory = async_sessionmaker(
             self.engine,
             class_=AsyncSession,

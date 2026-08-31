@@ -108,3 +108,55 @@ def test_rtsp_credentials_are_redacted_from_errors(
     assert "super-secret" not in message
     assert "camera-user" not in message
     assert "rtsp://***:***@10.0.0.5/live" in message
+
+
+def test_live_source_recovers_after_a_bounded_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = np.full((12, 16, 3), 7, dtype=np.uint8)
+    captures = [FakeCapture([]), FakeCapture([frame])]
+    delays: list[float] = []
+
+    monkeypatch.setattr(
+        source_module.cv2,
+        "VideoCapture",
+        lambda *_args: captures.pop(0),
+    )
+    with OpenCVVideoSource(
+        "rtsp://camera.test/live",
+        reconnect_attempts=2,
+        reconnect_backoff_seconds=0.25,
+        sleep=delays.append,
+    ) as source:
+        packet = source.read()
+
+        assert packet.sequence == 0
+        assert packet.image is frame
+        assert source.reconnect_count == 1
+
+    assert delays == [0.25]
+
+
+def test_live_source_fails_after_reconnect_budget_is_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captures = [
+        FakeCapture([]),
+        FakeCapture([], opened=False),
+        FakeCapture([], opened=False),
+    ]
+    monkeypatch.setattr(
+        source_module.cv2,
+        "VideoCapture",
+        lambda *_args: captures.pop(0),
+    )
+    source = OpenCVVideoSource(
+        "rtsp://user:secret@camera.test/live",
+        reconnect_attempts=2,
+        reconnect_backoff_seconds=0,
+    )
+
+    with source, pytest.raises(SourceError, match="after 2 reconnect attempt") as error:
+        source.read()
+
+    assert "secret" not in str(error.value)

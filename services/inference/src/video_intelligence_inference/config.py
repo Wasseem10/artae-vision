@@ -20,6 +20,21 @@ class Settings(BaseSettings):
     camera_width: int = Field(default=1280, gt=0)
     camera_height: int = Field(default=720, gt=0)
     camera_fps: int = Field(default=30, gt=0)
+    camera_open_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
+    camera_read_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
+    camera_reconnect_attempts: int = Field(default=5, ge=0, le=100)
+    camera_reconnect_backoff_seconds: float = Field(default=0.5, ge=0, le=30)
+    continuous_recording_enabled: bool = False
+    continuous_recording_archive_enabled: bool = False
+    continuous_recording_directory: Path = Path("artifacts/recordings")
+    continuous_recording_spool_directory: Path = Path("artifacts/recording-upload-spool")
+    continuous_recording_segment_seconds: float = Field(default=60, ge=10, le=3600)
+    continuous_recording_retention_hours: float = Field(default=2, gt=0, le=24 * 365)
+    continuous_recording_max_bytes: int = Field(
+        default=10 * 1024 * 1024 * 1024,
+        ge=100 * 1024 * 1024,
+    )
+    continuous_recording_queue_size: int = Field(default=120, ge=1, le=10000)
 
     model_name: str = Field(default="yolo26n.pt", min_length=1)
     confidence_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
@@ -39,17 +54,19 @@ class Settings(BaseSettings):
         max_length=4000,
     )
     observer_sample_fps: float = Field(default=1.0, gt=0, le=30)
-    observer_window_frames: int = Field(default=10, ge=2, le=60)
-    observer_overlap_frames: int = Field(default=5, ge=0, le=59)
+    observer_window_frames: int = Field(default=8, ge=2, le=60)
+    observer_overlap_frames: int = Field(default=4, ge=0, le=59)
     observer_frame_width: int = Field(default=320, ge=96, le=1920)
     observer_frame_height: int = Field(default=180, ge=54, le=1080)
-    observer_sheet_columns: int = Field(default=5, ge=1, le=10)
+    observer_sheet_columns: int = Field(default=4, ge=1, le=10)
     observer_queue_size: int = Field(default=2, ge=1, le=20)
     observer_request_timeout_seconds: float = Field(default=30.0, gt=0, le=120)
     observer_provider: Literal["dry_run", "gemini", "qwen"] = "dry_run"
     observer_dry_run_trigger_every: int = Field(default=3, ge=1, le=10000)
     observer_max_requests_per_minute: int = Field(default=1, ge=1, le=600)
     observer_max_requests_per_day: int = Field(default=20, ge=1, le=1000000)
+    replay_max_requests_per_minute: int = Field(default=20, ge=1, le=600)
+    replay_max_requests_per_day: int = Field(default=20, ge=1, le=1000000)
     observer_show_sheet: bool = True
     observer_artifact_mode: Literal["none", "triggered", "all"] = "triggered"
     observer_artifacts_directory: Path = Path("artifacts/observer")
@@ -82,15 +99,22 @@ class Settings(BaseSettings):
     worker_id: str | None = Field(default=None, min_length=1, max_length=120)
     worker_poll_seconds: float = Field(default=2.0, ge=0.25, le=60)
     worker_telemetry_seconds: float = Field(default=0.5, ge=0.1, le=10)
-    worker_preview_fps: float = Field(default=2.0, ge=0.1, le=10)
+    worker_heartbeat_seconds: float = Field(default=2.0, ge=0.25, le=30)
+    worker_preview_fps: float = Field(default=8.0, ge=0.1, le=10)
     worker_preview_width: int = Field(default=960, ge=160, le=1920)
     worker_preview_jpeg_quality: int = Field(default=75, ge=30, le=95)
     worker_max_cameras: int = Field(default=1, ge=1, le=32)
+    camera_discovery_max_devices: int = Field(default=100, ge=1, le=500)
+    camera_onboarding_timeout_seconds: float = Field(default=10, ge=2, le=60)
     replay_input_price_per_million_usd: float = Field(default=0, ge=0)
     replay_output_price_per_million_usd: float = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def validate_observer(self) -> "Settings":
+        if self.continuous_recording_archive_enabled and not self.continuous_recording_enabled:
+            raise ValueError("Recording archive upload requires continuous recording")
+        if self.continuous_recording_archive_enabled and self.control_plane_url is None:
+            raise ValueError("Recording archive upload requires the control-plane URL")
         if self.observer_overlap_frames >= self.observer_window_frames:
             raise ValueError("observer overlap must be smaller than the window")
         if self.observer_enabled and self.observer_provider == "qwen" and self.qwen_api_key is None:

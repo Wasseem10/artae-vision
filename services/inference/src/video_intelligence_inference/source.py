@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
@@ -39,7 +40,18 @@ class OpenCVVideoSource:
         width: int = 1280,
         height: int = 720,
         fps: int = 30,
+        open_timeout_seconds: float = 10.0,
+        read_timeout_seconds: float = 10.0,
+        reconnect_attempts: int = 5,
+        reconnect_backoff_seconds: float = 0.5,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        if open_timeout_seconds <= 0 or read_timeout_seconds <= 0:
+            raise ValueError("Video-source timeouts must be greater than zero.")
+        if reconnect_attempts < 0:
+            raise ValueError("Reconnect attempts cannot be negative.")
+        if reconnect_backoff_seconds < 0:
+            raise ValueError("Reconnect backoff cannot be negative.")
         self._source = source
         self._display_name = _redact_source(source)
         self._width = width
@@ -50,6 +62,12 @@ class OpenCVVideoSource:
         self._sequence = 0
         self._started_at = 0.0
         self._fps = float(fps)
+        self._open_timeout_ms = round(open_timeout_seconds * 1000)
+        self._read_timeout_ms = round(read_timeout_seconds * 1000)
+        self._reconnect_attempts = reconnect_attempts
+        self._reconnect_backoff_seconds = reconnect_backoff_seconds
+        self._sleep = sleep
+        self._reconnect_count = 0
 
     @property
     def fps(self) -> float:
@@ -63,13 +81,17 @@ class OpenCVVideoSource:
     def is_live(self) -> bool:
         return self._live
 
+    @property
+    def reconnect_count(self) -> int:
+        return self._reconnect_count
+
     def open(self) -> None:
         if self._capture is not None:
             return
 
         capture_target, live = _resolve_capture_target(self._source)
         logger.info("Opening video source: %s", self._display_name)
-        capture = cv2.VideoCapture(capture_target)
+        capture = self._create_capture(capture_target, live)
         if not capture.isOpened():
             capture.release()
             raise SourceError(
@@ -88,6 +110,7 @@ class OpenCVVideoSource:
         self._live = live
         self._sequence = 0
         self._started_at = time.monotonic()
+        self._reconnect_count = 0
         logger.info("Video source opened: live=%s fps=%.2f", live, self._fps)
 
     def read(self) -> VideoFrame:
@@ -96,9 +119,9 @@ class OpenCVVideoSource:
 
         success, image = self._capture.read()
         if not success or image is None:
-            if self._live:
-                raise SourceError(f"Lost live video source '{self._display_name}'.")
-            raise EndOfStream(f"Reached the end of '{self._display_name}'.")
+            if not self._live:
+                raise EndOfStream(f"Reached the end of '{self._display_name}'.")
+            image = self._recover_live_source()
 
         if self._live:
             timestamp = time.monotonic() - self._started_at
@@ -110,6 +133,69 @@ class OpenCVVideoSource:
         packet = VideoFrame(image=image, timestamp_seconds=timestamp, sequence=self._sequence)
         self._sequence += 1
         return packet
+
+    def _create_capture(self, target: int | str, live: bool) -> cv2.VideoCapture:
+        if live and isinstance(target, str) and target.lower().startswith(("rtsp://", "rtsps://")):
+            parameters = [
+                cv2.CAP_PROP_OPEN_TIMEOUT_MSEC,
+                self._open_timeout_ms,
+                cv2.CAP_PROP_READ_TIMEOUT_MSEC,
+                self._read_timeout_ms,
+            ]
+            try:
+                return cv2.VideoCapture(target, cv2.CAP_FFMPEG, parameters)
+            except TypeError:
+                # Older OpenCV builds do not expose constructor parameters. The
+                # fallback remains compatible, but operators should use a build
+                # with FFmpeg timeout support for production RTSP cameras.
+                logger.warning("OpenCV build does not support RTSP timeout parameters")
+        return cv2.VideoCapture(target)
+
+    def _recover_live_source(self) -> np.ndarray:
+        last_error = "read failed"
+        for attempt in range(1, self._reconnect_attempts + 1):
+            self.close()
+            delay = min(self._reconnect_backoff_seconds * (2 ** (attempt - 1)), 10.0)
+            if delay:
+                self._sleep(delay)
+            try:
+                target, live = _resolve_capture_target(self._source)
+                capture = self._create_capture(target, live)
+                if not capture.isOpened():
+                    capture.release()
+                    raise SourceError("capture did not open")
+                if live and isinstance(target, int):
+                    capture.set(cv2.CAP_PROP_FRAME_WIDTH, self._width)
+                    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self._height)
+                    capture.set(cv2.CAP_PROP_FPS, self._requested_fps)
+                success, image = capture.read()
+                if not success or image is None:
+                    capture.release()
+                    raise SourceError("capture reopened but produced no frame")
+                reported_fps = float(capture.get(cv2.CAP_PROP_FPS))
+                self._fps = reported_fps if reported_fps > 0 else float(self._requested_fps)
+                self._capture = capture
+                self._live = True
+                self._reconnect_count += 1
+                logger.warning(
+                    "Live video source recovered: source=%s attempt=%d reconnects=%d",
+                    self._display_name,
+                    attempt,
+                    self._reconnect_count,
+                )
+                return image
+            except SourceError as exc:
+                last_error = str(exc)
+                logger.warning(
+                    "Live video reconnect failed: source=%s attempt=%d/%d",
+                    self._display_name,
+                    attempt,
+                    self._reconnect_attempts,
+                )
+        raise SourceError(
+            f"Lost live video source '{self._display_name}' after "
+            f"{self._reconnect_attempts} reconnect attempt(s): {last_error}"
+        )
 
     def close(self) -> None:
         if self._capture is None:

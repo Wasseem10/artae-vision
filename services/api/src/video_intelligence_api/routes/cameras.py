@@ -5,22 +5,35 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from video_intelligence_api.auth import ActorDependency, EditorDependency
-from video_intelligence_api.dependencies import SessionDependency
+from video_intelligence_api.camera_secrets import CameraSecretError, encrypt_camera_credentials
+from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.models import Camera
 from video_intelligence_api.schemas import CameraCreate, CameraRead, CameraStatusUpdate
-from video_intelligence_api.source_utils import infer_source_type, redact_source_uri
+from video_intelligence_api.source_utils import (
+    infer_source_type,
+    inject_source_credentials,
+    redact_source_uri,
+    split_source_credentials,
+)
 from video_intelligence_api.tenancy import tenant_camera
 
 router = APIRouter(prefix="/cameras", tags=["cameras"])
 
 
 def camera_response(camera: Camera) -> CameraRead:
+    display_uri = (
+        inject_source_credentials(camera.source_uri, "***", "***")
+        if camera.credential_encrypted is not None
+        else camera.source_uri
+    )
     return CameraRead(
         id=camera.id,
         organization_id=camera.organization_id,
         name=camera.name,
-        source_uri=redact_source_uri(camera.source_uri),
+        source_uri=redact_source_uri(display_uri),
         source_type=camera.source_type,
+        edge_device_id=camera.edge_device_id,
+        has_credentials=camera.credential_encrypted is not None,
         status=camera.status,
         created_at=camera.created_at,
         updated_at=camera.updated_at,
@@ -29,13 +42,28 @@ def camera_response(camera: Camera) -> CameraRead:
 
 @router.post("", response_model=CameraRead, status_code=status.HTTP_201_CREATED)
 async def create_camera(
-    payload: CameraCreate, session: SessionDependency, actor: EditorDependency
+    payload: CameraCreate,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    actor: EditorDependency,
 ) -> CameraRead:
+    source_uri, username, password = split_source_credentials(payload.source_uri)
+    try:
+        encrypted = (
+            encrypt_camera_credentials(username, password or "", settings)
+            if username is not None
+            else None
+        )
+    except CameraSecretError as exc:
+        raise HTTPException(
+            status_code=503, detail="Camera credential encryption is unavailable"
+        ) from exc
     camera = Camera(
         organization_id=actor.organization_id,
         name=payload.name,
-        source_uri=payload.source_uri,
-        source_type=infer_source_type(payload.source_uri),
+        source_uri=source_uri,
+        source_type=infer_source_type(source_uri),
+        credential_encrypted=encrypted,
     )
     session.add(camera)
     try:

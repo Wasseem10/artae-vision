@@ -23,6 +23,7 @@ from video_intelligence_api.job_specs import (
     ZonePresenceJob,
 )
 from video_intelligence_api.models import GeometryType, Zone
+from video_intelligence_api.visual_intelligence import infer_temporal_mode
 
 logger = logging.getLogger(__name__)
 COMPILER_VERSION = "camera-job/3"
@@ -222,6 +223,10 @@ _SEMANTIC_VISUAL_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         r"\b(?:stops?|stopped)\s+(?:moving|working|operating)\b",
         r"\b(?:recharg(?:e|es|ed|ing)|charging\s+station)\b",
         r"\b(?:falls?|fell)\s+(?:off|from)\b",
+        r"\b(?:read|scan|recognize)\b.*\b(?:text|label|serial\s+number|barcode|qr\s+code)\b",
+        r"\b(?:spill|leak|smoke|misrouted|misplaced)\b",
+        r"\b(?:authori[sz]ed|unauthori[sz]ed|badge|access\s+control)\b",
+        r"\b(?:intends?|intention|thinking|trustworthy|criminal|about\s+to\s+steal)\b",
     )
 )
 
@@ -253,6 +258,19 @@ class DeterministicRuleProvider:
         geometry_matches = _matching_geometries(clarification, geometries) or _matching_geometries(
             prompt, geometries
         )
+        # A newly connected camera always has one automatic full-frame zone. Requiring the
+        # operator to know and type that internal zone name makes ordinary requests appear
+        # stuck. When it is the camera's only usable area, treat the whole view as the safe
+        # default and let custom saved zones remain explicit choices once they exist.
+        if not geometry_matches:
+            polygon_geometries = [
+                geometry for geometry in geometries if geometry.geometry_type != GeometryType.LINE
+            ]
+            if (
+                len(polygon_geometries) == 1
+                and polygon_geometries[0].name == FULL_FRAME_ZONE_NAME
+            ):
+                geometry_matches = polygon_geometries
         object_matches = _matching_objects(clarification) or _matching_objects(prompt)
         duration_matches = _durations(clarification) or _durations(prompt)
         rule_type = _job_type(prompt, duration_matches)
@@ -406,12 +424,15 @@ def _resolve_candidate(
                 "Please try compiling the visual condition again.",
             )
         geometry = matches[0]
+        temporal_mode = infer_temporal_mode(candidate.instruction)
         return candidate, SemanticVisionJob(
             instruction=candidate.instruction,
             object_class=candidate.object_class or "visual_event",
             zone_id=geometry.id,
             zone_name=geometry.name,
             minimum_confidence=max(candidate.minimum_confidence, 0.7),
+            temporal_mode=temporal_mode,
+            baseline_windows=1 if temporal_mode == "transition" else 0,
         )
     if not candidate.rule_type or not candidate.object_class or not candidate.zone_name:
         return _needs_clarification(
@@ -515,7 +536,7 @@ async def compile_rule_prompt(
 
     candidate, compiled = _resolve_candidate(candidate, zones)
     if compiled is not None:
-        capability = check_job_capability(compiled, settings)
+        capability = check_job_capability(compiled, settings, prompt)
         if not capability.supported and capability.reason:
             warnings.append(f"Not deployable with the current model: {capability.reason}")
     logger.info(

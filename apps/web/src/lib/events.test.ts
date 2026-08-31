@@ -21,6 +21,9 @@ function event(id: string): VideoEvent {
     occurred_at: "2026-08-17T12:00:00Z",
     clip_uri: "clip.mp4",
     details: {},
+    verification_status: "not_required",
+    verified_at: null,
+    verified_by: null,
     created_at: "2026-08-17T12:00:00Z",
   };
 }

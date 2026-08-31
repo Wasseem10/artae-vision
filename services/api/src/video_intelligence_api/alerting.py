@@ -21,21 +21,30 @@ from video_intelligence_api.models import (
 )
 
 
-async def enqueue_event_alert(session: AsyncSession, event: Event) -> Alert:
+async def enqueue_event_alert(
+    session: AsyncSession,
+    event: Event,
+    *,
+    connector_id: str | None = None,
+) -> Alert:
     """Create the incident and every routed delivery inside the event transaction."""
     now = utc_now()
     alert = Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now)
     session.add(alert)
-    routes = (
-        await session.execute(
-            select(RuleAlertChannel, AlertChannel)
-            .join(AlertChannel, AlertChannel.id == RuleAlertChannel.channel_id)
-            .where(
-                RuleAlertChannel.rule_id == event.rule_id,
-                AlertChannel.enabled.is_(True),
-            )
+    routes: list[tuple[RuleAlertChannel, AlertChannel]] = []
+    if connector_id is None:
+        routes = list(
+            (
+                await session.execute(
+                    select(RuleAlertChannel, AlertChannel)
+                    .join(AlertChannel, AlertChannel.id == RuleAlertChannel.channel_id)
+                    .where(
+                        RuleAlertChannel.rule_id == event.rule_id,
+                        AlertChannel.enabled.is_(True),
+                    )
+                )
+            ).all()
         )
-    ).all()
     for route, channel in routes:
         status = AlertDeliveryStatus.QUEUED
         error = None
@@ -73,16 +82,13 @@ async def enqueue_event_alert(session: AsyncSession, event: Event) -> Alert:
     if event.rule_id is not None:
         rule = await session.get(Rule, event.rule_id)
         if rule is not None:
-            bindings = list(
-                (
-                    await session.scalars(
-                        select(RuleActionBinding).where(
-                            RuleActionBinding.rule_id == event.rule_id,
-                            RuleActionBinding.enabled.is_(True),
-                        )
-                    )
-                ).all()
+            binding_query = select(RuleActionBinding).where(
+                RuleActionBinding.rule_id == event.rule_id,
+                RuleActionBinding.enabled.is_(True),
             )
+            if connector_id is not None:
+                binding_query = binding_query.where(RuleActionBinding.connector_id == connector_id)
+            bindings = list((await session.scalars(binding_query)).all())
             for binding in bindings:
                 execution_id = new_id()
                 execution_status = (

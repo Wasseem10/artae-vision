@@ -1,8 +1,10 @@
+from dataclasses import replace
+
 import numpy as np
 import pytest
 from video_intelligence_inference.config import Settings
 from video_intelligence_inference.control_plane import resolve_rule_config
-from video_intelligence_inference.observer import ObserverDecision
+from video_intelligence_inference.observer import ObserverDecision, RequestBudget
 from video_intelligence_inference.replay import run_replay
 from video_intelligence_inference.source import EndOfStream, VideoFrame
 
@@ -90,6 +92,43 @@ class FakeProvider:
         return None
 
 
+class TransitionProvider:
+    name = "fake-transition-vision"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def analyze(self, window, rule: str) -> ObserverDecision:
+        self.calls += 1
+        triggered = self.calls > 1
+        return ObserverDecision(
+            triggered=triggered,
+            confidence=0.9,
+            summary="Screen changed state."
+            if triggered
+            else "Screen baseline is visible.",
+            first_frame=2 if triggered else None,
+        )
+
+    def close(self) -> None:
+        return None
+
+
+class InWindowTransitionProvider:
+    name = "fake-in-window-transition-vision"
+
+    def analyze(self, window, rule: str) -> ObserverDecision:
+        return ObserverDecision(
+            triggered=True,
+            confidence=0.9,
+            summary="Baseline and transition are both visible.",
+            first_frame=3,
+        )
+
+    def close(self) -> None:
+        return None
+
+
 def test_semantic_replay_processes_every_window_and_counts_usage() -> None:
     progress: list[float] = []
     output = run_replay(
@@ -117,6 +156,77 @@ def test_semantic_replay_processes_every_window_and_counts_usage() -> None:
     assert [interval.start_seconds for interval in output.intervals] == [1, 3, 5, 7]
     assert [interval.end_seconds for interval in output.intervals] == [3, 5, 7, 9]
     assert progress == list(map(float, range(10)))
+
+
+def test_transition_replay_requires_baseline_and_rearms_after_emission() -> None:
+    rule = semantic_rule()
+    transition_rule = replace(rule, temporal_mode="transition", baseline_windows=1)
+    output = run_replay(
+        Settings(
+            observer_sample_fps=1,
+            observer_window_frames=4,
+            observer_overlap_frames=2,
+            observer_frame_width=96,
+            observer_frame_height=54,
+            observer_sheet_columns=2,
+            observer_max_requests_per_minute=100,
+            observer_max_requests_per_day=100,
+        ),
+        source_uri="fixture.mp4",
+        duration_seconds=10,
+        rule=transition_rule,
+        source_factory=lambda *_args, **_kwargs: FakeSource(),
+        provider_factory=lambda _settings: TransitionProvider(),
+    )
+
+    assert output.provider_requests == 4
+    assert len(output.intervals) == 1
+
+
+def test_transition_replay_accepts_baseline_earlier_in_same_window() -> None:
+    transition_rule = replace(
+        semantic_rule(), temporal_mode="transition", baseline_windows=1
+    )
+    output = run_replay(
+        Settings(
+            observer_sample_fps=1,
+            observer_window_frames=4,
+            observer_overlap_frames=2,
+            observer_frame_width=96,
+            observer_frame_height=54,
+            observer_sheet_columns=2,
+            observer_max_requests_per_minute=100,
+            observer_max_requests_per_day=100,
+        ),
+        source_uri="fixture.mp4",
+        duration_seconds=10,
+        rule=transition_rule,
+        source_factory=lambda *_args, **_kwargs: FakeSource(),
+        provider_factory=lambda _settings: InWindowTransitionProvider(),
+    )
+
+    assert output.provider_requests == 4
+    assert len(output.intervals) == 1
+
+
+def test_semantic_replay_fails_instead_of_silently_skipping_budgeted_windows() -> None:
+    with pytest.raises(RuntimeError, match="provider budget exhausted"):
+        run_replay(
+            Settings(
+                observer_sample_fps=1,
+                observer_window_frames=4,
+                observer_overlap_frames=2,
+                observer_frame_width=96,
+                observer_frame_height=54,
+                observer_sheet_columns=2,
+            ),
+            source_uri="fixture.mp4",
+            duration_seconds=10,
+            rule=semantic_rule(),
+            source_factory=lambda *_args, **_kwargs: FakeSource(),
+            provider_factory=lambda _settings: FakeProvider(),
+            request_budget=RequestBudget(per_minute=1, per_day=10),
+        )
 
 
 @pytest.mark.parametrize("source_uri", ["webcam:0", "rtsp://camera/live"])

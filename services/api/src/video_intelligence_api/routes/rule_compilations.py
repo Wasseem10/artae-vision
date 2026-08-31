@@ -74,6 +74,22 @@ async def _camera_zones(camera_id: str, session: SessionDependency, actor: Actor
     return zones
 
 
+async def _original_prompt(
+    compilation: RuleCompilation,
+    session: SessionDependency,
+) -> str:
+    """Follow clarification revisions back to the clean operator-authored request."""
+    current = compilation
+    visited = {current.id}
+    while current.parent_id is not None and current.parent_id not in visited:
+        parent = await session.get(RuleCompilation, current.parent_id)
+        if parent is None:
+            break
+        current = parent
+        visited.add(current.id)
+    return current.prompt
+
+
 async def _compile_and_store(
     *,
     camera_id: str,
@@ -251,8 +267,9 @@ async def accept_compilation(
         "object_dwell": "remains in",
         "semantic_vision": "matches the visual condition in",
     }[compiled.rule_type]
+    original_prompt = await _original_prompt(compilation, session)
     suggested_name = (
-        f"Visual alert: {compilation.prompt[:180]}"
+        f"Visual alert: {original_prompt[:180]}"
         if compiled.rule_type == "semantic_vision"
         else f"{compiled.object_class.title()} {behavior} {geometry_name}"
     )
@@ -271,7 +288,7 @@ async def accept_compilation(
         minimum_confidence=compiled.minimum_confidence,
         absence_grace_seconds=compiled.absence_grace_seconds,
         status=RuleStatus.DRAFT,
-        original_prompt=compilation.prompt,
+        original_prompt=original_prompt,
         spec_version=compiled.schema_version,
         spec=compiled.model_dump(mode="json"),
     )

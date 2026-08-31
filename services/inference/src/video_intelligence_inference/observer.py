@@ -70,6 +70,48 @@ class ObserverDecision(BaseModel):
     scene_observations: list[SceneObservation] = Field(default_factory=list, max_length=50)
 
 
+def _validated_observer_decision(content: str) -> ObserverDecision:
+    payload = json.loads(_strip_code_fence(content))
+    observations = payload.get("scene_observations", [])
+    sanitized: list[dict[str, object]] = []
+    if isinstance(observations, list):
+        for observation in observations[:50]:
+            if not isinstance(observation, dict):
+                continue
+            box = observation.get("bounding_box")
+            if not isinstance(box, dict):
+                continue
+            try:
+                values = [float(box[key]) for key in ("x", "y", "width", "height")]
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not all(math.isfinite(value) for value in values):
+                continue
+            if any(value > 1 for value in values):
+                if all(0 <= value <= 100 for value in values):
+                    values = [value / 100 for value in values]
+                else:
+                    continue
+            x, y, width, height = values
+            x = min(max(x, 0.0), 0.999999)
+            y = min(max(y, 0.0), 0.999999)
+            width = min(max(width, 0.000001), 1 - x)
+            height = min(max(height, 0.000001), 1 - y)
+            sanitized.append(
+                observation
+                | {
+                    "bounding_box": {
+                        "x": x,
+                        "y": y,
+                        "width": width,
+                        "height": height,
+                    }
+                }
+            )
+    payload["scene_observations"] = sanitized
+    return ObserverDecision.model_validate(payload)
+
+
 class VisionObserverProvider(Protocol):
     """Small provider boundary shared by cloud and no-key implementations."""
 
@@ -79,6 +121,42 @@ class VisionObserverProvider(Protocol):
     def analyze(self, window: ObservationWindow, rule: str) -> ObserverDecision: ...
 
     def close(self) -> None: ...
+
+
+def _rule_evaluation_guidance(rule: str) -> str:
+    normalized = rule.casefold()
+    if "falls to the ground" in normalized:
+        return (
+            "A transition from upright to lying on the floor, ground, or a safety mat counts as "
+            "a fall even when staged safely. Sitting, kneeling, bending, and deliberate normal "
+            "lying down do not count."
+        )
+    if "removes their hard hat" in normalized:
+        return (
+            "Require a visible before-and-after transition: the same worker wears the hard hat "
+            "first and no longer wears it later. Adjusting a hard hat that remains on does not "
+            "count."
+        )
+    if "production line stops moving" in normalized:
+        return (
+            "Require visible motion from the same line or conveyed items in earlier frames and "
+            "sustained visible stillness later. Do not infer a stop from sparse sampling, a person "
+            "crossing, or one item briefly occupying a similar position."
+        )
+    if "liquid spill appears" in normalized:
+        return (
+            "Require a new visible wet region, pooling, spreading, darkening, or liquid reflection "
+            "on the floor. A bottle being held or opened without visible liquid does not count."
+        )
+    if "package falls off" in normalized:
+        return (
+            "Require a package to visibly leave the supported line and move downward off it. "
+            "Normal conveyor travel, manual pickup, and camera motion do not count."
+        )
+    return (
+        "Compare the same people, objects, and regions across frames and require direct visual "
+        "evidence for every part of the rule."
+    )
 
 
 @dataclass(frozen=True)
@@ -122,6 +200,8 @@ class OverlappingSheetSampler:
         self._frames: list[tuple[float, np.ndarray]] = []
         self._next_sample_at: float | None = None
         self._sequence = 0
+        self._emitted_any = False
+        self._new_frames_since_emit = 0
 
     def add(self, frame: np.ndarray, captured_at: float) -> ObservationWindow | None:
         """Add a frame when due and return a completed chronological sheet."""
@@ -135,11 +215,14 @@ class OverlappingSheetSampler:
 
         resized = cv2.resize(frame, self._frame_size, interpolation=cv2.INTER_AREA)
         self._frames.append((captured_at, resized))
+        self._new_frames_since_emit += 1
         if len(self._frames) < self._window_frames:
             return None
 
         selected = self._frames[: self._window_frames]
         self._sequence += 1
+        self._emitted_any = True
+        self._new_frames_since_emit = 0
         window = ObservationWindow(
             sequence=self._sequence,
             started_at=selected[0][0],
@@ -148,6 +231,22 @@ class OverlappingSheetSampler:
         )
         self._frames = selected[-self._overlap_frames :] if self._overlap_frames else []
         return window
+
+    def flush(self) -> ObservationWindow | None:
+        """Emit one partial sheet when a finite replay is shorter than a full window."""
+        if len(self._frames) < 2 or (self._emitted_any and self._new_frames_since_emit == 0):
+            return None
+        selected = self._frames
+        self._frames = []
+        self._sequence += 1
+        self._emitted_any = True
+        self._new_frames_since_emit = 0
+        return ObservationWindow(
+            sequence=self._sequence,
+            started_at=selected[0][0],
+            ended_at=selected[-1][0],
+            sheet=self._compose_sheet([item[1] for item in selected]),
+        )
 
     def _compose_sheet(self, frames: list[np.ndarray]) -> np.ndarray:
         frame_width, frame_height = self._frame_size
@@ -209,6 +308,7 @@ class QwenVisionClient:
             "The image is a chronological contact sheet. Frame numbers increase left-to-right "
             "and then top-to-bottom. Evaluate only visible evidence.\n\n"
             f"Rule: {rule}\n\n"
+            f"Decision criteria: {_rule_evaluation_guidance(rule)}\n\n"
             "Return JSON with exactly these fields: triggered (boolean), confidence (0 to 1), "
             "summary (short string), first_frame (integer or null), and scene_observations "
             "(an array of stable visible regions/equipment/entities). Each scene observation "
@@ -240,7 +340,7 @@ class QwenVisionClient:
             content = payload["choices"][0]["message"]["content"]
             if not isinstance(content, str):
                 raise TypeError("response content is not a string")
-            decision = ObserverDecision.model_validate(json.loads(_strip_code_fence(content)))
+            decision = _validated_observer_decision(content)
             usage = payload.get("usage", {})
             return decision.model_copy(
                 update={
@@ -290,10 +390,13 @@ class GeminiVisionClient:
             "and then top-to-bottom. Evaluate only visible evidence. Do not infer an event that "
             "is not visible.\n\n"
             f"Rule: {rule}\n\n"
+            f"Decision criteria: {_rule_evaluation_guidance(rule)}\n\n"
             "Decide whether the rule occurred anywhere in the sheet. first_frame is the earliest "
             "numbered frame showing the event, or null when it did not occur. Also return stable "
             "visible regions, equipment, displays, and tracked entities in scene_observations; "
-            "use normalized bounding boxes and an empty array when none are reliable."
+            "use normalized bounding boxes. Every x, y, width, and height value must be a decimal "
+            "between 0 and 1, never pixels or percentages. Use an empty array when no observation "
+            "is reliable."
         )
         response = self._client.post(
             f"/models/{self._model}:generateContent",
@@ -325,14 +428,11 @@ class GeminiVisionClient:
                             },
                             "summary": {"type": "string", "maxLength": 1000},
                             "first_frame": {
-                                "anyOf": [
-                                    {"type": "integer", "minimum": 1},
-                                    {"type": "null"},
-                                ]
+                                "type": ["integer", "null"],
+                                "minimum": 1,
                             },
                             "scene_observations": {
                                 "type": "array",
-                                "maxItems": 50,
                                 "items": {
                                     "type": "object",
                                     "properties": {
@@ -351,18 +451,36 @@ class GeminiVisionClient:
                                         "bounding_box": {
                                             "type": "object",
                                             "properties": {
-                                                "x": {"type": "number"},
-                                                "y": {"type": "number"},
-                                                "width": {"type": "number"},
-                                                "height": {"type": "number"},
+                                                "x": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 1,
+                                                },
+                                                "y": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 1,
+                                                },
+                                                "width": {
+                                                    "type": "number",
+                                                    "minimum": 0.001,
+                                                    "maximum": 1,
+                                                },
+                                                "height": {
+                                                    "type": "number",
+                                                    "minimum": 0.001,
+                                                    "maximum": 1,
+                                                },
                                             },
                                             "required": ["x", "y", "width", "height"],
                                         },
                                         "description": {"type": "string"},
                                         "state": {"type": "string"},
-                                        "confidence": {"type": "number"},
-                                        "attributes": {"type": "object"},
-                                        "relationships": {"type": "array"},
+                                        "confidence": {
+                                            "type": "number",
+                                            "minimum": 0,
+                                            "maximum": 1,
+                                        },
                                     },
                                     "required": [
                                         "stable_key",
@@ -372,8 +490,6 @@ class GeminiVisionClient:
                                         "description",
                                         "state",
                                         "confidence",
-                                        "attributes",
-                                        "relationships",
                                     ],
                                 },
                             },
@@ -385,9 +501,9 @@ class GeminiVisionClient:
                             "first_frame",
                             "scene_observations",
                         ],
-                        "additionalProperties": False,
                     },
-                    "maxOutputTokens": 200,
+                    "maxOutputTokens": 1000,
+                    "temperature": 0,
                     "thinkingConfig": {"thinkingLevel": "MINIMAL"},
                 },
             },
@@ -399,8 +515,8 @@ class GeminiVisionClient:
             content = "".join(part.get("text", "") for part in parts)
             if not content:
                 raise TypeError("response content is empty")
-            decision = ObserverDecision.model_validate_json(_strip_code_fence(content))
-        except (KeyError, IndexError, TypeError, ValidationError) as error:
+            decision = _validated_observer_decision(content)
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as error:
             raise RuntimeError("Gemini returned an invalid observer response") from error
 
         usage = payload.get("usageMetadata", {})

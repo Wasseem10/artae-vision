@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from video_intelligence_api.job_specs import CameraJobSpec
+from video_intelligence_api.visual_intelligence import VisualSupportAssessment, assess_visual_job
 from video_intelligence_api.visual_skills import VisualSkillSelection, select_visual_skills
 
 
@@ -30,6 +31,7 @@ class ExecutionPlan(BaseModel):
     provider_requests: bool
     stages: list[ExecutionStage]
     visual_skills: list[VisualSkillSelection] = Field(default_factory=list)
+    support: VisualSupportAssessment
 
 
 def _stage(
@@ -50,7 +52,7 @@ def _stage(
     )
 
 
-def plan_job(spec: CameraJobSpec) -> ExecutionPlan:
+def plan_job(spec: CameraJobSpec, prompt: str | None = None) -> ExecutionPlan:
     """Choose the smallest currently supported stack that can execute one job."""
     capture = _stage(
         "capture",
@@ -68,8 +70,9 @@ def plan_job(spec: CameraJobSpec) -> ExecutionPlan:
         "edge",
         "Save bounded video before and after a confirmed event.",
     )
+    support = assess_visual_job(spec, prompt)
     if spec.rule_type == "semantic_vision":
-        visual_skills = list(select_visual_skills(spec.instruction))
+        visual_skills = list(select_visual_skills(prompt or spec.instruction))
         return ExecutionPlan(
             strategy="semantic_window",
             summary=(
@@ -77,6 +80,7 @@ def plan_job(spec: CameraJobSpec) -> ExecutionPlan:
                 "model to evaluate the operator's exact condition. YOLO is not required."
             ),
             provider_requests=True,
+            support=support,
             visual_skills=visual_skills,
             stages=[
                 capture,
@@ -115,6 +119,7 @@ def plan_job(spec: CameraJobSpec) -> ExecutionPlan:
             "and time with deterministic state machines. No vision-provider request is needed."
         ),
         provider_requests=False,
+        support=support,
         stages=[
             capture,
             _stage(

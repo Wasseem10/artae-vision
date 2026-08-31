@@ -8,15 +8,22 @@ from sqlalchemy import func, select
 from video_intelligence_api.auth import AdminDependency
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.models import (
+    AgentDesiredStatus,
     AgentObservedStatus,
     Alert,
     AlertStatus,
     Camera,
     CameraAgent,
+    CameraDiscoveryRun,
+    CameraDiscoveryStatus,
     CameraStatus,
     EdgeHealthStatus,
     EdgeStationProfile,
     Event,
+    OperationalHealthIncident,
+    RecordingSegment,
+    RecordingSegmentStatus,
+    utc_now,
 )
 from video_intelligence_api.security import require_agent_key
 
@@ -47,7 +54,14 @@ async def production_readiness(
     """Explain every remaining hosted-production prerequisite without exposing secrets."""
     del actor
     cors_is_restricted = bool(settings.cors_origins) and "*" not in settings.cors_origins
-    object_storage_ready = bool(settings.object_storage_endpoint and settings.object_storage_bucket)
+    object_storage_ready = bool(
+        settings.object_storage_bucket
+        and settings.recording_storage_backend in {"s3", "supabase"}
+        and (
+            settings.recording_storage_backend == "s3"
+            or (settings.supabase_url and settings.supabase_secret_key)
+        )
+    )
     checks = [
         ReadinessCheck(
             "environment",
@@ -87,6 +101,12 @@ async def production_readiness(
             "Set a unique alert encryption key in the secret manager.",
         ),
         ReadinessCheck(
+            "camera_security",
+            "Encrypted camera credentials",
+            settings.camera_encryption_key is not None,
+            "Set a unique camera encryption key in the secret manager.",
+        ),
+        ReadinessCheck(
             "cors",
             "Restricted browser origins",
             cors_is_restricted,
@@ -102,7 +122,7 @@ async def production_readiness(
             "object_storage",
             "Durable evidence object storage",
             object_storage_ready,
-            "Select a storage provider and configure endpoint and private bucket.",
+            "Select the S3 recording backend and configure a private bucket.",
         ),
         ReadinessCheck(
             "backups",
@@ -142,10 +162,54 @@ async def prometheus_metrics(
         "video_intelligence_cameras_online": await count(
             Camera, Camera.status == CameraStatus.ONLINE
         ),
+        "video_intelligence_cameras_error": await count(
+            Camera, Camera.status == CameraStatus.ERROR
+        ),
         "video_intelligence_agents_running": await count(
             CameraAgent, CameraAgent.observed_status == AgentObservedStatus.RUNNING
         ),
+        "video_intelligence_agents_stale": await count(
+            CameraAgent,
+            CameraAgent.desired_status == AgentDesiredStatus.RUNNING,
+            CameraAgent.lease_expires_at < utc_now(),
+        ),
+        "video_intelligence_agents_retry_backoff": await count(
+            CameraAgent, CameraAgent.next_retry_at > utc_now()
+        ),
+        "video_intelligence_camera_reconnects_total": int(
+            (await session.scalar(select(func.coalesce(func.sum(CameraAgent.reconnect_count), 0))))
+            or 0
+        ),
+        "video_intelligence_recording_errors": await count(
+            CameraAgent, CameraAgent.recording_state == "error"
+        ),
+        "video_intelligence_recording_dropped_frames_total": int(
+            (
+                await session.scalar(
+                    select(func.coalesce(func.sum(CameraAgent.recording_dropped_frames), 0))
+                )
+            )
+            or 0
+        ),
+        "video_intelligence_recording_archive_ready": await count(
+            RecordingSegment, RecordingSegment.status == RecordingSegmentStatus.READY
+        ),
+        "video_intelligence_recording_legal_holds": await count(
+            RecordingSegment, RecordingSegment.legal_hold.is_(True)
+        ),
+        "video_intelligence_camera_discovery_queued": await count(
+            CameraDiscoveryRun,
+            CameraDiscoveryRun.status == CameraDiscoveryStatus.QUEUED,
+        ),
+        "video_intelligence_camera_discovery_failed": await count(
+            CameraDiscoveryRun,
+            CameraDiscoveryRun.status == CameraDiscoveryStatus.FAILED,
+        ),
         "video_intelligence_alerts_open": await count(Alert, Alert.status == AlertStatus.OPEN),
+        "video_intelligence_operational_health_active": await count(
+            OperationalHealthIncident,
+            OperationalHealthIncident.status != AlertStatus.RESOLVED,
+        ),
         "video_intelligence_events_total": await count(Event),
         "video_intelligence_edge_stations_healthy": await count(
             EdgeStationProfile,

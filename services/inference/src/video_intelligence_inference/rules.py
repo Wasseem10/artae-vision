@@ -59,6 +59,10 @@ class DwellRuleEngine:
     def __init__(self, rule: DwellRule) -> None:
         self.rule = rule
         self._states: dict[int, _DwellState] = {}
+        # Presence is a property of the zone, not of a detector-assigned track ID.
+        # Keeping one scene-level state prevents a brief tracker ID change from
+        # announcing the same continuously present object as a new event.
+        self._presence_state: _DwellState | None = None
 
     def evaluate(
         self,
@@ -70,6 +74,14 @@ class DwellRuleEngine:
     ) -> list[RuleMatch]:
         if timestamp_seconds < 0:
             raise ValueError("Frame timestamp cannot be negative.")
+
+        if self.rule.event_type == "zone_presence":
+            return self._evaluate_presence(
+                detections,
+                timestamp_seconds=timestamp_seconds,
+                frame_width=frame_width,
+                frame_height=frame_height,
+            )
 
         seen_inside: set[int] = set()
         matches: list[RuleMatch] = []
@@ -123,6 +135,61 @@ class DwellRuleEngine:
                 del self._states[track_id]
 
         return matches
+
+    def _evaluate_presence(
+        self,
+        detections: list[Detection],
+        *,
+        timestamp_seconds: float,
+        frame_width: int,
+        frame_height: int,
+    ) -> list[RuleMatch]:
+        candidates = [
+            detection
+            for detection in detections
+            if detection.track_id is not None
+            and detection.label == self.rule.object_class
+            and detection.confidence >= self.rule.minimum_confidence
+            and self.rule.zone.contains_detection(
+                detection,
+                frame_width=frame_width,
+                frame_height=frame_height,
+            )
+        ]
+        if not candidates:
+            state = self._presence_state
+            if (
+                state is not None
+                and timestamp_seconds - state.last_seen_seconds > self.rule.absence_grace_seconds
+            ):
+                self._presence_state = None
+            return []
+
+        strongest = max(candidates, key=lambda detection: detection.confidence)
+        state = self._presence_state
+        if state is None:
+            state = _DwellState(timestamp_seconds, timestamp_seconds)
+            self._presence_state = state
+        else:
+            state.last_seen_seconds = timestamp_seconds
+
+        dwell_seconds = timestamp_seconds - state.entered_at_seconds
+        if state.fired or dwell_seconds < self.rule.duration_seconds:
+            return []
+        state.fired = True
+        return [
+            RuleMatch(
+                rule_id=self.rule.id,
+                track_id=strongest.track_id,
+                object_class=strongest.label,
+                zone_name=self.rule.zone.name,
+                entered_at_seconds=state.entered_at_seconds,
+                occurred_at_seconds=timestamp_seconds,
+                dwell_seconds=dwell_seconds,
+                confidence=strongest.confidence,
+                event_type=self.rule.event_type,
+            )
+        ]
 
     def active_dwells(self, timestamp_seconds: float) -> dict[int, float]:
         return {

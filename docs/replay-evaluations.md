@@ -29,7 +29,7 @@ The worker never creates real incidents from replay data:
 
 - deterministic routes reuse the production YOLO tracker and temporal rule engine;
 - semantic routes reuse the production overlapping sampler, provider, confirmation,
-  cooldown, and request budgets; and
+  cooldown, and a worker-wide replay request budget; and
 - the resulting temporal intervals and provider token usage return only to the replay
   scorer.
 
@@ -41,8 +41,7 @@ Advanced operators can still provide a finite file path or URI reachable by the 
 During execution the worker reports processed video time at bounded intervals. Every
 heartbeat renews the database lease, while the dashboard polls the evaluation and shows
 its percentage and processed seconds. This prevents long clips from being reassigned
-merely because they run longer than the initial lease. Object-storage distribution,
-batch suite comparison, and promotion gates remain Phase-16 work.
+merely because they run longer than the initial lease.
 
 Provider prices are configuration rather than hard-coded constants because pricing
 changes by model and region. When a paid run reports requests but the worker's input
@@ -51,6 +50,10 @@ presenting a misleading zero-dollar estimate.
 
 Keeping execution separate from scoring is intentional: metrics stay deterministic,
 re-runnable, and comparable even when a model provider or replay worker is unavailable.
+Finite semantic replays flush their final partial contact sheet so events near the end
+of a short clip are not silently ignored. If the shared replay request ceiling is
+exhausted, the evaluation fails explicitly instead of scoring unobserved windows as
+negative evidence.
 
 ## Regression suites and promotion gates
 
@@ -70,6 +73,45 @@ Each run stores the threshold snapshot and evaluates:
 
 All checks must pass before the run is marked `passed`; otherwise it is marked `failed`.
 The dashboard shows the aggregate decision, every gate calculation, per-video results,
-and recent history. An active suite also records completed-video progress. The result is
+capability-by-capability metrics, and recent history. An active suite also records
+completed-video progress. The result is
 the release evidence for a configuration; connecting it to a future versioned plan
 promotion workflow belongs to Phase 17.
+
+## Cross-industry camera calibration
+
+The calibration pack is the evidence checklist for the general visual-intelligence
+layer. It currently covers person presence, entry, PPE removal, a staged safe fall,
+equipment stopping, a spill appearing, a package falling, and serial-number reading.
+The scenarios intentionally span deterministic detection, tracking, transitions,
+pose/action understanding, change detection, segmentation, grounding, and OCR.
+
+Each replay can be classified as:
+
+- `synthetic`, which proves only that the software pipeline runs;
+- `public_benchmark`, which is traceable licensed real footage used for general testing;
+- `controlled`, recorded deliberately on a real target camera; or
+- `field`, captured during representative real operation.
+
+Synthetic clips never count toward readiness. Licensed public benchmarks can establish
+general benchmark readiness, but only controlled/field footage can support a
+site-specific claim. An automatically scored scenario becomes ready only after at
+least two credible positive clips, two credible negative clips, one difficult-condition
+clip, F1 and recall of at least 0.80 on every positive clip, and zero false alarms on
+every negative clip. Low light, distance, partial occlusion, and camera motion are
+recognized difficult conditions. The overall claim remains blocked until every
+automatically scored core scenario is ready.
+
+Source pages, creators, licenses, hashes, rejected candidates, and derived-excerpt
+instructions are recorded in `docs/calibration-sources.json` and
+`docs/calibration-datasets.md`.
+
+Serial-number OCR is deliberately marked `manual_only`: event timing cannot establish
+whether the characters were read correctly. It requires exact ground-truth strings and
+value-level scoring before that capability can be claimed.
+
+Use the recording protocol shown in the dashboard for every scenario. Label intervals
+from the moment the visible condition becomes true until it ends. Negative clips must
+have no expected interval. Do not lower confidence thresholds merely to make one clip
+pass; inspect misses and camera placement first, then preserve representative clips in
+a regression suite before changing execution settings.

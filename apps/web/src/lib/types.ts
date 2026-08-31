@@ -36,8 +36,16 @@ export type EvidenceSearchStatus =
   | "failed";
 export type ReplayEvaluationStatus = "draft" | "queued" | "running" | "scored" | "failed";
 export type ReplaySuiteRunStatus = "queued" | "running" | "passed" | "failed";
+export type ReplayScenarioVariant = "positive" | "negative" | "unclassified";
+export type ReplaySourceKind = "synthetic" | "controlled" | "field" | "public_benchmark" | "unclassified";
+export type CalibrationScenarioState =
+  | "no_evidence"
+  | "collecting"
+  | "failing"
+  | "ready"
+  | "manual_only";
 export type VisualAgentPlanStatus = "draft" | "approved" | "superseded";
-export type ConnectorType = "mock" | "generic_webhook" | "messaging_webhook" | "ticket_webhook";
+export type ConnectorType = "mock" | "generic_webhook" | "messaging_webhook" | "ticket_webhook" | "telegram";
 export type ActionRiskLevel = "low" | "medium" | "high";
 export type ActionApprovalMode = "automatic" | "manual";
 export type ActionExecutionStatus =
@@ -53,6 +61,23 @@ export type ContextSourceType = "simulated_access_control" | "generic_event_feed
 export type CorrelationEvaluationStatus = "pending" | "matched" | "clear" | "failed";
 export type SceneItemKind = "region" | "equipment" | "display" | "tracked_entity" | "other";
 export type SceneReviewStatus = "proposed" | "confirmed" | "rejected";
+export type VerificationStatus =
+  | "not_required"
+  | "pending"
+  | "confirmed"
+  | "rejected"
+  | "uncertain";
+export type AccuracyLabelOutcome =
+  | "true_positive"
+  | "false_positive"
+  | "false_negative"
+  | "true_negative";
+export type AccuracyGateStatus = "collecting" | "ready" | "failing" | "drifting";
+export type AccuracyEnvironmentTag =
+  | "low_light"
+  | "partial_occlusion"
+  | "far_distance"
+  | "camera_motion";
 
 export interface Camera {
   id: string;
@@ -60,6 +85,8 @@ export interface Camera {
   name: string;
   source_uri: string;
   source_type: SourceType;
+  edge_device_id: string | null;
+  has_credentials: boolean;
   status: CameraStatus;
   created_at: string;
   updated_at: string;
@@ -85,12 +112,183 @@ export interface CameraAgent {
   edge_device_id: string | null;
   lease_expires_at: string | null;
   last_heartbeat_at: string | null;
+  last_frame_at: string | null;
+  health_status: "healthy" | "recovering" | "stale" | "offline" | "error";
+  heartbeat_age_seconds: number | null;
   fps: number | null;
   inference_latency_ms: number | null;
   frame_width: number | null;
   frame_height: number | null;
+  frames_processed: number;
+  reconnect_count: number;
+  recording_state: "disabled" | "starting" | "recording" | "stopped" | "error";
+  recording_segments_completed: number;
+  recording_dropped_frames: number;
+  recording_error: string | null;
+  failure_count: number;
+  next_retry_at: string | null;
   last_error: string | null;
   updated_at: string | null;
+}
+
+export interface RecordingSegment {
+  id: string;
+  organization_id: string;
+  camera_id: string;
+  edge_device_id: string | null;
+  source_key: string;
+  source_filename: string;
+  started_at: string;
+  ended_at: string;
+  duration_seconds: number;
+  frame_count: number;
+  fps: number;
+  width: number;
+  height: number;
+  status: "local_only" | "ready" | "expired" | "failed";
+  media_type: string | null;
+  size_bytes: number | null;
+  sha256: string | null;
+  legal_hold: boolean;
+  expires_at: string;
+  last_error: string | null;
+  content_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscoveredOnvifDevice {
+  endpoint_reference: string;
+  xaddrs: string[];
+  scopes: string[];
+  remote_address: string;
+}
+
+export interface CameraDiscoveryRun {
+  id: string;
+  organization_id: string;
+  edge_device_id: string;
+  status: "queued" | "running" | "completed" | "failed";
+  timeout_seconds: number;
+  devices: DiscoveredOnvifDevice[];
+  worker_id: string | null;
+  lease_expires_at: string | null;
+  last_error: string | null;
+  requested_by: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OnvifMediaProfile {
+  token: string;
+  name: string;
+  encoding: string | null;
+  width: number | null;
+  height: number | null;
+  frame_rate: number | null;
+  stream_uri: string;
+}
+
+export interface CameraOnboardingRun {
+  id: string;
+  organization_id: string;
+  edge_device_id: string;
+  discovery_run_id: string;
+  camera_name: string;
+  endpoint_url: string;
+  verify_tls: boolean;
+  status: "queued" | "running" | "completed" | "failed";
+  profiles: OnvifMediaProfile[];
+  selected_profile_token: string | null;
+  camera_id: string | null;
+  worker_id: string | null;
+  lease_expires_at: string | null;
+  last_error: string | null;
+  requested_by: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCameraOnboardingInput {
+  discovery_run_id: string;
+  endpoint_url: string;
+  camera_name: string;
+  username: string;
+  password: string;
+  verify_tls: boolean;
+}
+
+export interface CameraCommissioningMetrics {
+  frame_count: number;
+  read_failures: number;
+  width: number;
+  height: number;
+  observed_fps: number;
+  brightness_mean: number;
+  contrast_mean: number;
+  sharpness_mean: number;
+  frozen_frame_ratio: number;
+  black_frame_ratio: number;
+}
+
+export interface CameraCommissioningFinding {
+  key: string;
+  severity: "info" | "warning" | "error";
+  message: string;
+  guidance: string;
+}
+
+export interface CameraCommissioningRun {
+  id: string;
+  organization_id: string;
+  camera_id: string;
+  edge_device_id: string;
+  status: "queued" | "running" | "passed" | "needs_attention" | "failed";
+  duration_seconds: number;
+  maximum_frames: number;
+  metrics: CameraCommissioningMetrics | null;
+  findings: CameraCommissioningFinding[];
+  readiness_score: number | null;
+  worker_id: string | null;
+  lease_expires_at: string | null;
+  last_error: string | null;
+  requested_by: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCameraCommissioningInput {
+  camera_id: string;
+  edge_device_id: string | null;
+  duration_seconds: number;
+  maximum_frames: number;
+}
+
+export interface OperationalHealthIncident {
+  id: string;
+  organization_id: string;
+  camera_id: string | null;
+  edge_device_id: string | null;
+  resource_type: "camera" | "edge_device";
+  resource_name: string;
+  condition: string;
+  severity: "warning" | "critical";
+  status: AlertStatus;
+  title: string;
+  detail: string;
+  diagnostics: Record<string, unknown>;
+  occurrence_count: number;
+  first_detected_at: string;
+  last_detected_at: string;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PlatformCapabilities {
@@ -131,6 +329,17 @@ export interface AgentTelemetry {
   analysis_requests_today: number;
   analysis_request_limit_day: number;
   analysis_request_limit_minute: number;
+  frames_processed: number | null;
+  reconnect_count: number | null;
+  recording_state: "disabled" | "starting" | "recording" | "stopped" | "error" | null;
+  recording_segments_completed: number | null;
+  recording_dropped_frames: number | null;
+  recording_error: string | null;
+  health_status: "healthy" | "recovering" | "stale" | "offline" | "error";
+  heartbeat_age_seconds: number | null;
+  failure_count: number;
+  next_retry_at: string | null;
+  last_frame_at: string | null;
 }
 
 export interface ZonePoint {
@@ -229,6 +438,8 @@ export interface SemanticVisionJob {
   absence_grace_seconds: number;
   confirmation_windows: number;
   cooldown_seconds: number;
+  temporal_mode: "state" | "transition" | "sequence";
+  baseline_windows: number;
 }
 
 export type CameraJobSpec =
@@ -250,12 +461,40 @@ export interface ExecutionStage {
   purpose: string;
 }
 
+export interface VisualSupportAssessment {
+  tier:
+    | "deterministic"
+    | "semantic_fallback"
+    | "requires_context"
+    | "not_visually_verifiable";
+  label: string;
+  deployable: boolean;
+  reason: string;
+  limitations: string[];
+  required_context: string[];
+  validation_required: boolean;
+  temporal_mode: "state" | "transition" | "sequence";
+}
+
+export interface VisualSkillSelection {
+  id: string;
+  label: string;
+  capability: string;
+  executor: string;
+  execution_mode: "specialized" | "semantic_fallback";
+  provider_requests: boolean;
+  benchmark_policy: string;
+  readiness: "fallback_only" | "specialized_ready";
+}
+
 export interface ExecutionPlan {
   schema_version: 1;
   strategy: "deterministic_tracking" | "semantic_window";
   summary: string;
   provider_requests: boolean;
   stages: ExecutionStage[];
+  visual_skills: VisualSkillSelection[];
+  support: VisualSupportAssessment;
 }
 
 export interface RuleCompilation {
@@ -295,7 +534,214 @@ export interface VideoEvent {
   occurred_at: string;
   clip_uri: string;
   details: Record<string, unknown>;
+  verification_status: VerificationStatus;
+  verified_at: string | null;
+  verified_by: string | null;
   created_at: string;
+}
+
+export interface VerificationCase {
+  id: string;
+  organization_id: string;
+  event_id: string;
+  status: VerificationStatus;
+  camera_name: string;
+  rule_name: string;
+  proposer_model: string | null;
+  verifier_model: string | null;
+  proposer_confidence: number;
+  verifier_confidence: number | null;
+  proposal_summary: string;
+  verifier_summary: string | null;
+  reasoning: string;
+  decision_source: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  evidence_id: string | null;
+  evidence_status: EvidenceStatus | null;
+  evidence_content_url: string | null;
+  accuracy_label: FieldAccuracyLabel | null;
+  event: VideoEvent;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FieldAccuracyLabel {
+  id: string;
+  organization_id: string;
+  camera_id: string;
+  rule_id: string;
+  verification_case_id: string | null;
+  event_id: string | null;
+  recording_id: string | null;
+  outcome: AccuracyLabelOutcome;
+  source: string;
+  environment_tags: AccuracyEnvironmentTag[];
+  notes: string;
+  occurred_at: string;
+  reviewed_by: string;
+  created_at: string;
+}
+
+export interface FieldAccuracySnapshot {
+  id: string;
+  organization_id: string;
+  camera_id: string;
+  rule_id: string;
+  window_size: number;
+  label_count: number;
+  positive_count: number;
+  negative_count: number;
+  challenging_count: number;
+  true_positives: number;
+  false_positives: number;
+  false_negatives: number;
+  true_negatives: number;
+  precision: number | null;
+  recall: number | null;
+  f1: number | null;
+  gate_status: AccuracyGateStatus;
+  automatic_release_allowed: boolean;
+  recommendations: string[];
+  created_at: string;
+}
+
+export interface FieldAccuracyPolicy {
+  minimum_positive_labels: number;
+  minimum_negative_labels: number;
+  minimum_challenging_labels: number;
+  minimum_precision: number;
+  minimum_recall: number;
+  rolling_window_size: number;
+  manual_only: boolean;
+}
+
+export interface FieldAccuracyReport {
+  camera_id: string;
+  camera_name: string;
+  rule_id: string;
+  rule_name: string;
+  policy: FieldAccuracyPolicy;
+  latest_snapshot: FieldAccuracySnapshot | null;
+  unlabeled_case_count: number;
+}
+
+export type ReviewSampleKind = "candidate" | "normal" | "uncertain" | "challenging";
+export type ReviewSampleStatus = "queued" | "assigned" | "reviewing" | "disputed" | "labeled" | "skipped";
+export type DatasetVersionStatus = "draft" | "frozen" | "exported";
+
+export interface EvidenceReviewSample {
+  id: string;
+  organization_id: string;
+  camera_id: string;
+  camera_name: string;
+  rule_id: string;
+  rule_name: string;
+  verification_case_id: string | null;
+  event_id: string | null;
+  recording_id: string | null;
+  kind: ReviewSampleKind;
+  status: ReviewSampleStatus;
+  priority: number;
+  model_context: Record<string, unknown>;
+  environment_tags: AccuracyEnvironmentTag[];
+  assigned_to: string | null;
+  assigned_at: string | null;
+  due_at: string | null;
+  label: FieldAccuracyLabel | null;
+  review_count: number;
+  required_reviews: number;
+  consensus_status: string;
+  adjudicated_by: string | null;
+  adjudicated_at: string | null;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EvidenceReviewQueueSummary {
+  queued: number;
+  assigned: number;
+  reviewing: number;
+  disputed: number;
+  overdue: number;
+  labeled: number;
+  by_kind: Record<string, number>;
+}
+
+export interface EvidenceSamplingPolicy {
+  rule_id: string;
+  camera_id: string;
+  enabled: boolean;
+  normal_sample_interval_seconds: number;
+  daily_limit: number;
+  review_sla_hours: number;
+  retention_days: number;
+  required_reviews: 1 | 2;
+  require_adjudication: boolean;
+}
+
+export interface EvidenceDatasetVersion {
+  id: string;
+  organization_id: string;
+  name: string;
+  version: number;
+  status: DatasetVersionStatus;
+  selection: Record<string, unknown>;
+  balance: Record<string, number>;
+  sample_count: number;
+  manifest_sha256: string | null;
+  created_by: string;
+  frozen_at: string | null;
+  exported_at: string | null;
+  created_at: string;
+}
+
+export interface DatasetReplayBuild {
+  id: string;
+  organization_id: string;
+  dataset_id: string;
+  suite_id: string;
+  evaluation_ids: string[];
+  skipped_samples: Array<Record<string, unknown>>;
+  created_by: string;
+  created_at: string;
+}
+
+export type PromotionStatus = "ready" | "approved" | "rejected" | "rolled_back";
+
+export interface DeploymentPromotion {
+  id: string;
+  organization_id: string;
+  dataset_id: string;
+  camera_id: string;
+  rule_id: string;
+  candidate_plan_id: string;
+  baseline_plan_id: string | null;
+  candidate_run_id: string;
+  baseline_run_id: string | null;
+  status: PromotionStatus;
+  comparison: {
+    baseline_available: boolean;
+    baseline?: Record<string, number>;
+    candidate: Record<string, number>;
+    deltas: Record<string, number>;
+    promotion_gate_passed: boolean;
+    recommendation: string;
+    candidate_plan_sha256: string;
+    baseline_plan_sha256: string | null;
+  };
+  rollback_metadata: Record<string, unknown>;
+  requested_by: string;
+  requested_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_reason: string | null;
+  rolled_back_by: string | null;
+  rolled_back_at: string | null;
+  rollback_reason: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AlertChannel {
@@ -425,6 +871,10 @@ export interface ReplayEvaluation {
   name: string;
   source_uri: string;
   prompt: string;
+  scenario_key: string | null;
+  scenario_variant: ReplayScenarioVariant;
+  source_kind: ReplaySourceKind;
+  environment_tags: string[];
   duration_seconds: number;
   execution_strategy: ExecutionPlan["strategy"];
   compiled_rule: CameraJobSpec;
@@ -463,6 +913,60 @@ export interface CreateReplayEvaluationInput {
   prompt: string;
   duration_seconds: number;
   expected_intervals: EvaluationInterval[];
+  scenario_key?: string | null;
+  scenario_variant?: ReplayScenarioVariant;
+  source_kind?: ReplaySourceKind;
+  environment_tags?: string[];
+}
+
+export interface CalibrationScenario {
+  key: string;
+  title: string;
+  industry_examples: string[];
+  prompt: string;
+  description: string;
+  recording_protocol: string[];
+  temporal_mode: "state" | "transition" | "sequence";
+  visual_skills: string[];
+  metric_family: "temporal_event" | "structured_text";
+  automation_status: "ready" | "manual_only";
+  minimum_positive_clips: number;
+  minimum_negative_clips: number;
+  recommended_environment_tags: string[];
+}
+
+export interface CalibrationScenarioStatus {
+  key: string;
+  title: string;
+  status: CalibrationScenarioState;
+  credible_scored_clips: number;
+  public_benchmark_clips: number;
+  site_specific_clips: number;
+  site_specific_ready: boolean;
+  positive_clips: number;
+  negative_clips: number;
+  synthetic_pipeline_checks: number;
+  challenging_clips: number;
+  best_f1: number | null;
+  worst_recall: number | null;
+  false_positives: number;
+  recommendations: string[];
+}
+
+export interface CalibrationReadiness {
+  status: "no_evidence" | "collecting" | "failing" | "ready";
+  real_world_accuracy_claimable: boolean;
+  benchmark_accuracy_claimable: boolean;
+  site_specific_accuracy_claimable: boolean;
+  required_scenarios: number;
+  ready_scenarios: number;
+  site_specific_ready_scenarios: number;
+  credible_scored_clips: number;
+  public_benchmark_clips: number;
+  site_specific_clips: number;
+  synthetic_pipeline_checks: number;
+  message: string;
+  scenarios: CalibrationScenarioStatus[];
 }
 
 export interface ScoreReplayEvaluationInput {
@@ -495,6 +999,10 @@ export interface ReplaySuiteRun {
     name: string;
     status: ReplayEvaluationStatus;
     execution_strategy: ExecutionPlan["strategy"];
+    scenario_key: string | null;
+    scenario_variant: ReplayScenarioVariant;
+    source_kind: ReplaySourceKind;
+    environment_tags: string[];
     metrics: ReplayEvaluationMetrics;
     estimated_cost_usd: number;
     last_error: string | null;
@@ -512,6 +1020,15 @@ export interface ReplaySuiteRun {
     provider_requests?: number;
     estimated_cost_usd?: number;
     pricing_complete?: boolean;
+    scenario_metrics?: Record<string, {
+      evaluation_count: number;
+      macro_precision: number;
+      macro_recall: number;
+      macro_f1: number;
+      false_positives: number;
+      source_kinds: ReplaySourceKind[];
+      variants: ReplayScenarioVariant[];
+    }>;
   };
   gate_results: ReplayGateResult[];
   started_at: string;
@@ -571,6 +1088,7 @@ export interface VisualAgentPlan {
     summary: string;
     strategy: ExecutionPlan["strategy"];
     nodes: VisualAgentNode[];
+    support: VisualSupportAssessment | null;
   };
   required_capabilities: string[];
   unsupported_capabilities: string[];
@@ -602,12 +1120,19 @@ export interface IntegrationConnector {
   name: string;
   connector_type: ConnectorType;
   endpoint_url: string | null;
+  configuration: Record<string, unknown>;
   scopes: string[];
   enabled: boolean;
   timeout_seconds: number;
   max_attempts: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface TelegramChat {
+  chat_id: string;
+  title: string;
+  chat_type: string;
 }
 
 export interface RuleActionBinding {

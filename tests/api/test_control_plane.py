@@ -446,6 +446,11 @@ def test_managed_agent_claim_telemetry_and_stop_lifecycle(
         "analysis_requests_today": 4,
         "analysis_request_limit_day": 20,
         "analysis_request_limit_minute": 1,
+        "frames_processed": 321,
+        "reconnect_count": 2,
+        "recording_state": "recording",
+        "recording_segments_completed": 7,
+        "recording_dropped_frames": 3,
     }
     with api_client.websocket_connect(
         f"/api/v1/ws/events?token={DASHBOARD_KEY}"
@@ -459,6 +464,16 @@ def test_managed_agent_claim_telemetry_and_stop_lifecycle(
         broadcast = websocket.receive_json()
     assert heartbeat.status_code == 200
     assert heartbeat.json()["observed_status"] == "running"
+    assert heartbeat.json()["health_status"] == "healthy"
+    assert heartbeat.json()["frames_processed"] == 321
+    assert heartbeat.json()["reconnect_count"] == 2
+    assert heartbeat.json()["recording_state"] == "recording"
+    assert heartbeat.json()["recording_segments_completed"] == 7
+    assert heartbeat.json()["recording_dropped_frames"] == 3
+    assert heartbeat.json()["last_frame_at"] is not None
+    assert (
+        api_client.get(f"/api/v1/cameras/{camera['id']}").json()["status"] == "online"
+    )
     assert broadcast["type"] == "agent.telemetry"
     assert broadcast["data"]["detections"][0]["track_id"] == 7
     assert broadcast["data"]["analysis_state"] == "complete"
@@ -479,8 +494,68 @@ def test_managed_agent_claim_telemetry_and_stop_lifecycle(
     assert stopped.json()["desired_status"] == "stopped"
     assert stopped.json()["observed_status"] == "stopped"
     assert stopped.json()["worker_id"] is None
+    assert stopped.json()["health_status"] == "offline"
+    assert (
+        api_client.get(f"/api/v1/cameras/{camera['id']}").json()["status"] == "offline"
+    )
     deployment_change = api_client.patch(
         f"/api/v1/rules/{first_rule['id']}/status",
         json={"status": "paused"},
     )
     assert deployment_change.status_code == 200
+
+
+def test_failed_camera_uses_server_side_restart_backoff(api_client: TestClient) -> None:
+    camera, _zone, _rule = create_active_rule(api_client)
+    api_client.put(
+        f"/api/v1/cameras/{camera['id']}/agent",
+        json={"desired_status": "running"},
+    )
+    claim = api_client.post(
+        "/api/v1/agent/assignments/claim",
+        json={"worker_id": "edge-1"},
+        headers={"X-Agent-Key": AGENT_KEY},
+    )
+    assert claim.status_code == 200
+
+    failed = api_client.post(
+        "/api/v1/agent/telemetry",
+        json={
+            "worker_id": "edge-1",
+            "camera_id": camera["id"],
+            "observed_status": "error",
+            "error": "RTSP reconnect budget exhausted",
+        },
+        headers={"X-Agent-Key": AGENT_KEY},
+    )
+    assert failed.status_code == 200
+    assert failed.json()["health_status"] == "error"
+    assert failed.json()["failure_count"] == 1
+    assert failed.json()["next_retry_at"] is not None
+    assert api_client.get(f"/api/v1/cameras/{camera['id']}").json()["status"] == "error"
+
+    immediate_retry = api_client.post(
+        "/api/v1/agent/assignments/claim",
+        json={"worker_id": "edge-1"},
+        headers={"X-Agent-Key": AGENT_KEY},
+    )
+    assert immediate_retry.status_code == 204
+
+    api_client.put(
+        f"/api/v1/cameras/{camera['id']}/agent",
+        json={"desired_status": "stopped"},
+    )
+    restarted = api_client.put(
+        f"/api/v1/cameras/{camera['id']}/agent",
+        json={"desired_status": "running"},
+    )
+    assert restarted.json()["failure_count"] == 0
+    assert restarted.json()["next_retry_at"] is None
+    assert (
+        api_client.post(
+            "/api/v1/agent/assignments/claim",
+            json={"worker_id": "edge-1"},
+            headers={"X-Agent-Key": AGENT_KEY},
+        ).status_code
+        == 200
+    )

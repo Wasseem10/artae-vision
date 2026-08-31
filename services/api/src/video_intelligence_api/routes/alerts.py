@@ -29,6 +29,7 @@ from video_intelligence_api.models import (
     Camera,
     Event,
     Rule,
+    RuleActionBinding,
     RuleAlertChannel,
     Zone,
     new_id,
@@ -273,6 +274,17 @@ async def create_test_alert(
     zone = await session.get(Zone, rule.zone_id)
     if camera is None:
         raise HTTPException(status_code=409, detail="Rule camera is unavailable")
+    if payload.connector_id is not None:
+        binding = await session.scalar(
+            select(RuleActionBinding).where(
+                RuleActionBinding.rule_id == rule.id,
+                RuleActionBinding.connector_id == payload.connector_id,
+                RuleActionBinding.organization_id == actor.organization_id,
+                RuleActionBinding.enabled.is_(True),
+            )
+        )
+        if binding is None:
+            raise HTTPException(status_code=404, detail="Active rule connector not found")
 
     now = utc_now()
     source_event_id = new_id()
@@ -306,7 +318,7 @@ async def create_test_alert(
     )
     session.add(event)
     alert = (
-        await enqueue_event_alert(session, event)
+        await enqueue_event_alert(session, event, connector_id=payload.connector_id)
         if payload.deliver_outbound
         else Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now)
     )

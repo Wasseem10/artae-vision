@@ -38,7 +38,7 @@ export function NativePreview({ cameraId, name, onAvailabilityChange }: NativePr
     }
 
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 500);
+    const interval = window.setInterval(() => void refresh(), 125);
     return () => {
       cancelled = true;
       window.clearInterval(interval);

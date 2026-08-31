@@ -64,6 +64,7 @@ CONNECTOR_SCOPES = {
     ConnectorType.GENERIC_WEBHOOK: frozenset({"webhooks:invoke"}),
     ConnectorType.MESSAGING_WEBHOOK: frozenset({"notifications:write"}),
     ConnectorType.TICKET_WEBHOOK: frozenset({"tickets:write"}),
+    ConnectorType.TELEGRAM: frozenset({"notifications:write"}),
 }
 
 
@@ -129,6 +130,7 @@ def build_action_payload(
         "zone_name": event.zone_name,
         "confidence": event.confidence,
         "occurred_at": event.occurred_at.isoformat(),
+        "is_test": event.details.get("test") is True,
     }
     metadata = template.get("metadata")
     if isinstance(metadata, dict):

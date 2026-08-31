@@ -14,10 +14,25 @@ The prompt router selects only skills whose visible evidence is required. For ex
   detection; and
 - “person performs a backflip” selects pose/action analysis.
 
-Today these skills use the already bounded temporal-VLM execution path. Each manifest
-also names the preferred specialized executor and its mandatory scenario-specific
-replay policy. This is intentional: registering a model is not proof that it is
-accurate for a customer's angle, lighting, distance, or event definition.
+Today all eight skills are explicitly `fallback_only` and use the already bounded
+temporal-VLM execution path. They are selectable, but they are not mislabeled as
+specialized model support. Each manifest defines its input contract, output contract,
+supported temporal modes, preferred specialized executor, and mandatory
+scenario-specific replay policy. Registering a model is not proof that it is accurate
+for a customer's angle, lighting, distance, or event definition.
+
+A skill can become `specialized_ready` only when an executor returns the typed evidence
+contract and passes representative replay promotion gates. The planner can then select
+that executor without changing the camera-job contract or incident pipeline.
+
+## Observable boundaries
+
+The planner assigns every request one of four support levels: deterministic local,
+general semantic fallback, requires outside context, or not visually verifiable.
+Access authorization and package routing require business records. Intent, thoughts,
+identity, and sensitive personal attributes are not treated as camera capabilities.
+Both categories remain visible in a saved plan, but unsupported capabilities block
+deployment instead of being silently ignored.
 
 ## Automatic scene observations
 

@@ -7,7 +7,9 @@ from typing import Any
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Enum,
     Float,
@@ -83,6 +85,96 @@ class EvidenceStatus(enum.StrEnum):
     FAILED = "failed"
 
 
+class RecordingSegmentStatus(enum.StrEnum):
+    LOCAL_ONLY = "local_only"
+    READY = "ready"
+    EXPIRED = "expired"
+    FAILED = "failed"
+
+
+class CameraDiscoveryStatus(enum.StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class CameraOnboardingStatus(enum.StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class CameraCommissioningStatus(enum.StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    PASSED = "passed"
+    NEEDS_ATTENTION = "needs_attention"
+    FAILED = "failed"
+
+
+class VerificationStatus(enum.StrEnum):
+    NOT_REQUIRED = "not_required"
+    PENDING = "pending"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+    UNCERTAIN = "uncertain"
+
+
+class AccuracyLabelOutcome(enum.StrEnum):
+    TRUE_POSITIVE = "true_positive"
+    FALSE_POSITIVE = "false_positive"
+    FALSE_NEGATIVE = "false_negative"
+    TRUE_NEGATIVE = "true_negative"
+
+
+class AccuracyGateStatus(enum.StrEnum):
+    COLLECTING = "collecting"
+    READY = "ready"
+    FAILING = "failing"
+    DRIFTING = "drifting"
+
+
+class ReviewSampleKind(enum.StrEnum):
+    CANDIDATE = "candidate"
+    NORMAL = "normal"
+    UNCERTAIN = "uncertain"
+    CHALLENGING = "challenging"
+
+
+class ReviewSampleStatus(enum.StrEnum):
+    QUEUED = "queued"
+    ASSIGNED = "assigned"
+    REVIEWING = "reviewing"
+    DISPUTED = "disputed"
+    LABELED = "labeled"
+    SKIPPED = "skipped"
+
+
+class DatasetVersionStatus(enum.StrEnum):
+    DRAFT = "draft"
+    FROZEN = "frozen"
+    EXPORTED = "exported"
+
+
+class PromotionStatus(enum.StrEnum):
+    READY = "ready"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ROLLED_BACK = "rolled_back"
+
+
+class OperationalHealthResource(enum.StrEnum):
+    CAMERA = "camera"
+    EDGE_DEVICE = "edge_device"
+
+
+class OperationalHealthSeverity(enum.StrEnum):
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
 class EvidenceSearchStatus(enum.StrEnum):
     QUEUED = "queued"
     SEARCHING = "searching"
@@ -144,6 +236,7 @@ class ConnectorType(enum.StrEnum):
     GENERIC_WEBHOOK = "generic_webhook"
     MESSAGING_WEBHOOK = "messaging_webhook"
     TICKET_WEBHOOK = "ticket_webhook"
+    TELEGRAM = "telegram"
 
 
 class ActionRiskLevel(enum.StrEnum):
@@ -318,6 +411,10 @@ class Camera(Base):
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     source_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
+    edge_device_id: Mapped[str | None] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="SET NULL"), index=True
+    )
+    credential_encrypted: Mapped[str | None] = mapped_column(String(4000))
     source_type: Mapped[SourceType] = mapped_column(
         Enum(SourceType, native_enum=False, length=20), nullable=False
     )
@@ -358,11 +455,255 @@ class CameraAgent(Base):
     )
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_frame_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     fps: Mapped[float | None] = mapped_column(Float)
     inference_latency_ms: Mapped[float | None] = mapped_column(Float)
     frame_width: Mapped[int | None] = mapped_column(Integer)
     frame_height: Mapped[int | None] = mapped_column(Integer)
+    frames_processed: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    reconnect_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recording_state: Mapped[str] = mapped_column(String(20), nullable=False, default="disabled")
+    recording_segments_completed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    recording_dropped_frames: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    recording_error: Mapped[str | None] = mapped_column(String(1000))
+    failure_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(String(1000))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class OperationalHealthIncident(Base):
+    """Durable, self-resolving camera and edge reliability incident."""
+
+    __tablename__ = "operational_health_incidents"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id",
+            "active_key",
+            name="uq_operational_health_active_key",
+        ),
+        CheckConstraint(
+            "(camera_id IS NOT NULL AND edge_device_id IS NULL) OR "
+            "(camera_id IS NULL AND edge_device_id IS NOT NULL)",
+            name="ck_operational_health_one_resource",
+        ),
+        Index(
+            "ix_operational_health_organization_status",
+            "organization_id",
+            "status",
+            "last_detected_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str | None] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), index=True
+    )
+    edge_device_id: Mapped[str | None] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="CASCADE"), index=True
+    )
+    resource_type: Mapped[OperationalHealthResource] = mapped_column(
+        Enum(OperationalHealthResource, native_enum=False, length=20), nullable=False
+    )
+    condition: Mapped[str] = mapped_column(String(80), nullable=False)
+    severity: Mapped[OperationalHealthSeverity] = mapped_column(
+        Enum(OperationalHealthSeverity, native_enum=False, length=20), nullable=False
+    )
+    status: Mapped[AlertStatus] = mapped_column(
+        Enum(AlertStatus, native_enum=False, length=20),
+        nullable=False,
+        default=AlertStatus.OPEN,
+    )
+    active_key: Mapped[str | None] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    detail: Mapped[str] = mapped_column(String(1000), nullable=False)
+    diagnostics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    occurrence_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    first_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    acknowledged_by: Mapped[str | None] = mapped_column(String(255))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolved_by: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class RecordingSegment(Base):
+    """Tenant-owned historical camera segment optionally archived from an edge host."""
+
+    __tablename__ = "recording_segments"
+    __table_args__ = (
+        UniqueConstraint("camera_id", "source_key", name="uq_recording_camera_source_key"),
+        Index("ix_recording_segments_camera_started", "camera_id", "started_at"),
+        Index("ix_recording_segments_retention", "status", "legal_hold", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    edge_device_id: Mapped[str | None] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="SET NULL"), index=True
+    )
+    source_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    source_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    duration_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    frame_count: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    fps: Mapped[float] = mapped_column(Float, nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[RecordingSegmentStatus] = mapped_column(
+        Enum(RecordingSegmentStatus, native_enum=False, length=20),
+        nullable=False,
+        default=RecordingSegmentStatus.LOCAL_ONLY,
+    )
+    storage_uri: Mapped[str | None] = mapped_column(String(2048))
+    media_type: Mapped[str | None] = mapped_column(String(120))
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(String(64))
+    legal_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class CameraDiscoveryRun(Base):
+    """A bounded WS-Discovery scan executed by one enrolled edge device."""
+
+    __tablename__ = "camera_discovery_runs"
+    __table_args__ = (
+        Index("ix_camera_discovery_device_status", "edge_device_id", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    edge_device_id: Mapped[str] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[CameraDiscoveryStatus] = mapped_column(
+        Enum(CameraDiscoveryStatus, native_enum=False, length=20),
+        nullable=False,
+        default=CameraDiscoveryStatus.QUEUED,
+    )
+    timeout_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    devices: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    worker_id: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class CameraOnboardingRun(Base):
+    """Credentialed ONVIF profile resolution and preview verification on one edge."""
+
+    __tablename__ = "camera_onboarding_runs"
+    __table_args__ = (
+        Index("ix_camera_onboarding_device_status", "edge_device_id", "status", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    edge_device_id: Mapped[str] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    discovery_run_id: Mapped[str] = mapped_column(
+        ForeignKey("camera_discovery_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    endpoint_url: Mapped[str] = mapped_column(String(2048), nullable=False)
+    credential_encrypted: Mapped[str | None] = mapped_column(String(4000))
+    verify_tls: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    status: Mapped[CameraOnboardingStatus] = mapped_column(
+        Enum(CameraOnboardingStatus, native_enum=False, length=20),
+        nullable=False,
+        default=CameraOnboardingStatus.QUEUED,
+    )
+    profiles: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    selected_profile_token: Mapped[str | None] = mapped_column(String(255))
+    camera_id: Mapped[str | None] = mapped_column(
+        ForeignKey("cameras.id", ondelete="SET NULL"), index=True
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class CameraCommissioningRun(Base):
+    """Edge-executed stream quality assessment that never activates inference."""
+
+    __tablename__ = "camera_commissioning_runs"
+    __table_args__ = (
+        Index("ix_camera_commissioning_camera_created", "camera_id", "created_at"),
+        Index("ix_camera_commissioning_device_status", "edge_device_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    edge_device_id: Mapped[str] = mapped_column(
+        ForeignKey("edge_devices.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[CameraCommissioningStatus] = mapped_column(
+        Enum(CameraCommissioningStatus, native_enum=False, length=24),
+        nullable=False,
+        default=CameraCommissioningStatus.QUEUED,
+    )
+    duration_seconds: Mapped[float] = mapped_column(Float, nullable=False)
+    maximum_frames: Mapped[int] = mapped_column(Integer, nullable=False)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    findings: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False, default=list)
+    readiness_score: Mapped[int | None] = mapped_column(Integer)
+    worker_id: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
     )
@@ -514,8 +855,416 @@ class Event(Base):
     clip_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     details: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    verification_status: Mapped[VerificationStatus] = mapped_column(
+        Enum(VerificationStatus, native_enum=False, length=20),
+        nullable=False,
+        default=VerificationStatus.NOT_REQUIRED,
+    )
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    verified_by: Mapped[str | None] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class VerificationCase(Base):
+    """One durable proposer-verifier decision for a semantic camera event."""
+
+    __tablename__ = "verification_cases"
+    __table_args__ = (
+        Index("ix_verification_cases_organization_status", "organization_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    event_id: Mapped[str] = mapped_column(
+        ForeignKey("events.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    status: Mapped[VerificationStatus] = mapped_column(
+        Enum(VerificationStatus, native_enum=False, length=20), nullable=False
+    )
+    proposer_model: Mapped[str | None] = mapped_column(String(120))
+    verifier_model: Mapped[str | None] = mapped_column(String(120))
+    proposer_confidence: Mapped[float] = mapped_column(Float, nullable=False)
+    verifier_confidence: Mapped[float | None] = mapped_column(Float)
+    proposal_summary: Mapped[str] = mapped_column(String(1000), nullable=False)
+    verifier_summary: Mapped[str | None] = mapped_column(String(1000))
+    reasoning: Mapped[str] = mapped_column(String(2000), nullable=False)
+    decision_source: Mapped[str] = mapped_column(String(40), nullable=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FieldAccuracyLabel(Base):
+    """Human-grounded live outcome used to score one camera/job pair."""
+
+    __tablename__ = "field_accuracy_labels"
+    __table_args__ = (
+        Index("ix_field_accuracy_labels_rule_created", "rule_id", "created_at"),
+        Index("ix_field_accuracy_labels_organization_created", "organization_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    verification_case_id: Mapped[str | None] = mapped_column(
+        ForeignKey("verification_cases.id", ondelete="CASCADE"), unique=True
+    )
+    event_id: Mapped[str | None] = mapped_column(
+        ForeignKey("events.id", ondelete="SET NULL"), index=True
+    )
+    recording_id: Mapped[str | None] = mapped_column(
+        ForeignKey("recording_segments.id", ondelete="SET NULL"), index=True
+    )
+    outcome: Mapped[AccuracyLabelOutcome] = mapped_column(
+        Enum(AccuracyLabelOutcome, native_enum=False, length=30), nullable=False
+    )
+    source: Mapped[str] = mapped_column(String(40), nullable=False)
+    environment_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    notes: Mapped[str] = mapped_column(String(2000), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    reviewed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class RuleAccuracyPolicy(Base):
+    """Per-job field promotion thresholds and permanent manual-only control."""
+
+    __tablename__ = "rule_accuracy_policies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    minimum_positive_labels: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    minimum_negative_labels: Mapped[int] = mapped_column(Integer, nullable=False, default=5)
+    minimum_challenging_labels: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    minimum_precision: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)
+    minimum_recall: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)
+    rolling_window_size: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    manual_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    updated_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class FieldAccuracySnapshot(Base):
+    """Immutable rolling live-accuracy gate result after one new human label."""
+
+    __tablename__ = "field_accuracy_snapshots"
+    __table_args__ = (
+        Index("ix_field_accuracy_snapshots_rule_created", "rule_id", "created_at"),
+        Index(
+            "ix_field_accuracy_snapshots_organization_status",
+            "organization_id",
+            "gate_status",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    window_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    label_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    positive_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    negative_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    challenging_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    true_positives: Mapped[int] = mapped_column(Integer, nullable=False)
+    false_positives: Mapped[int] = mapped_column(Integer, nullable=False)
+    false_negatives: Mapped[int] = mapped_column(Integer, nullable=False)
+    true_negatives: Mapped[int] = mapped_column(Integer, nullable=False)
+    precision: Mapped[float | None] = mapped_column(Float)
+    recall: Mapped[float | None] = mapped_column(Float)
+    f1: Mapped[float | None] = mapped_column(Float)
+    gate_status: Mapped[AccuracyGateStatus] = mapped_column(
+        Enum(AccuracyGateStatus, native_enum=False, length=20), nullable=False
+    )
+    automatic_release_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    recommendations: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EvidenceSamplingPolicy(Base):
+    """Per-job controls for bounded background evidence sampling."""
+
+    __tablename__ = "evidence_sampling_policies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    normal_sample_interval_seconds: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=900
+    )
+    daily_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
+    review_sla_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
+    retention_days: Mapped[int] = mapped_column(Integer, nullable=False, default=30)
+    required_reviews: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    require_adjudication: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    updated_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class EvidenceReviewSample(Base):
+    """One deduplicated review unit sourced from a proposal or ordinary footage."""
+
+    __tablename__ = "evidence_review_samples"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "dedup_key", name="uq_review_sample_org_dedup"),
+        Index("ix_review_samples_org_status_priority", "organization_id", "status", "priority"),
+        Index("ix_review_samples_rule_created", "rule_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    verification_case_id: Mapped[str | None] = mapped_column(
+        ForeignKey("verification_cases.id", ondelete="CASCADE"), unique=True
+    )
+    event_id: Mapped[str | None] = mapped_column(
+        ForeignKey("events.id", ondelete="SET NULL"), index=True
+    )
+    recording_id: Mapped[str | None] = mapped_column(
+        ForeignKey("recording_segments.id", ondelete="SET NULL"), index=True
+    )
+    kind: Mapped[ReviewSampleKind] = mapped_column(
+        Enum(ReviewSampleKind, native_enum=False, length=20), nullable=False
+    )
+    status: Mapped[ReviewSampleStatus] = mapped_column(
+        Enum(ReviewSampleStatus, native_enum=False, length=20),
+        nullable=False,
+        default=ReviewSampleStatus.QUEUED,
+    )
+    priority: Mapped[float] = mapped_column(Float, nullable=False)
+    dedup_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_context: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    environment_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    assigned_to: Mapped[str | None] = mapped_column(String(255))
+    assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    label_id: Mapped[str | None] = mapped_column(
+        ForeignKey("field_accuracy_labels.id", ondelete="SET NULL"), unique=True
+    )
+    consensus_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    adjudicated_by: Mapped[str | None] = mapped_column(String(255))
+    adjudicated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class EvidenceDatasetVersion(Base):
+    """Immutable-on-freeze manifest of reviewed evidence."""
+
+    __tablename__ = "evidence_dataset_versions"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "name", "version", name="uq_dataset_org_name_version"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[DatasetVersionStatus] = mapped_column(
+        Enum(DatasetVersionStatus, native_enum=False, length=20),
+        nullable=False,
+        default=DatasetVersionStatus.DRAFT,
+    )
+    selection: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    balance: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+    manifest_sha256: Mapped[str | None] = mapped_column(String(64))
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    frozen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    exported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EvidenceDatasetSample(Base):
+    __tablename__ = "evidence_dataset_samples"
+    __table_args__ = (UniqueConstraint("dataset_id", "sample_id", name="uq_dataset_sample"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    dataset_id: Mapped[str] = mapped_column(
+        ForeignKey("evidence_dataset_versions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sample_id: Mapped[str] = mapped_column(
+        ForeignKey("evidence_review_samples.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    label_snapshot: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class EvidenceReviewVote(Base):
+    """Independent reviewer judgment retained before consensus or adjudication."""
+
+    __tablename__ = "evidence_review_votes"
+    __table_args__ = (
+        UniqueConstraint("sample_id", "reviewer", name="uq_review_vote_sample_reviewer"),
+        Index("ix_review_votes_sample_created", "sample_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sample_id: Mapped[str] = mapped_column(
+        ForeignKey("evidence_review_samples.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    outcome: Mapped[str] = mapped_column(String(20), nullable=False)
+    reasoning: Mapped[str] = mapped_column(String(2000), nullable=False)
+    environment_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    reviewer: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class DatasetReplayBuild(Base):
+    """Idempotent mapping from one frozen dataset to executable replay baselines."""
+
+    __tablename__ = "dataset_replay_builds"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id: Mapped[str] = mapped_column(
+        ForeignKey("evidence_dataset_versions.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    suite_id: Mapped[str] = mapped_column(
+        ForeignKey("replay_suites.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    evaluation_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    skipped_samples: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False, default=list
+    )
+    created_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class DeploymentPromotion(Base):
+    """Immutable comparison and explicit production promotion/rollback decision."""
+
+    __tablename__ = "deployment_promotions"
+    __table_args__ = (
+        Index("ix_deployment_promotions_org_created", "organization_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    dataset_id: Mapped[str] = mapped_column(
+        ForeignKey("evidence_dataset_versions.id", ondelete="RESTRICT"), nullable=False
+    )
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    rule_id: Mapped[str] = mapped_column(
+        ForeignKey("rules.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    candidate_plan_id: Mapped[str] = mapped_column(
+        ForeignKey("visual_agent_plans.id", ondelete="RESTRICT"), nullable=False
+    )
+    baseline_plan_id: Mapped[str | None] = mapped_column(
+        ForeignKey("visual_agent_plans.id", ondelete="SET NULL")
+    )
+    candidate_run_id: Mapped[str] = mapped_column(
+        ForeignKey("replay_suite_runs.id", ondelete="RESTRICT"), nullable=False
+    )
+    baseline_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("replay_suite_runs.id", ondelete="SET NULL")
+    )
+    status: Mapped[PromotionStatus] = mapped_column(
+        Enum(PromotionStatus, native_enum=False, length=20),
+        nullable=False,
+        default=PromotionStatus.READY,
+    )
+    comparison: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    rollback_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    decided_by: Mapped[str | None] = mapped_column(String(255))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_reason: Mapped[str | None] = mapped_column(String(2000))
+    rolled_back_by: Mapped[str | None] = mapped_column(String(255))
+    rolled_back_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rollback_reason: Mapped[str | None] = mapped_column(String(2000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
     )
 
 
@@ -708,6 +1457,11 @@ class ReplayEvaluation(Base):
             "organization_id",
             "created_at",
         ),
+        Index(
+            "ix_replay_evaluations_scenario_source",
+            "scenario_key",
+            "source_kind",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
@@ -723,6 +1477,12 @@ class ReplayEvaluation(Base):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     source_uri: Mapped[str] = mapped_column(String(2048), nullable=False)
     prompt: Mapped[str] = mapped_column(String(2000), nullable=False)
+    scenario_key: Mapped[str | None] = mapped_column(String(80))
+    scenario_variant: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="unclassified"
+    )
+    source_kind: Mapped[str] = mapped_column(String(20), nullable=False, default="unclassified")
+    environment_tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     duration_seconds: Mapped[float] = mapped_column(Float, nullable=False)
     execution_strategy: Mapped[str] = mapped_column(String(40), nullable=False)
     compiled_rule: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
@@ -916,6 +1676,7 @@ class IntegrationConnector(Base):
     )
     endpoint_url: Mapped[str | None] = mapped_column(String(2048))
     credential_encrypted: Mapped[str] = mapped_column(String(4000), nullable=False)
+    configuration: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     scopes: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     timeout_seconds: Mapped[float] = mapped_column(Float, nullable=False, default=10.0)

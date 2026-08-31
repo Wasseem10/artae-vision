@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
+import { parseApiTimestamp } from "@/lib/dates";
 import type {
   AlertChannel,
   AlertIncident,
@@ -12,6 +13,7 @@ import type {
 
 interface AlertPanelProps {
   alerts: AlertIncident[];
+  cameraName: string | null;
   channels: AlertChannel[];
   rules: Rule[];
   busy: boolean;
@@ -22,6 +24,7 @@ interface AlertPanelProps {
 
 export function AlertPanel({
   alerts,
+  cameraName,
   channels,
   rules,
   busy,
@@ -36,6 +39,15 @@ export function AlertPanel({
   const [channelId, setChannelId] = useState("");
   const [cooldown, setCooldown] = useState(60);
   const [delay, setDelay] = useState(0);
+
+  function formatIncidentTime(value: string): string {
+    return new Intl.DateTimeFormat(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(parseApiTimestamp(value));
+  }
 
   async function submitChannel(event: FormEvent) {
     event.preventDefault();
@@ -60,9 +72,15 @@ export function AlertPanel({
         <div>
           <span className="eyebrow">Durable response</span>
           <h2>Alerting</h2>
-          <p>Route any job to a signed webhook, then track the incident to resolution.</p>
+          <p>
+            Review incidents for {cameraName ?? "the selected camera"}, then acknowledge or
+            resolve them with a durable audit trail.
+          </p>
         </div>
-        <span className="statusBadge">{alerts.filter((alert) => alert.status === "open").length} open</span>
+        <span className="statusBadge">
+          {alerts.filter((alert) => alert.status === "open").length} open
+          {cameraName ? ` · ${cameraName}` : ""}
+        </span>
       </div>
 
       <div className="alertConfigGrid">
@@ -116,11 +134,14 @@ export function AlertPanel({
               <strong>{alert.event.object_class} · {alert.event.event_type.replaceAll("_", " ")}</strong>
               <p>{alert.event.zone_name} · {Math.round(alert.event.confidence * 100)}% confidence</p>
               <small>{alert.deliveries.length ? alert.deliveries.map((item) => `${item.channel_name}: ${item.status}`).join(" · ") : "Dashboard only · no outbound route"}</small>
+              <time dateTime={alert.event.occurred_at}>
+                {formatIncidentTime(alert.event.occurred_at)}
+              </time>
             </div>
             <div className="alertActions">
               <span className={`alertState alertState-${alert.status}`}>{alert.status}</span>
-              {alert.status === "open" && <button disabled={busy} onClick={() => void onTransition(alert.id, "acknowledge")} type="button">Acknowledge</button>}
-              {alert.status !== "resolved" && <button className="secondaryButton" disabled={busy} onClick={() => void onTransition(alert.id, "resolve")} type="button">Resolve</button>}
+              {alert.status === "open" && <button aria-label={`Acknowledge ${alert.event.object_class} incident from ${alert.event.zone_name}`} disabled={busy} onClick={() => void onTransition(alert.id, "acknowledge")} type="button">Acknowledge</button>}
+              {alert.status !== "resolved" && <button aria-label={`Resolve ${alert.event.object_class} incident from ${alert.event.zone_name}`} className="secondaryButton" disabled={busy} onClick={() => void onTransition(alert.id, "resolve")} type="button">Resolve</button>}
             </div>
           </article>
         ))}

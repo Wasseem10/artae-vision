@@ -30,6 +30,14 @@ def test_internal_metrics_require_agent_auth_and_use_prometheus_format(
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/plain")
     assert "video_intelligence_cameras_total 0" in response.text
+    assert "video_intelligence_cameras_error 0" in response.text
+    assert "video_intelligence_agents_stale 0" in response.text
+    assert "video_intelligence_camera_reconnects_total 0" in response.text
+    assert "video_intelligence_recording_errors 0" in response.text
+    assert "video_intelligence_recording_dropped_frames_total 0" in response.text
+    assert "video_intelligence_recording_archive_ready 0" in response.text
+    assert "video_intelligence_recording_legal_holds 0" in response.text
+    assert "video_intelligence_camera_discovery_queued 0" in response.text
     assert "video_intelligence_edge_offline_queue_depth 0" in response.text
 
 
@@ -46,9 +54,11 @@ def test_hosted_readiness_configuration_can_be_completed() -> None:
         oidc_jwks_url="https://identity.test/jwks.json",
         media_signing_key="production-media-signing-key-123456789",
         alert_encryption_key="production-alert-key",
+        camera_encryption_key="production-camera-key",
         redis_url="rediss://redis.test/0",
         object_storage_endpoint="https://objects.test",
         object_storage_bucket="private-evidence",
+        recording_storage_backend="s3",
         backup_target="backups/control-plane",
         retention_policy_configured=True,
         cors_origins=["https://console.test"],

@@ -1,6 +1,6 @@
 # File guide
 
-This guide explains the hand-written files through Phase 23. Generated caches,
+This guide explains the hand-written files through Phase 29. Generated caches,
 downloaded weights, virtual-environment files, and runtime artifacts are excluded.
 
 ## Repository-level files
@@ -130,9 +130,24 @@ downloaded weights, virtual-environment files, and runtime artifacts are exclude
 - `services/inference/src/video_intelligence_inference/recorder.py` records a
   bounded MP4 from the same camera module. It exists for repeatable clip-ingestion
   tests and keeps recording concerns out of the live detection loop.
+- `services/inference/src/video_intelligence_inference/continuous_recording.py`
+  writes rotating edge MP4 segments on a bounded background queue, atomically
+  publishes manifests, and enforces age and byte retention ceilings.
+- `services/inference/src/video_intelligence_inference/recording_archive.py` hard-links
+  completed segments into a restart-recoverable spool and uploads their metadata and
+  bytes using the enrolled edge credential.
+- `services/inference/src/video_intelligence_inference/onvif_discovery.py` sends a
+  bounded WS-Discovery probe on the edge LAN and parses capped, deduplicated ONVIF
+  service results without attempting credentials.
+- `services/inference/src/video_intelligence_inference/onvif_onboarding.py` performs
+  authenticated ONVIF capability/profile/stream resolution and verifies the chosen
+  RTSP profile by reading a real bounded preview frame.
+- `services/api/src/video_intelligence_api/recording_storage.py` keeps local and
+  S3-compatible recording storage behind one private upload/playback/deletion boundary.
 - `services/inference/src/video_intelligence_inference/source.py` presents webcams,
   local videos, and RTSP streams through one timestamped-frame interface. It treats
-  file end as normal completion and live read loss as an error.
+  file end as normal completion and applies timeout-aware bounded reconnects to live
+  read loss without leaking RTSP credentials.
 - `services/inference/src/video_intelligence_inference/zones.py` validates
   resolution-independent polygon and line geometry, computes an object's
   bottom-center ground point, and provides polygon-membership and signed-line-side
@@ -187,6 +202,10 @@ downloaded weights, virtual-environment files, and runtime artifacts are exclude
 - `services/api/alembic/versions/0008_edge_devices_and_audit.py` adds hashed device
   credentials, server-owned capacity, camera lease ownership, and append-only audit
   history.
+- `services/api/alembic/versions/0025_camera_commissioning.py` adds durable,
+  tenant-owned, edge-leased camera health-check history and result fields.
+- `services/api/alembic/versions/0026_operational_health_incidents.py` adds durable,
+  self-resolving camera and attached-edge reliability incidents.
 - `services/api/alembic/versions/0001_control_plane.py` is the reproducible initial
   schema migration for cameras, zones, rules, events, constraints, and indexes.
 - `services/api/alembic/versions/0002_managed_agents.py` adds the one-to-one durable
@@ -518,6 +537,10 @@ downloaded weights, virtual-environment files, and runtime artifacts are exclude
   map composition, and event/scene/entity investigation results.
 - `docs/offline-edge-fleet.md` explains the durable event outbox, device profiles,
   signed config revisions, update state machine, and appliance boundary.
+- `docs/camera-edge-runtime.md` explains live-source recovery, independent lease
+  heartbeats, restart backoff, health telemetry, and bounded continuous recording.
+- `docs/historical-video-onboarding.md` explains archive upload, signed playback,
+  retention/legal holds, and edge-executed ONVIF discovery boundaries.
 - `services/inference/src/video_intelligence_inference/outbox.py` is the local SQLite
   store that retains canonical events until the control plane acknowledges them.
 - `services/inference/src/video_intelligence_inference/hardware.py` discovers a bounded
@@ -531,6 +554,62 @@ downloaded weights, virtual-environment files, and runtime artifacts are exclude
   configuration secrets.
 - `apps/web/src/components/production-readiness-panel.tsx` turns hosted launch gaps
   into a plain checklist instead of a misleading green “ready” indicator.
+- `apps/web/src/components/camera-commissioning-panel.tsx` runs and explains a
+  selected camera's bounded stream-quality check without starting visual inference.
+- `services/inference/src/video_intelligence_inference/camera_diagnostics.py` samples
+  a live source with OpenCV and calculates model-free delivery and image metrics.
+- `services/api/src/video_intelligence_api/camera_commissioning.py` converts those
+  measurements into a deterministic score and corrective findings.
+- `services/api/src/video_intelligence_api/routes/camera_commissioning.py` leases
+  tenant-scoped checks to the pinned edge station and stores their results.
+- `tests/api/test_camera_commissioning.py` and
+  `tests/inference/test_camera_diagnostics.py` prove passing and degraded streams,
+  deterministic guidance, source handling, and preview generation.
+- `docs/camera-commissioning.md` defines the commissioning workflow, privacy boundary,
+  thresholds, and why stream readiness is not scenario accuracy.
+- `services/api/src/video_intelligence_api/operational_health.py` derives deterministic
+  failure conditions from camera, frame, recording, and edge telemetry.
+- `services/api/src/video_intelligence_api/routes/operational_health.py` reconciles
+  those conditions into tenant-visible incidents with acknowledgement and recovery.
+- `apps/web/src/components/operational-health-panel.tsx` is the fleet reliability
+  incident center for active and recently recovered systems.
+- `docs/operational-health.md` documents watchdog scope, noise controls, and limits.
+- `docs/live-verification.md` defines the semantic proposer-verifier quarantine,
+  operator fallback, model-independence policy, and remaining accuracy boundary.
+- `services/api/src/video_intelligence_api/live_verification.py` validates edge verifier
+  claims and releases only confirmed events into scene memory, correlations, and alerts.
+- `services/api/src/video_intelligence_api/routes/verifications.py` exposes the
+  tenant-scoped review inbox and durable operator decision boundary.
+- `apps/web/src/components/verification-inbox.tsx` presents evidence, confidence,
+  reasoning, and explicit Confirm/Reject controls in one operations workspace.
+- `tests/api/test_live_verification.py` proves quarantine, signed evidence review,
+  automatic confirmation, rejection, and same-model suppression.
+- `docs/field-accuracy-learning.md` defines human-grounded outcome labels, rolling
+  precision/recall gates, per-job policies, drift locking, and the missed-event boundary.
+- `services/api/src/video_intelligence_api/field_accuracy.py` calculates immutable
+  rolling snapshots and decides whether verified semantic release is currently allowed.
+- `services/api/src/video_intelligence_api/routes/field_accuracy.py` exposes accuracy
+  reports, per-job policies, audits, label history, and missed-event capture.
+- `apps/web/src/components/field-accuracy-panel.tsx` shows evidence progress, confusion
+  counts, accuracy metrics, release state, recommendations, and manual-only control.
+- `docs/active-evidence-learning.md` defines background sampling, deduplication,
+  reviewer assignment/SLA, retention, dataset freezing, and training boundaries.
+- `services/api/src/video_intelligence_api/active_learning.py` reconciles proposals and
+  normal archive windows into a bounded, prioritized, deduplicated review queue.
+- `services/api/src/video_intelligence_api/routes/active_learning.py` exposes queue,
+  assignment, label, policy, dataset-version, freeze, and integrity-checked export APIs.
+- `apps/web/src/components/active-learning-panel.tsx` operates the evidence queue and
+  dataset lifecycle from the dashboard.
+- `tests/api/test_active_learning.py` proves sampling, temporal deduplication,
+  assignment, labeling, balanced selection, freezing, export integrity, and policies.
+- `docs/replay-promotion-quality.md` defines independent consensus, adjudication,
+  dataset replay builds, no-regression comparison, approval, and rollback boundaries.
+- `services/api/src/video_intelligence_api/routes/promotions.py` materializes frozen
+  datasets into replay suites and owns immutable candidate promotion decisions.
+- `apps/web/src/components/promotion-control-panel.tsx` exposes replay builds,
+  baseline/candidate selection, administrator approval, rejection, and rollback.
+- `tests/api/test_replay_promotions.py` proves independent-review disputes,
+  non-voter adjudication, idempotent replay builds, promotion, and rollback restoration.
 - `docs/production-runbook.md` and `docs/security-review-checklist.md` define backup,
   restore, load, incident, privacy, and security gates for a real deployment.
 - `scripts/backup-control-plane.ps1` and `scripts/smoke-load.py` provide explicit,

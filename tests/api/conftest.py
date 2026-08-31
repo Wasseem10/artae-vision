@@ -44,6 +44,9 @@ def api_client(tmp_path: Path) -> Iterator[TestClient]:
         alert_encryption_key=ALERT_ENCRYPTION_KEY,
         media_signing_key=MEDIA_SIGNING_KEY,
         evidence_directory=tmp_path / "evidence",
+        recording_archive_directory=tmp_path / "recordings",
+        recording_upload_max_bytes=1024,
+        recording_retention_hours=1,
         replay_directory=tmp_path / "replays",
         replay_max_bytes=1024,
     )

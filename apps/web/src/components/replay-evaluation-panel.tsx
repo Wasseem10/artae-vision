@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { Icon } from "@/components/icon";
 import { api } from "@/lib/api";
 import { parseIntervalList } from "@/lib/evaluation";
-import type { Camera, ReplayEvaluation, ReplaySuite, ReplaySuiteRun } from "@/lib/types";
+import type {
+  CalibrationReadiness,
+  CalibrationScenario,
+  Camera,
+  ReplayEvaluation,
+  ReplayScenarioVariant,
+  ReplaySourceKind,
+  ReplaySuite,
+  ReplaySuiteRun,
+} from "@/lib/types";
 
 interface ReplayEvaluationPanelProps {
   cameras: Camera[];
@@ -31,6 +40,10 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
   const [prompt, setPrompt] = useState("");
   const [duration, setDuration] = useState("60");
   const [expectedText, setExpectedText] = useState("");
+  const [scenarioKey, setScenarioKey] = useState("");
+  const [scenarioVariant, setScenarioVariant] = useState<ReplayScenarioVariant>("positive");
+  const [sourceKind, setSourceKind] = useState<ReplaySourceKind>("controlled");
+  const [environmentTags, setEnvironmentTags] = useState("normal_light");
   const [predictedText, setPredictedText] = useState("");
   const [providerRequests, setProviderRequests] = useState("0");
   const [inputTokens, setInputTokens] = useState("0");
@@ -49,6 +62,33 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
   const [maximumCost, setMaximumCost] = useState("1");
   const [requirePricing, setRequirePricing] = useState(true);
   const [suiteBusy, setSuiteBusy] = useState(false);
+  const [calibrationScenarios, setCalibrationScenarios] = useState<CalibrationScenario[]>([]);
+  const [calibrationReadiness, setCalibrationReadiness] = useState<CalibrationReadiness | null>(null);
+
+  const refreshCalibration = useCallback(async () => {
+    try {
+      const [scenarios, readiness] = await Promise.all([
+        api.listCalibrationScenarios(),
+        api.getCalibrationReadiness(),
+      ]);
+      setCalibrationScenarios(scenarios);
+      setCalibrationReadiness(readiness);
+    } catch (failure) {
+      onError(failure instanceof Error ? failure.message : "Could not load calibration readiness.");
+    }
+  }, [onError]);
+
+  useEffect(() => {
+    void Promise.all([
+      api.listCalibrationScenarios(),
+      api.getCalibrationReadiness(),
+    ]).then(([scenarios, readiness]) => {
+      setCalibrationScenarios(scenarios);
+      setCalibrationReadiness(readiness);
+    }).catch((failure: unknown) => {
+      onError(failure instanceof Error ? failure.message : "Could not load calibration readiness.");
+    });
+  }, [onError]);
 
   useEffect(() => {
     void api
@@ -83,6 +123,10 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
   const selectedSuite = useMemo(
     () => suites.find((suite) => suite.id === selectedSuiteId) ?? null,
     [selectedSuiteId, suites],
+  );
+  const selectedScenario = useMemo(
+    () => calibrationScenarios.find((scenario) => scenario.key === scenarioKey) ?? null,
+    [calibrationScenarios, scenarioKey],
   );
 
   useEffect(() => {
@@ -125,13 +169,25 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
               evaluation.id === updated.id ? updated : evaluation,
             ),
           );
+          if (["scored", "failed"].includes(updated.status)) void refreshCalibration();
         })
         .catch((failure: unknown) => {
           onError(failure instanceof Error ? failure.message : "Could not refresh replay status.");
         });
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [onError, selected]);
+  }, [onError, refreshCalibration, selected]);
+
+  function chooseScenario(key: string) {
+    setScenarioKey(key);
+    const scenario = calibrationScenarios.find((item) => item.key === key);
+    if (!scenario) return;
+    setPrompt(scenario.prompt);
+    setName(`${scenario.title} calibration`);
+    setExpectedText("");
+    setScenarioVariant("positive");
+    setEnvironmentTags(scenario.recommended_environment_tags[0] ?? "normal_light");
+  }
 
   async function createEvaluation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -148,12 +204,19 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
         prompt: prompt.trim(),
         duration_seconds: Number(duration),
         expected_intervals: expected,
+        scenario_key: scenarioKey || null,
+        scenario_variant: scenarioKey ? scenarioVariant : "unclassified",
+        source_kind: scenarioKey ? sourceKind : "unclassified",
+        environment_tags: scenarioKey
+          ? environmentTags.split(",").map((tag) => tag.trim()).filter(Boolean)
+          : [],
       });
       setEvaluations((current) => [created, ...current]);
       setSuiteEvaluationIds((current) => [created.id, ...current]);
       setSelectedId(created.id);
       setPredictedText("");
       setReplayFile(null);
+      await refreshCalibration();
     } catch (failure) {
       onError(failure instanceof Error ? failure.message : "Could not create the evaluation.");
     } finally {
@@ -197,6 +260,7 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
       setEvaluations((current) =>
         current.map((evaluation) => (evaluation.id === scored.id ? scored : evaluation)),
       );
+      await refreshCalibration();
     } catch (failure) {
       onError(failure instanceof Error ? failure.message : "Could not score the evaluation.");
     } finally {
@@ -284,9 +348,98 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
         <span className="evaluationCount">{evaluations.length} runs</span>
       </div>
 
+      {calibrationReadiness && (
+        <div className={`calibrationReadiness calibration-${calibrationReadiness.status}`}>
+          <div className="calibrationSummary">
+            <div>
+              <span className="eyebrow">General benchmark evidence</span>
+              <h3>
+                {calibrationReadiness.benchmark_accuracy_claimable
+                  ? "General benchmark pack ready"
+                  : "General benchmark still in progress"}
+              </h3>
+              <p>{calibrationReadiness.message}</p>
+            </div>
+            <div className="calibrationTotals">
+              <div><strong>{calibrationReadiness.ready_scenarios}/{calibrationReadiness.required_scenarios}</strong><small>scenarios ready</small></div>
+              <div><strong>{calibrationReadiness.site_specific_ready_scenarios}/{calibrationReadiness.required_scenarios}</strong><small>site-proven scenarios</small></div>
+              <div><strong>{calibrationReadiness.public_benchmark_clips}</strong><small>licensed benchmark clips</small></div>
+              <div><strong>{calibrationReadiness.site_specific_clips}</strong><small>site-specific clips</small></div>
+              <div><strong>{calibrationReadiness.synthetic_pipeline_checks}</strong><small>synthetic checks</small></div>
+            </div>
+          </div>
+          <div className="calibrationScenarioGrid">
+            {calibrationReadiness.scenarios.map((status) => (
+              <button
+                className={`calibrationScenario calibration-status-${status.status}`}
+                key={status.key}
+                onClick={() => chooseScenario(status.key)}
+                type="button"
+              >
+                <span>{status.status.replace("_", " ")}</span>
+                <strong>{status.title}</strong>
+                <small>{status.positive_clips} positive · {status.negative_clips} negative · {status.challenging_clips} challenging</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="evaluationWorkspace">
         <form className="evaluationForm" onSubmit={createEvaluation}>
           <h3>Create a labeled replay</h3>
+          <label>
+            <span>Calibration scenario (recommended)</span>
+            <select onChange={(event) => chooseScenario(event.target.value)} value={scenarioKey}>
+              <option value="">Custom / unclassified replay</option>
+              {calibrationScenarios.map((scenario) => (
+                <option key={scenario.key} value={scenario.key}>{scenario.title}</option>
+              ))}
+            </select>
+          </label>
+          {selectedScenario && (
+            <div className="calibrationProtocol">
+              <strong>{selectedScenario.description}</strong>
+              <span>{selectedScenario.temporal_mode} · {selectedScenario.metric_family.replace("_", " ")}</span>
+              <ol>
+                {selectedScenario.recording_protocol.map((instruction) => <li key={instruction}>{instruction}</li>)}
+              </ol>
+              {selectedScenario.automation_status === "manual_only" && (
+                <small>Text correctness still requires manual value-level review.</small>
+              )}
+            </div>
+          )}
+          {selectedScenario && (
+            <div className="calibrationMetadata">
+              <label>
+                <span>Clip result</span>
+                <select
+                  onChange={(event) => {
+                    const variant = event.target.value as ReplayScenarioVariant;
+                    setScenarioVariant(variant);
+                    if (variant === "negative") setExpectedText("");
+                  }}
+                  value={scenarioVariant}
+                >
+                  <option value="positive">Positive · event occurs</option>
+                  <option value="negative">Negative · event never occurs</option>
+                </select>
+              </label>
+              <label>
+                <span>Evidence source</span>
+                <select onChange={(event) => setSourceKind(event.target.value as ReplaySourceKind)} value={sourceKind}>
+                  <option value="controlled">Controlled camera recording</option>
+                  <option value="field">Real field footage</option>
+                  <option value="public_benchmark">Licensed public benchmark</option>
+                  <option value="synthetic">Synthetic pipeline check</option>
+                </select>
+              </label>
+              <label className="calibrationTags">
+                <span>Environment tags</span>
+                <input onChange={(event) => setEnvironmentTags(event.target.value)} placeholder="low_light, far_distance" value={environmentTags} />
+              </label>
+            </div>
+          )}
           <label>
             <span>Evaluation name</span>
             <input onChange={(event) => setName(event.target.value)} required value={name} />
@@ -326,6 +479,7 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
             <textarea
               onChange={(event) => setPrompt(event.target.value)}
               placeholder="Alert me when a masked person enters the store."
+              readOnly={Boolean(selectedScenario)}
               required
               rows={3}
               value={prompt}
@@ -338,7 +492,12 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
             </label>
             <label>
               <span>Expected event intervals</span>
-              <input onChange={(event) => setExpectedText(event.target.value)} placeholder="5-10, 24-30" value={expectedText} />
+              <input
+                disabled={scenarioVariant === "negative" && Boolean(selectedScenario)}
+                onChange={(event) => setExpectedText(event.target.value)}
+                placeholder={selectedScenario?.metric_family === "structured_text" ? "Not used for text value scoring" : "5-10, 24-30"}
+                value={expectedText}
+              />
             </label>
           </div>
           <small>Intervals use video seconds. An empty list represents a negative test clip.</small>
@@ -377,6 +536,14 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
             <span>{selected.execution_plan.provider_requests ? "Paid provider route" : "Local route"}</span>
             <strong>{selected.execution_plan.summary}</strong>
             <small>{selected.source_uri} · {selected.duration_seconds}s · {selected.expected_intervals.length} expected events</small>
+            {selected.scenario_key && (
+              <div className="calibrationBadges">
+                <span>{selected.scenario_key.replaceAll("_", " ")}</span>
+                <span>{selected.scenario_variant}</span>
+                <span>{selected.source_kind}</span>
+                {selected.environment_tags.map((tag) => <span key={tag}>{tag.replaceAll("_", " ")}</span>)}
+              </div>
+            )}
             <div className="evaluationRunControl">
               <button
                 className="buttonPrimary"
@@ -599,6 +766,22 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
                         <span className={`replayStatus status-${result.status}`}>{result.status}</span>
                         <strong>{result.name}</strong>
                         <small>F1 {percentage(result.metrics.f1)} · false alarms {result.metrics.false_positives ?? "—"} · ${result.estimated_cost_usd.toFixed(4)}</small>
+                      </article>
+                    ))}
+                  </div>
+                )}
+                {selectedSuite.latest_run.metrics.scenario_metrics && (
+                  <div className="scenarioBreakdown">
+                    <h4>Capability breakdown</h4>
+                    {Object.entries(selectedSuite.latest_run.metrics.scenario_metrics).map(([key, metrics]) => (
+                      <article key={key}>
+                        <div>
+                          <strong>{key.replaceAll("_", " ")}</strong>
+                          <small>{metrics.evaluation_count} clips · {metrics.source_kinds.join(" + ")} · {metrics.variants.join(" + ")}</small>
+                        </div>
+                        <span>F1 {percentage(metrics.macro_f1)}</span>
+                        <span>Recall {percentage(metrics.macro_recall)}</span>
+                        <span>{metrics.false_positives} false alarms</span>
                       </article>
                     ))}
                   </div>

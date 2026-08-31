@@ -1,3 +1,4 @@
+from dataclasses import replace
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
@@ -5,21 +6,28 @@ from pydantic import ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
-from video_intelligence_api.alerting import enqueue_event_alert
 from video_intelligence_api.auth import ActorDependency
-from video_intelligence_api.correlations import enqueue_event_correlations
-from video_intelligence_api.dependencies import SessionDependency
+from video_intelligence_api.camera_secrets import CameraSecretError, resolved_camera_source
+from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
+from video_intelligence_api.field_accuracy import automatic_release_allowed
+from video_intelligence_api.live_verification import (
+    assess_semantic_event,
+    finalize_confirmed_event,
+    scene_observations,
+)
 from video_intelligence_api.models import (
     Camera,
     Event,
     EvidenceAsset,
     Rule,
     RuleStatus,
+    VerificationCase,
+    VerificationStatus,
     Zone,
     new_id,
+    utc_now,
 )
 from video_intelligence_api.routes.agents import assignment_rule
-from video_intelligence_api.scene_memory import SceneObservationData, apply_scene_observations
 from video_intelligence_api.schemas import (
     AgentCameraConfig,
     AgentEventIngest,
@@ -42,6 +50,7 @@ router = APIRouter(tags=["events"])
 async def get_agent_config(
     camera_ref: Annotated[str, Query(min_length=1, max_length=120)],
     session: SessionDependency,
+    settings: SettingsDependency,
     principal: Annotated[EdgePrincipal, Depends(require_edge_device)],
 ) -> AgentCameraConfig:
     """Return unredacted source details only to an authenticated camera agent."""
@@ -53,6 +62,12 @@ async def get_agent_config(
     camera = await session.scalar(camera_statement.limit(1))
     if camera is None:
         raise HTTPException(status_code=404, detail="Camera reference not found")
+    if (
+        principal.device_id is not None
+        and camera.edge_device_id is not None
+        and camera.edge_device_id != principal.device_id
+    ):
+        raise HTTPException(status_code=404, detail="Camera reference not found")
 
     rows = (
         await session.execute(
@@ -62,10 +77,14 @@ async def get_agent_config(
             .order_by(Rule.created_at)
         )
     ).all()
+    try:
+        source_uri = resolved_camera_source(camera, settings)
+    except CameraSecretError as exc:
+        raise HTTPException(status_code=503, detail="Camera credentials are unavailable") from exc
     return AgentCameraConfig(
         camera_id=camera.id,
         camera_name=camera.name,
-        source_uri=camera.source_uri,
+        source_uri=source_uri,
         source_type=camera.source_type,
         rules=[assignment_rule(rule, zone) for rule, zone in rows],
     )
@@ -82,7 +101,12 @@ async def list_events(
     statement = (
         select(Event)
         .join(Camera, Camera.id == Event.camera_id)
-        .where(Camera.organization_id == actor.organization_id)
+        .where(
+            Camera.organization_id == actor.organization_id,
+            Event.verification_status.in_(
+                [VerificationStatus.NOT_REQUIRED, VerificationStatus.CONFIRMED]
+            ),
+        )
         .order_by(Event.occurred_at.desc())
         .limit(limit)
     )
@@ -151,6 +175,32 @@ async def ingest_agent_event(
         raise HTTPException(status_code=409, detail="Rule is not active")
 
     raw_payload = payload.model_dump(mode="json")
+    is_semantic = rule.rule_type == "semantic_vision" or payload.event_type == "semantic_vision"
+    assessment = assess_semantic_event(rule, payload.details) if is_semantic else None
+    if (
+        assessment is not None
+        and assessment.decision_source == "automatic_verifier"
+        and not await automatic_release_allowed(session, rule.id)
+    ):
+        proposed_status = assessment.status.value
+        assessment = replace(
+            assessment,
+            status=VerificationStatus.PENDING,
+            reasoning=(
+                f"The independent verifier proposed '{proposed_status}', but this camera/job "
+                "has not passed its human-grounded field accuracy gate. Operator review is "
+                "required."
+            ),
+            decision_source="field_gate_required",
+        )
+    verification_status = (
+        assessment.status if assessment is not None else VerificationStatus.NOT_REQUIRED
+    )
+    # Validate semantic scene memory before persisting, but release it only after confirmation.
+    try:
+        scene_observations(payload.details)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail="Event scene observations are invalid") from exc
     event = Event(
         id=new_id(),
         source_event_id=payload.id,
@@ -169,30 +219,37 @@ async def ingest_agent_event(
         clip_uri=payload.clip_path,
         raw_payload=raw_payload,
         details=payload.details,
+        verification_status=verification_status,
+        verified_at=utc_now()
+        if verification_status in {VerificationStatus.CONFIRMED, VerificationStatus.REJECTED}
+        else None,
+        verified_by="automatic-verifier"
+        if verification_status in {VerificationStatus.CONFIRMED, VerificationStatus.REJECTED}
+        else None,
     )
     session.add(event)
     session.add(EvidenceAsset(event_id=event.id))
-    raw_scene_observations = payload.details.get("scene_observations")
-    if isinstance(raw_scene_observations, list) and raw_scene_observations:
-        try:
-            scene_observations = [
-                SceneObservationData.model_validate(value) for value in raw_scene_observations
-            ]
-        except ValidationError as exc:
-            raise HTTPException(
-                status_code=422,
-                detail="Event scene observations are invalid",
-            ) from exc
-        await apply_scene_observations(
-            session,
-            organization_id=camera.organization_id,
-            camera_id=camera.id,
-            observations=scene_observations,
-            occurred_at=payload.occurred_at,
-            event_id=event.id,
+    if assessment is not None:
+        session.add(
+            VerificationCase(
+                id=new_id(),
+                organization_id=camera.organization_id,
+                event_id=event.id,
+                status=assessment.status,
+                proposer_model=assessment.proposer_model,
+                verifier_model=assessment.verifier_model,
+                proposer_confidence=payload.confidence,
+                verifier_confidence=assessment.verifier_confidence,
+                proposal_summary=assessment.proposal_summary,
+                verifier_summary=assessment.verifier_summary,
+                reasoning=assessment.reasoning,
+                decision_source=assessment.decision_source,
+                reviewed_at=event.verified_at,
+                reviewed_by=event.verified_by,
+            )
         )
-    if not await enqueue_event_correlations(session, event):
-        await enqueue_event_alert(session, event)
+    if verification_status in {VerificationStatus.NOT_REQUIRED, VerificationStatus.CONFIRMED}:
+        await finalize_confirmed_event(session, event, camera)
     try:
         await session.commit()
     except IntegrityError:
@@ -212,9 +269,10 @@ async def ingest_agent_event(
         raise
     await session.refresh(event)
 
-    event_payload = EventRead.model_validate(event).model_dump(mode="json")
-    await request.app.state.event_connections.broadcast(
-        {"type": "event.created", "data": event_payload},
-        organization_id=camera.organization_id,
-    )
+    if verification_status in {VerificationStatus.NOT_REQUIRED, VerificationStatus.CONFIRMED}:
+        event_payload = EventRead.model_validate(event).model_dump(mode="json")
+        await request.app.state.event_connections.broadcast(
+            {"type": "event.created", "data": event_payload},
+            organization_id=camera.organization_id,
+        )
     return event

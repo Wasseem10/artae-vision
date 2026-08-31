@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import timedelta
 from pathlib import Path as FilePath
 from typing import Annotated
 from urllib.parse import unquote
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
+import anyio
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response, status
 from sqlalchemy import or_, select
 
 from video_intelligence_api.auth import ActorDependency, EditorDependency
+from video_intelligence_api.calibration import SCENARIO_BY_KEY
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.evaluation_scoring import TemporalInterval, score_intervals
 from video_intelligence_api.execution_plans import plan_job
@@ -20,14 +23,21 @@ from video_intelligence_api.job_specs import (
     spatial_id,
     validate_job_spec,
 )
+from video_intelligence_api.live_verification import finalize_confirmed_event
 from video_intelligence_api.models import (
+    Camera,
+    Event,
+    EvidenceAsset,
+    EvidenceStatus,
     ReplayEvaluation,
     ReplayEvaluationStatus,
     ReplaySuite,
     ReplaySuiteRun,
     ReplaySuiteRunStatus,
     RuleCompilationStatus,
+    RuleStatus,
     Zone,
+    new_id,
     utc_now,
 )
 from video_intelligence_api.routes.rule_compilations import _compile_and_store
@@ -35,6 +45,8 @@ from video_intelligence_api.schemas import (
     AgentRuleConfig,
     AgentZoneConfig,
     EvaluationInterval,
+    EventRead,
+    ReplayActionDispatch,
     ReplayEvaluationCreate,
     ReplayEvaluationRead,
     ReplayEvaluationScore,
@@ -56,6 +68,7 @@ from video_intelligence_api.tenancy import (
     tenant_replay_evaluation,
     tenant_replay_suite,
     tenant_replay_suite_run,
+    tenant_rule,
 )
 
 router = APIRouter(prefix="/evaluations", tags=["replay evaluations"])
@@ -77,6 +90,27 @@ ALLOWED_REPLAY_MEDIA_TYPES = {
     "video/x-matroska",
     "video/x-msvideo",
 }
+
+
+def _copy_uploaded_evidence(source: FilePath, target: FilePath) -> tuple[int, str]:
+    digest = hashlib.sha256()
+    size_bytes = 0
+    with source.open("rb") as input_file, target.open("xb") as output_file:
+        while chunk := input_file.read(1024 * 1024):
+            digest.update(chunk)
+            size_bytes += len(chunk)
+            output_file.write(chunk)
+    return size_bytes, digest.hexdigest()
+
+
+def _uploaded_media_type(source: FilePath) -> str:
+    return {
+        ".avi": "video/x-msvideo",
+        ".mkv": "video/x-matroska",
+        ".mov": "video/quicktime",
+        ".mp4": "video/mp4",
+        ".webm": "video/webm",
+    }.get(source.suffix.casefold(), "video/mp4")
 
 
 def _interval_payload(interval: EvaluationInterval) -> dict:
@@ -151,6 +185,36 @@ def _gate(
     }
 
 
+def _scenario_metrics(scored: list[ReplayEvaluation]) -> dict[str, dict[str, object]]:
+    """Keep suite averages from hiding a weak capability or evidence source."""
+
+    grouped: dict[str, list[ReplayEvaluation]] = {}
+    for item in scored:
+        grouped.setdefault(item.scenario_key or "unclassified", []).append(item)
+    metrics: dict[str, dict[str, object]] = {}
+    for key, items in grouped.items():
+        count = len(items)
+        metrics[key] = {
+            "evaluation_count": count,
+            "macro_precision": round(
+                sum(float(item.metrics.get("precision", 0)) for item in items) / count,
+                6,
+            ),
+            "macro_recall": round(
+                sum(float(item.metrics.get("recall", 0)) for item in items) / count,
+                6,
+            ),
+            "macro_f1": round(
+                sum(float(item.metrics.get("f1", 0)) for item in items) / count,
+                6,
+            ),
+            "false_positives": sum(int(item.metrics.get("false_positives", 0)) for item in items),
+            "source_kinds": sorted({item.source_kind for item in items}),
+            "variants": sorted({item.scenario_variant for item in items}),
+        }
+    return metrics
+
+
 async def _refresh_suite_runs_for_evaluation(
     session: SessionDependency,
     evaluation: ReplayEvaluation,
@@ -202,6 +266,10 @@ async def _refresh_suite_runs_for_evaluation(
                 "name": item.name,
                 "status": item.status.value,
                 "execution_strategy": item.execution_strategy,
+                "scenario_key": item.scenario_key,
+                "scenario_variant": item.scenario_variant,
+                "source_kind": item.source_kind,
+                "environment_tags": item.environment_tags,
                 "metrics": item.metrics,
                 "estimated_cost_usd": round(item.estimated_cost_usd, 8),
                 "last_error": item.last_error,
@@ -294,6 +362,7 @@ async def _refresh_suite_runs_for_evaluation(
             "provider_requests": sum(item.provider_requests for item in scored),
             "estimated_cost_usd": total_cost,
             "pricing_complete": pricing_complete,
+            "scenario_metrics": _scenario_metrics(scored),
         }
         run.gate_results = gate_results
         run.status = (
@@ -382,6 +451,34 @@ async def create_evaluation(
     settings: SettingsDependency,
     actor: EditorDependency,
 ) -> ReplayEvaluation:
+    if payload.scenario_key is not None and payload.scenario_key not in SCENARIO_BY_KEY:
+        raise HTTPException(status_code=422, detail="Unknown calibration scenario key")
+    if payload.scenario_key is not None:
+        scenario = SCENARIO_BY_KEY[payload.scenario_key]
+        if payload.source_kind == "unclassified" or payload.scenario_variant == "unclassified":
+            raise HTTPException(
+                status_code=422,
+                detail="Calibration scenarios require a source kind and positive/negative variant.",
+            )
+        if payload.prompt.strip().casefold() != scenario.prompt.casefold():
+            raise HTTPException(
+                status_code=422,
+                detail="The prompt must match the selected calibration scenario.",
+            )
+        if payload.scenario_variant == "negative" and payload.expected_intervals:
+            raise HTTPException(
+                status_code=422,
+                detail="Negative calibration clips cannot contain expected event intervals.",
+            )
+        if (
+            scenario.metric_family == "temporal_event"
+            and payload.scenario_variant == "positive"
+            and not payload.expected_intervals
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Positive temporal calibration clips require expected event intervals.",
+            )
     compilation = await _compile_and_store(
         camera_id=payload.camera_id,
         prompt=payload.prompt,
@@ -404,7 +501,7 @@ async def create_evaluation(
             },
         )
     job = validate_job_spec(compilation.compiled_rule)
-    execution_plan = plan_job(job)
+    execution_plan = plan_job(job, payload.prompt)
     evaluation = ReplayEvaluation(
         organization_id=actor.organization_id,
         camera_id=payload.camera_id,
@@ -412,6 +509,10 @@ async def create_evaluation(
         name=payload.name,
         source_uri=payload.source_uri,
         prompt=payload.prompt,
+        scenario_key=payload.scenario_key,
+        scenario_variant=payload.scenario_variant,
+        source_kind=payload.source_kind,
+        environment_tags=payload.environment_tags,
         duration_seconds=payload.duration_seconds,
         execution_strategy=execution_plan.strategy,
         compiled_rule=job.model_dump(mode="json"),
@@ -566,6 +667,138 @@ async def queue_evaluation(
     await session.commit()
     await session.refresh(evaluation)
     return evaluation
+
+
+@router.post(
+    "/{evaluation_id}/dispatch",
+    response_model=EventRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def dispatch_uploaded_video_result(
+    evaluation_id: Annotated[str, Path(min_length=1, max_length=36)],
+    payload: ReplayActionDispatch,
+    request: Request,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    actor: EditorDependency,
+) -> Event:
+    """Turn a confirmed uploaded-video match into a real incident and guarded actions."""
+
+    evaluation = await tenant_replay_evaluation(session, actor, evaluation_id)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Uploaded-video analysis not found")
+    if evaluation.status != ReplayEvaluationStatus.SCORED:
+        raise HTTPException(status_code=409, detail="Uploaded-video analysis is not complete")
+    if not evaluation.predicted_intervals:
+        raise HTTPException(status_code=409, detail="The uploaded video did not match this rule")
+
+    rule = await tenant_rule(session, actor, payload.rule_id)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+    if rule.camera_id != evaluation.camera_id:
+        raise HTTPException(status_code=409, detail="Rule and uploaded video use different cameras")
+    if rule.status != RuleStatus.ACTIVE:
+        raise HTTPException(status_code=409, detail="Activate the rule before dispatching actions")
+
+    source_event_id = str(uuid5(NAMESPACE_URL, f"uploaded-video:{evaluation.id}:{rule.id}"))
+    existing = await session.scalar(select(Event).where(Event.source_event_id == source_event_id))
+    if existing is not None:
+        return existing
+
+    camera = await session.get(Camera, evaluation.camera_id)
+    zone = await session.get(Zone, rule.zone_id)
+    if camera is None:
+        raise HTTPException(status_code=409, detail="Rule camera is unavailable")
+
+    replay_root = settings.replay_directory.expanduser().resolve()
+    organization_root = (replay_root / actor.organization_id).resolve()
+    source = FilePath(evaluation.source_uri).expanduser().resolve()
+    if not source.is_file() or not source.is_relative_to(organization_root):
+        raise HTTPException(status_code=409, detail="Uploaded video file is unavailable")
+
+    evidence_id = new_id()
+    evidence_root = settings.evidence_directory.expanduser().resolve()
+    evidence_root.mkdir(parents=True, exist_ok=True)
+    evidence_path = (evidence_root / f"{evidence_id}{source.suffix.casefold()}").resolve()
+    if not evidence_path.is_relative_to(evidence_root):
+        raise HTTPException(status_code=400, detail="Invalid evidence path")
+    try:
+        size_bytes, digest = await anyio.to_thread.run_sync(
+            _copy_uploaded_evidence,
+            source,
+            evidence_path,
+        )
+    except FileExistsError as exc:
+        raise HTTPException(status_code=409, detail="Evidence file already exists") from exc
+
+    first = evaluation.predicted_intervals[0]
+    start_seconds = float(first.get("start_seconds", 0))
+    end_seconds = float(first.get("end_seconds", start_seconds))
+    confidence = max(
+        float(interval.get("confidence") or rule.minimum_confidence)
+        for interval in evaluation.predicted_intervals
+    )
+    details: dict[str, object] = {
+        "uploaded_video": True,
+        "evaluation_id": evaluation.id,
+        "source_name": evaluation.name,
+        "match_count": len(evaluation.predicted_intervals),
+        "matched_intervals": evaluation.predicted_intervals,
+        "summary": (
+            f"Uploaded video matched '{rule.name}' "
+            f"{len(evaluation.predicted_intervals)} time(s)."
+        ),
+    }
+    event = Event(
+        id=new_id(),
+        source_event_id=source_event_id,
+        schema_version=2,
+        event_type=rule.rule_type,
+        camera_id=camera.id,
+        rule_id=rule.id,
+        track_id=None,
+        object_class=rule.object_class,
+        zone_name=zone.name if zone is not None else "Full camera view",
+        entered_at_seconds=start_seconds,
+        occurred_at_seconds=float(first.get("detected_at_seconds") or start_seconds),
+        dwell_seconds=max(0, end_seconds - start_seconds),
+        confidence=min(1, max(0, confidence)),
+        occurred_at=utc_now(),
+        clip_uri=str(evidence_path),
+        raw_payload={
+            "schema_version": 2,
+            "id": source_event_id,
+            "uploaded_video": True,
+            "evaluation_id": evaluation.id,
+        },
+        details=details,
+    )
+    evidence = EvidenceAsset(
+        id=evidence_id,
+        event_id=event.id,
+        status=EvidenceStatus.QUEUED,
+        storage_uri=str(evidence_path),
+        media_type=_uploaded_media_type(source),
+        size_bytes=size_bytes,
+        sha256=digest,
+        duration_seconds=evaluation.duration_seconds,
+    )
+    session.add(event)
+    session.add(evidence)
+    await finalize_confirmed_event(session, event, camera)
+    try:
+        await session.commit()
+    except Exception:
+        evidence_path.unlink(missing_ok=True)
+        raise
+    await session.refresh(event)
+
+    event_payload = EventRead.model_validate(event).model_dump(mode="json")
+    await request.app.state.event_connections.broadcast(
+        {"type": "event.created", "data": event_payload},
+        organization_id=camera.organization_id,
+    )
+    return event
 
 
 @suite_router.post("", response_model=ReplaySuiteRead, status_code=status.HTTP_201_CREATED)

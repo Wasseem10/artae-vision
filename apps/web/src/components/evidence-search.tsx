@@ -46,7 +46,7 @@ function SearchPlayer({ hit }: { hit: EvidenceSearchHit }) {
 
 export function EvidenceSearchPanel({ camera, onError }: EvidenceSearchProps) {
   const [query, setQuery] = useState("");
-  const [cameraOnly, setCameraOnly] = useState(false);
+  const [cameraOnly, setCameraOnly] = useState(camera !== null);
   const [search, setSearch] = useState<EvidenceSearch | null>(null);
   const [selectedHit, setSelectedHit] = useState<EvidenceSearchHit | null>(null);
   const [busy, setBusy] = useState(false);

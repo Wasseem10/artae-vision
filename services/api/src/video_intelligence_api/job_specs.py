@@ -85,6 +85,8 @@ class SemanticVisionJob(StrictJobModel):
     absence_grace_seconds: float = Field(default=1.0, ge=0, le=60)
     confirmation_windows: int = Field(default=1, ge=1, le=10)
     cooldown_seconds: float = Field(default=60.0, ge=0, le=86400)
+    temporal_mode: Literal["state", "transition", "sequence"] = "state"
+    baseline_windows: int = Field(default=0, ge=0, le=10)
 
 
 CameraJobSpec = Annotated[

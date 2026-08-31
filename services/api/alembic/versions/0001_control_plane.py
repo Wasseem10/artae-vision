@@ -18,6 +18,15 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # Alembic's default version column is too short for later descriptive revision IDs.
+    if op.get_bind().dialect.name == "postgresql":
+        op.alter_column(
+            "alembic_version",
+            "version_num",
+            existing_type=sa.String(length=32),
+            type_=sa.String(length=64),
+            existing_nullable=False,
+        )
     op.create_table(
         "cameras",
         sa.Column("id", sa.String(length=36), nullable=False),

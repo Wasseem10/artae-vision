@@ -64,6 +64,8 @@ class _JobSpecPayload(BaseModel):
     instruction: str | None = Field(default=None, min_length=5, max_length=2000)
     confirmation_windows: int = Field(default=1, ge=1, le=10)
     cooldown_seconds: float = Field(default=60, ge=0, le=86400)
+    temporal_mode: Literal["state", "transition", "sequence"] = "state"
+    baseline_windows: int = Field(default=0, ge=0, le=10)
 
 
 class _ExecutionPlanPayload(BaseModel):
@@ -109,6 +111,8 @@ class ResolvedRuleConfig:
     instruction: str | None = None
     confirmation_windows: int = 1
     cooldown_seconds: float = 60.0
+    temporal_mode: Literal["state", "transition", "sequence"] = "state"
+    baseline_windows: int = 0
     execution_strategy: Literal["deterministic_tracking", "semantic_window"] | None = None
 
     @property
@@ -174,6 +178,8 @@ def _resolved_rule(rule: _RulePayload) -> ResolvedRuleConfig:
         instruction=spec.instruction,
         confirmation_windows=spec.confirmation_windows,
         cooldown_seconds=spec.cooldown_seconds,
+        temporal_mode=spec.temporal_mode,
+        baseline_windows=spec.baseline_windows,
         execution_strategy=(
             rule.execution_plan.strategy if rule.execution_plan is not None else inferred_strategy
         ),

@@ -235,3 +235,64 @@ def test_scopes_and_unavailable_physical_actions_are_enforced(
     )
     assert physical.status_code == 409
     assert "disabled" in physical.text
+
+
+def test_telegram_connector_keeps_token_secret_and_queues_outbound_test(
+    api_client: TestClient,
+) -> None:
+    rule = create_rule(api_client, "telegram")
+    token = "123456789:telegram-bot-token-secret-value"
+    created = api_client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Security Telegram",
+            "connector_type": "telegram",
+            "credential": token,
+            "configuration": {"chat_id": "-100123456789"},
+            "scopes": ["notifications:write"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    connector = created.json()
+    assert connector["endpoint_url"] is None
+    assert connector["configuration"] == {"chat_id": "-100123456789"}
+    assert token not in created.text
+
+    binding = api_client.post(
+        f"/api/v1/rules/{rule['id']}/actions",
+        json={"connector_id": connector["id"], "action_type": "send_notification"},
+    )
+    assert binding.status_code == 201, binding.text
+    outbound_test = api_client.post(
+        f"/api/v1/rules/{rule['id']}/test-alert",
+        json={"deliver_outbound": True, "connector_id": connector["id"]},
+    )
+    assert outbound_test.status_code == 201, outbound_test.text
+
+    claim = api_client.post(
+        "/api/v1/agent/action-executions/claim",
+        headers=AGENT_HEADERS,
+        json={"worker_id": "telegram-worker"},
+    )
+    assert claim.status_code == 200, claim.text
+    assignment = claim.json()
+    assert assignment["connector_type"] == "telegram"
+    assert assignment["credential"] == token
+    assert assignment["configuration"] == {"chat_id": "-100123456789"}
+    assert assignment["payload"]["is_test"] is True
+
+
+def test_telegram_connector_requires_bot_token_and_chat_id(
+    api_client: TestClient,
+) -> None:
+    missing_chat = api_client.post(
+        "/api/v1/connectors",
+        json={
+            "name": "Broken Telegram",
+            "connector_type": "telegram",
+            "credential": "123456789:telegram-bot-token-secret-value",
+            "scopes": ["notifications:write"],
+        },
+    )
+    assert missing_chat.status_code == 422
+    assert "chat_id" in missing_chat.text

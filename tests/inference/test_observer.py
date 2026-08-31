@@ -43,6 +43,63 @@ def test_sampler_emits_overlapping_chronological_sheets() -> None:
     assert windows[0].sheet.shape == (20, 40, 3)
 
 
+def test_sampler_flushes_one_partial_window_for_a_short_finite_replay() -> None:
+    sampler = OverlappingSheetSampler(
+        sample_fps=1,
+        window_frames=10,
+        overlap_frames=5,
+        frame_width=20,
+        frame_height=10,
+        columns=5,
+    )
+    for second in range(6):
+        assert sampler.add(np.zeros((12, 24, 3), dtype=np.uint8), float(second)) is None
+
+    partial = sampler.flush()
+
+    assert partial is not None
+    assert (partial.started_at, partial.ended_at) == (0.0, 5.0)
+    assert sampler.flush() is None
+
+
+def test_sampler_does_not_flush_overlap_after_a_complete_window() -> None:
+    sampler = OverlappingSheetSampler(
+        sample_fps=1,
+        window_frames=4,
+        overlap_frames=2,
+        frame_width=20,
+        frame_height=10,
+        columns=2,
+    )
+    completed = None
+    for second in range(4):
+        completed = (
+            sampler.add(np.zeros((12, 24, 3), dtype=np.uint8), float(second))
+            or completed
+        )
+
+    assert completed is not None
+    assert sampler.flush() is None
+
+
+def test_sampler_flushes_trailing_frames_after_a_complete_window() -> None:
+    sampler = OverlappingSheetSampler(
+        sample_fps=1,
+        window_frames=4,
+        overlap_frames=2,
+        frame_width=20,
+        frame_height=10,
+        columns=2,
+    )
+    for second in range(5):
+        sampler.add(np.zeros((12, 24, 3), dtype=np.uint8), float(second))
+
+    trailing = sampler.flush()
+
+    assert trailing is not None
+    assert (trailing.started_at, trailing.ended_at) == (2.0, 4.0)
+
+
 def test_qwen_client_sends_sheet_and_validates_json() -> None:
     request_payload: dict[str, object] = {}
 
@@ -182,10 +239,63 @@ def test_gemini_client_sends_sheet_and_validates_structured_json() -> None:
         "models/gemini-3.5-flash-lite:generateContent"
     )
     assert payload["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "MINIMAL"}
+    assert "Compare the same people" in payload["contents"][0]["parts"][0]["text"]
     assert (
         "scene_observations"
         in payload["generationConfig"]["responseJsonSchema"]["required"]
     )
+
+
+def test_gemini_client_clamps_model_boxes_that_cross_the_frame_edge() -> None:
+    def handler(_request: httpx.Request) -> httpx.Response:
+        content = {
+            "triggered": True,
+            "confidence": 0.9,
+            "summary": "A transition is visible.",
+            "first_frame": 3,
+            "scene_observations": [
+                {
+                    "stable_key": "person",
+                    "label": "Person",
+                    "kind": "tracked_entity",
+                    "bounding_box": {
+                        "x": 0.8,
+                        "y": 1.0,
+                        "width": 0.4,
+                        "height": 0.3,
+                    },
+                    "description": "Visible person",
+                    "state": "observed",
+                    "confidence": 0.9,
+                }
+            ],
+        }
+        return httpx.Response(
+            200,
+            json={
+                "candidates": [{"content": {"parts": [{"text": json.dumps(content)}]}}],
+                "usageMetadata": {},
+            },
+        )
+
+    client = GeminiVisionClient(
+        api_key="test-key",
+        base_url="https://example.test/v1beta",
+        model="gemini-test",
+        timeout_seconds=5,
+        client=httpx.Client(
+            transport=httpx.MockTransport(handler),
+            base_url="https://example.test/v1beta",
+        ),
+    )
+    decision = client.analyze(
+        ObservationWindow(1, 0, 3, np.zeros((20, 40, 3), dtype=np.uint8)),
+        "Alert when a transition occurs.",
+    )
+
+    box = decision.scene_observations[0].bounding_box
+    assert box.x + box.width <= 1
+    assert box.y + box.height <= 1
 
 
 def test_dry_run_provider_triggers_predictably() -> None:

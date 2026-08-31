@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "downloaded_at": "2026-08-22",
+  "sources": [
+    {
+      "id": "umafall",
+      "status": "accepted",
+      "source_page": "https://figshare.com/articles/dataset/UMA_ADL_FALL_Dataset_zip/4214283",
+      "license": "CC BY 4.0",
+      "creator": "University of Malaga UMAFall dataset authors",
+      "files": [
+        {"path": "artifacts/calibration/public/umafall/archives/videos_FALL.zip", "sha256": "4bb362ccb531f97e65c386aabecd4d0f02c2ff3374c1fbc1c702e93e369d07f3"},
+        {"path": "artifacts/calibration/public/umafall/archives/videos_ADL.zip", "sha256": "ddbc9144b41ac57a9673dbd8d0f453e60a91166d209a530cf38151e45cf27a79"}
+      ],
+      "scenarios": ["person_fall"]
+    },
+    {
+      "id": "pexels-8965389",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/a-woman-removing-his-face-mask-and-hard-hat-8965389/",
+      "license": "Pexels License",
+      "creator": "Mikael Blomkvist",
+      "files": [{"path": "artifacts/calibration/public/pexels/8965389-ppe-removal.mp4", "sha256": "e47dda7e7620deec89b5ffd1524ab2f05b8b0cafb8fe02c5c6a624ce5289db50"}],
+      "scenarios": ["ppe_removal"]
+    },
+    {
+      "id": "pexels-7705348",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/a-woman-spilled-water-on-the-floor-7705348/",
+      "license": "Pexels License",
+      "creator": "cottonbro studio",
+      "files": [{"path": "artifacts/calibration/public/pexels/7705348-spill.mp4", "sha256": "6b868293a7414901cc6ce7c8b17a8fc67ce9335fc87b95224d7fb5cd434f77"}],
+      "scenarios": ["spill_appears"]
+    },
+    {
+      "id": "pexels-8964292",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/a-foreman-at-the-construction-site-8964292/",
+      "license": "Pexels License",
+      "creator": "Mikael Blomkvist",
+      "files": [{"path": "artifacts/calibration/public/pexels/8964292-ppe-negative.mp4", "sha256": "bd0725fc0c13eda73cce5511dd9a03f6b33776cdbfa47f77b92e58506def42c4"}],
+      "scenarios": ["ppe_removal"]
+    },
+    {
+      "id": "pexels-8964296",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/construction-worker-looking-at-the-camera-8964296/",
+      "license": "Pexels License",
+      "creator": "Mikael Blomkvist",
+      "files": [{"path": "artifacts/calibration/public/pexels/8964296-ppe-negative.mp4", "sha256": "18b05b0276178553631cb5eb3a117ae364151489a43559975838cf63f18792ae"}],
+      "scenarios": ["ppe_removal"]
+    },
+    {
+      "id": "pexels-855561",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/tomatoes-on-boxes-855561/",
+      "license": "Pexels License",
+      "creator": "Pexels contributor",
+      "files": [{"path": "artifacts/calibration/public/pexels/855561-conveyor-boxes.mp4", "sha256": "acbfb87ed10ec37da263bb38003c9f450d6a2dbfe1fac8864ae874c0444b0db5"}],
+      "scenarios": ["equipment_stop", "package_fall"]
+    },
+    {
+      "id": "pexels-4435565",
+      "status": "accepted_with_limitations",
+      "source_page": "https://www.pexels.com/video/man-walking-office-alone-4435565/",
+      "license": "Pexels License",
+      "creator": "Pexels contributor",
+      "files": [{"path": "artifacts/calibration/public/pexels/4435565-person-entry.mp4", "sha256": "535d40e1f1bc32e6be1f6e6ef9b5dc4e7583dd50e2e580ad726208af12a34dce"}],
+      "scenarios": ["person_entry"],
+      "notes": "The subject is already visible near the beginning, so this is not accepted as a clean entry positive."
+    },
+    {
+      "id": "pexels-19912008",
+      "status": "accepted",
+      "source_page": "https://www.pexels.com/video/inside-of-commercial-building-19912008/",
+      "license": "Pexels License",
+      "creator": "Advancer Drones",
+      "files": [{"path": "artifacts/calibration/public/pexels/19912008-empty-warehouse.mp4", "sha256": "d403e9fb264cb9ed5ab5f6f0073e20ede9dae2e0a2895634827e4bea6046c2be"}],
+      "scenarios": ["person_presence"]
+    },
+    {
+      "id": "pexels-31401637",
+      "status": "rejected",
+      "source_page": "https://www.pexels.com/video/empty-white-room-with-spacious-design-31401637/",
+      "license": "Pexels License",
+      "creator": "Pexels contributor",
+      "files": [{"path": "artifacts/calibration/public/pexels/31401637-empty-room.mp4", "sha256": "0a4be93a453bdb667791d3468eea08c1cc0105cd7d9de7d352521f8cf2f8630a"}],
+      "scenarios": [],
+      "notes": "Rejected during visual QA because the downloaded content does not match the page description."
+    },
+    {
+      "id": "pixabay-41476",
+      "status": "accepted",
+      "source_page": "https://pixabay.com/videos/warehouse-dusty-lonely-desolate-41476/",
+      "license": "Pixabay Content License",
+      "creator": "Pixabay contributor",
+      "files": [{"path": "artifacts/calibration/public/pixabay/41476-empty-warehouse.mp4", "sha256": "e375b38bcc57db7a14bc8a4542323776f4b9912efb4d7235a0aad5933419e425"}],
+      "scenarios": ["person_presence"]
+    },
+    {
+      "id": "commons-amazon-bhx4",
+      "status": "accepted_with_limitations",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Amazon_warehouse_BHX4_loading_docks_1.webm",
+      "license": "CC BY 4.0",
+      "creator": "Domdomegg",
+      "files": [{"path": "artifacts/calibration/public/wikimedia/amazon-loading-docks-1.webm", "sha256": "ca784d69572bc5a7d5e3746d3922bff5cb875c77b35d309d9835d54dc3e5b5f5"}],
+      "scenarios": [],
+      "notes": "Not used as a person-negative clip because detector review found possible distant people."
+    },
+    {
+      "id": "commons-gigaset-conveyor",
+      "status": "accepted",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Gigaset_Cordless_Telephone_Production_VII_-_Pneumatic_Conveyor_Belt.webm",
+      "license": "CC BY 3.0",
+      "creator": "Kathinka Engels and Inke Pickhardt",
+      "files": [{"path": "artifacts/calibration/public/wikimedia/gigaset-conveyor.webm", "sha256": "4671c1e6479872b2ba3a3833f12ba728058c22ef4f634d4b65fbb6f4aed78605"}],
+      "scenarios": ["equipment_stop"]
+    }
+  ]
+}

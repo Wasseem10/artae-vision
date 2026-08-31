@@ -9,6 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response, 
 from sqlalchemy import func, or_, select
 
 from video_intelligence_api.auth import ActorDependency, EditorDependency
+from video_intelligence_api.camera_secrets import (
+    CameraSecretError,
+    resolved_camera_source,
+)
 from video_intelligence_api.dependencies import (
     MediaGatewayDependency,
     SessionDependency,
@@ -21,6 +25,7 @@ from video_intelligence_api.models import (
     AgentObservedStatus,
     Camera,
     CameraAgent,
+    CameraStatus,
     EdgeDevice,
     Rule,
     RuleStatus,
@@ -46,6 +51,16 @@ from video_intelligence_api.tenancy import tenant_camera
 router = APIRouter(tags=["managed agents"])
 
 
+def camera_capture_source(camera: Camera, settings: SettingsDependency) -> str:
+    source = camera.source_uri
+    if camera.credential_encrypted is None:
+        return source
+    try:
+        return resolved_camera_source(camera, settings)
+    except CameraSecretError as exc:
+        raise HTTPException(status_code=503, detail="Camera credentials are unavailable") from exc
+
+
 def agent_response(camera_id: str, agent: CameraAgent | None) -> CameraAgentRead:
     if agent is None:
         return CameraAgentRead(
@@ -56,14 +71,26 @@ def agent_response(camera_id: str, agent: CameraAgent | None) -> CameraAgentRead
             edge_device_id=None,
             lease_expires_at=None,
             last_heartbeat_at=None,
+            last_frame_at=None,
+            health_status="offline",
+            heartbeat_age_seconds=None,
             fps=None,
             inference_latency_ms=None,
             frame_width=None,
             frame_height=None,
+            frames_processed=0,
+            reconnect_count=0,
+            recording_state="disabled",
+            recording_segments_completed=0,
+            recording_dropped_frames=0,
+            recording_error=None,
+            failure_count=0,
+            next_retry_at=None,
             last_error=None,
             updated_at=None,
         )
     observed = agent.observed_status
+    now = utc_now()
     lease = agent.lease_expires_at
     if lease is not None and lease.tzinfo is None:
         lease = lease.replace(tzinfo=utc_now().tzinfo)
@@ -71,9 +98,23 @@ def agent_response(camera_id: str, agent: CameraAgent | None) -> CameraAgentRead
         agent.desired_status == AgentDesiredStatus.RUNNING
         and observed in {AgentObservedStatus.STARTING, AgentObservedStatus.RUNNING}
         and lease is not None
-        and lease < utc_now()
+        and lease < now
     ):
         observed = AgentObservedStatus.WAITING
+    heartbeat = agent.last_heartbeat_at
+    if heartbeat is not None and heartbeat.tzinfo is None:
+        heartbeat = heartbeat.replace(tzinfo=now.tzinfo)
+    heartbeat_age = max(0.0, (now - heartbeat).total_seconds()) if heartbeat else None
+    if agent.desired_status == AgentDesiredStatus.STOPPED:
+        health_status = "offline"
+    elif agent.observed_status == AgentObservedStatus.ERROR:
+        health_status = "error"
+    elif lease is not None and lease < now:
+        health_status = "stale"
+    elif agent.observed_status == AgentObservedStatus.RUNNING:
+        health_status = "healthy"
+    else:
+        health_status = "recovering"
     return CameraAgentRead(
         camera_id=camera_id,
         desired_status=agent.desired_status,
@@ -82,10 +123,21 @@ def agent_response(camera_id: str, agent: CameraAgent | None) -> CameraAgentRead
         edge_device_id=agent.edge_device_id,
         lease_expires_at=agent.lease_expires_at,
         last_heartbeat_at=agent.last_heartbeat_at,
+        last_frame_at=agent.last_frame_at,
+        health_status=health_status,
+        heartbeat_age_seconds=heartbeat_age,
         fps=agent.fps,
         inference_latency_ms=agent.inference_latency_ms,
         frame_width=agent.frame_width,
         frame_height=agent.frame_height,
+        frames_processed=agent.frames_processed,
+        reconnect_count=agent.reconnect_count,
+        recording_state=agent.recording_state,
+        recording_segments_completed=agent.recording_segments_completed,
+        recording_dropped_frames=agent.recording_dropped_frames,
+        recording_error=agent.recording_error,
+        failure_count=agent.failure_count,
+        next_retry_at=agent.next_retry_at,
         last_error=agent.last_error,
         updated_at=agent.updated_at,
     )
@@ -165,7 +217,11 @@ async def control_camera_agent(
                 status_code=409,
                 detail="Activate at least one rule before starting this camera agent",
             )
-        source = camera.source_uri if camera.source_type.value == "rtsp" else "publisher"
+        source = (
+            camera_capture_source(camera, request.app.state.settings)
+            if camera.source_type.value == "rtsp" and camera.edge_device_id is None
+            else "publisher"
+        )
         try:
             await gateway.provision(camera_path(camera_id), source)
         except MediaGatewayError as exc:
@@ -173,6 +229,8 @@ async def control_camera_agent(
         agent.desired_status = AgentDesiredStatus.RUNNING
         agent.observed_status = AgentObservedStatus.WAITING
         agent.last_error = None
+        agent.failure_count = 0
+        agent.next_retry_at = None
     else:
         agent.desired_status = AgentDesiredStatus.STOPPED
         agent.observed_status = (
@@ -227,6 +285,7 @@ async def claim_assignment(
                 CameraAgent.lease_expires_at.is_(None),
                 CameraAgent.lease_expires_at < now,
             ),
+            or_(CameraAgent.next_retry_at.is_(None), CameraAgent.next_retry_at <= now),
         )
         .order_by(CameraAgent.updated_at)
         .with_for_update(skip_locked=True)
@@ -234,6 +293,10 @@ async def claim_assignment(
     )
     if principal.organization_id is not None:
         statement = statement.where(Camera.organization_id == principal.organization_id)
+    if principal.device_id is not None:
+        statement = statement.where(
+            or_(Camera.edge_device_id.is_(None), Camera.edge_device_id == principal.device_id)
+        )
     row = (await session.execute(statement)).first()
     if row is None:
         return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -256,7 +319,11 @@ async def claim_assignment(
         device.last_seen_at = now
     await session.commit()
     analysis_source = f"{settings.media_gateway_rtsp_url.rstrip('/')}/{camera_path(camera.id)}"
-    direct_capture = camera.source_uri if camera.source_type.value in {"webcam", "file"} else None
+    direct_capture = (
+        camera_capture_source(camera, settings)
+        if camera.source_type.value in {"webcam", "file"} or camera.edge_device_id is not None
+        else None
+    )
     publish_url = (
         analysis_source
         if direct_capture is not None and settings.media_gateway_mode == "mediamtx"
@@ -312,7 +379,39 @@ async def ingest_worker_telemetry(
     agent.inference_latency_ms = payload.inference_latency_ms
     agent.frame_width = payload.frame_width
     agent.frame_height = payload.frame_height
+    if payload.frames_processed is not None:
+        agent.frames_processed = payload.frames_processed
+    if payload.reconnect_count is not None:
+        agent.reconnect_count = payload.reconnect_count
+    if payload.recording_state is not None:
+        agent.recording_state = payload.recording_state
+        agent.recording_error = payload.recording_error
+    if payload.recording_segments_completed is not None:
+        agent.recording_segments_completed = payload.recording_segments_completed
+    if payload.recording_dropped_frames is not None:
+        agent.recording_dropped_frames = payload.recording_dropped_frames
+    elif payload.recording_error is not None:
+        agent.recording_error = payload.recording_error
     agent.last_error = payload.error
+    if observed == AgentObservedStatus.RUNNING:
+        agent.last_frame_at = now
+        agent.failure_count = 0
+        agent.next_retry_at = None
+        camera.status = CameraStatus.ONLINE
+    elif observed == AgentObservedStatus.ERROR:
+        agent.failure_count += 1
+        exponent = min(agent.failure_count - 1, 16)
+        retry_seconds = min(
+            settings.agent_restart_backoff_base_seconds * 2**exponent,
+            settings.agent_restart_backoff_max_seconds,
+        )
+        agent.next_retry_at = now + timedelta(seconds=retry_seconds)
+        camera.status = CameraStatus.ERROR
+    elif observed == AgentObservedStatus.STOPPED:
+        camera.status = CameraStatus.OFFLINE
+        if agent.desired_status == AgentDesiredStatus.STOPPED:
+            agent.failure_count = 0
+            agent.next_retry_at = None
     if observed in {AgentObservedStatus.STOPPED, AgentObservedStatus.ERROR}:
         agent.worker_id = None
         agent.edge_device_id = None
@@ -320,10 +419,11 @@ async def ingest_worker_telemetry(
     await session.commit()
     await session.refresh(agent)
 
+    body = agent_response(payload.camera_id, agent)
     data = payload.model_dump(mode="json")
-    data["desired_status"] = agent.desired_status.value
+    data.update(body.model_dump(mode="json"))
     await request.app.state.event_connections.broadcast(
         {"type": "agent.telemetry", "data": data},
         organization_id=camera.organization_id,
     )
-    return agent_response(payload.camera_id, agent)
+    return body

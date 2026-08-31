@@ -43,8 +43,11 @@ from video_intelligence_api.schemas import (
     ConnectorUpdate,
     RuleActionBindingCreate,
     RuleActionBindingRead,
+    TelegramChatDiscoveryRequest,
+    TelegramChatRead,
 )
 from video_intelligence_api.security import require_agent_key
+from video_intelligence_api.telegram import TelegramDiscoveryError, discover_telegram_chats
 from video_intelligence_api.tenancy import tenant_rule
 
 router = APIRouter(tags=["guarded actions"])
@@ -165,6 +168,7 @@ async def create_connector(
         connector_type=payload.connector_type,
         endpoint_url=str(payload.endpoint_url) if payload.endpoint_url else None,
         credential_encrypted=credential,
+        configuration=payload.configuration,
         scopes=scopes,
         enabled=payload.enabled,
         timeout_seconds=payload.timeout_seconds,
@@ -196,6 +200,18 @@ async def list_connectors(
     return [connector_response(connector) for connector in connectors]
 
 
+@router.post("/connectors/telegram/chats", response_model=list[TelegramChatRead])
+async def list_telegram_chats(
+    payload: TelegramChatDiscoveryRequest,
+    actor: AdminDependency,
+) -> list[dict[str, str]]:
+    del actor
+    try:
+        return await discover_telegram_chats(payload.bot_token)
+    except TelegramDiscoveryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.patch("/connectors/{connector_id}", response_model=ConnectorRead)
 async def update_connector(
     connector_id: Annotated[str, Path(min_length=1, max_length=36)],
@@ -215,6 +231,19 @@ async def update_connector(
     changes = payload.model_dump(exclude_unset=True)
     credential = changes.pop("credential", None)
     endpoint_url = changes.get("endpoint_url")
+    if connector.connector_type == ConnectorType.TELEGRAM:
+        if endpoint_url is not None:
+            raise HTTPException(
+                status_code=422,
+                detail="Telegram always uses the fixed Telegram Bot API endpoint",
+            )
+        if credential is not None and ":" not in credential:
+            raise HTTPException(status_code=422, detail="Telegram requires a BotFather bot token")
+        if "configuration" in changes:
+            chat_id = changes["configuration"].get("chat_id")
+            if not isinstance(chat_id, (str, int)) or not str(chat_id).strip():
+                raise HTTPException(status_code=422, detail="Telegram requires a chat_id")
+            changes["configuration"] = {"chat_id": str(chat_id).strip()}
     if (
         settings.environment == "production"
         and endpoint_url is not None
@@ -505,6 +534,7 @@ async def claim_action_execution(
             "camera_name": camera.name,
             "rule_name": rule.name,
         },
+        configuration=connector.configuration,
     )
 
 

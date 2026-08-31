@@ -1,6 +1,6 @@
 # Product completion roadmap
 
-Revised August 21, 2026 after reviewing the OpenVector launch-video transcript.
+Revised August 23, 2026 after completing automated operational-health incidents.
 
 ## North-star product loop
 
@@ -36,7 +36,7 @@ camera observations with authorized business-system data and may take approved
 actions. Edge/offline mode runs the required perception and rules on a local station,
 queues integrations while disconnected, and synchronizes when connectivity returns.
 
-## Current position: guarded visual-agent automation complete
+## Current position: guarded visual-agent automation and camera commissioning complete
 
 The repository already has the foundation needed for all three modes:
 
@@ -238,14 +238,135 @@ secret manager, public hostname/TLS and WebRTC networking, backup destination, p
 and customer quotas, and approved video/identity retention policy. Their credentials
 must then be configured and the deployment load/security/restore drills executed.
 
+### Phase 24 — Automated camera commissioning
+
+Status: complete in the product and edge software. An administrator can now request a
+bounded health check for any camera from its enrolled edge station. The check opens the
+real private source without starting inference or a paid model, samples delivery and
+image quality, retains a representative preview through the existing bounded store,
+and reports a centrally calculated readiness score with specific remediation for
+resolution, frame rate, exposure, contrast, focus, frozen video, black frames, and
+read failures. Work is tenant-scoped, device-authenticated, leased, restart-reclaimable,
+and limited to one active run per camera. The dashboard exposes the complete workflow.
+
+Commissioning proves stream usability, not scenario accuracy. Every real deployment
+still needs the Phase-16 replay gate using representative field video for the exact
+camera, model, visual job, and operating conditions.
+
+### Phase 25 — Always-on camera and edge reliability
+
+Status: complete in the software product. The existing operations worker now runs a
+bounded watchdog over camera heartbeats, live-frame arrival, recording state, and
+attached edge-station check-ins. Failures create durable, tenant-owned incidents with
+diagnostics, severity, acknowledgement, deduplication, occurrence history, browser
+notification support, and Prometheus visibility. Incidents resolve automatically only
+when healthy telemetry returns. Intentionally stopped cameras and unattached spare edge
+devices are excluded to prevent planned downtime from becoming alert noise.
+
+This closes the repository-side camera-health workflow expected from a serious video
+operations product. Appliance RAID, redundant power, temperature, disk-health, and
+remote hardware support still depend on the physical edge platform selected for a
+deployment.
+
+### Phase 26 — Live proposer-verifier accuracy gate
+
+Status: complete in the software product. Semantic visual windows now produce durable
+verification cases instead of immediately becoming incidents. Candidate detections are
+sent to a second configured Gemini model only after the proposer clears temporal and
+confidence gates. The control plane independently requires a distinct model identifier
+and sufficient confidence. Confirmed cases enter the normal event/correlation/alert/action
+pipeline; rejected, failed, same-model, low-confidence, and inconclusive cases release
+nothing.
+
+The dashboard now includes a Spot AI-inspired but product-native review workspace with
+case report cards, signed evidence playback, a compact time window, proposer/verifier
+confidence and reasoning, and explicit operator confirmation or rejection. Missing
+verifiers fall back safely to manual review. Deterministic tracking rules retain their
+direct path and are not falsely described as two-model semantic verification.
+
+This reduces hallucinated semantic alerts but does not replace per-camera field accuracy
+testing. Learning from corrections, verifier calibration by scenario, and reviewer
+queues/SLAs across large organizations remain later hardening work.
+
+### Phase 27 — Closed-loop field accuracy and drift control
+
+Status: complete in the software product. Every operator verification decision now
+creates a durable, human-grounded live outcome for that exact camera and semantic job.
+Automatically decided cases remain auditable, and operators can record a visible missed
+event instead of letting the product calculate a misleading recall score from generated
+alerts alone. Labels distinguish true alerts, false alerts, missed events, and correct
+suppressions, with operating-condition tags for low light, occlusion, distance, and
+camera motion.
+
+The control plane stores an immutable rolling accuracy snapshot after every label. Each
+job has configurable positive, negative, challenging-condition, precision, recall, and
+window-size requirements plus a permanent manual-only control. Gate states are
+collecting, ready, failing, and drifting. A distinct verifier can release automatically
+only while the field gate is ready; insufficient evidence or new drift immediately
+returns the job to operator review.
+
+The dashboard exposes per-job precision, recall, F1, confusion counts, evidence progress,
+unlabeled audit workload, corrective recommendations, missed-event capture, and the
+manual-only safety control. This provides a defensible operating loop but still requires
+representative customer-camera evidence. It does not silently fine-tune a provider model
+from its own predictions.
+
+### Phase 28 — Fleet-scale active evidence learning
+
+Status: complete in the software product. The existing operations worker now samples
+semantic proposals and ordinary archived footage into one tenant-owned review queue.
+Uncertain and challenging cases receive the highest priority. Per-job policies bound
+normal-footage frequency, daily volume, reviewer SLA, retention, and whether sampling
+is enabled. Verification-case uniqueness plus per-job temporal fingerprints prevent
+repeated and overlapping clips from flooding the queue.
+
+Reviewers can self-assign work, see deadlines and overdue counts, route release-sensitive
+proposals through the verification inbox, and label ordinary footage as correct
+suppressions or missed events. Labels feed the Phase-27 accuracy and drift gate. The
+dashboard exposes queue balance, assignments, review controls, and dataset operations.
+
+Labeled samples can be selected into outcome-balanced, versioned datasets. A version is
+mutable only while draft; freezing records a deterministic manifest SHA-256, and export
+re-verifies integrity before returning JSONL tied to the exact camera, job, model, and
+configuration context. Exports use durable evidence IDs rather than expiring URLs and
+can feed replay evaluation. No provider is silently fine-tuned or deployed.
+
+### Phase 29 — Replay promotion and reviewer quality
+
+Status: complete in the software product. Per-job evidence policies can now require two
+independent reviewers. Agreement creates the final field label; disagreement creates a
+durable dispute that only a third, non-voting reviewer can adjudicate. Duplicate votes
+and self-adjudication are rejected, while every judgment and reason remains auditable.
+
+Any frozen Phase-28 dataset can be materialized idempotently into real replay evaluations
+and a regression suite without recompiling prompts or starting cameras. Positive and
+negative label snapshots become replay expectations, retained recording/evidence media
+becomes the source, and unavailable media is explicitly reported instead of counted as
+a pass.
+
+Candidate and baseline runs must use the same frozen evidence suite. Comparisons record
+accuracy and false-alarm deltas plus candidate/baseline plan fingerprints. A regression
+blocks promotion even if someone attempts approval. Administrator approval deploys via
+the existing agent-plan gate and records the decision and known-good rollback target;
+rejection and rollback are also durable. First deployments roll back to a paused rule.
+
 ## Immediate build order
 
-The next step is a launch-planning decision, not another speculative subsystem. Choose
-the hosted identity, database, Redis, object storage, secret manager, deployment region,
+For private development, the next phase is Phase 30: shadow and canary deployment. Run a
+candidate beside the approved plan without releasing its alerts, measure live disagreement,
+latency, cost, and drift, canary it to selected cameras, and automatically return to the
+known-good plan when operational limits fail. Add a model/config registry before connecting
+any approved provider-specific training adapter. A real-camera pilot can already use
+Phases 27–29 to measure accuracy, grow evidence, compare changes fairly, and roll back.
+
+A hosted launch remains a planning decision rather than another speculative subsystem.
+Choose identity, database, Redis, object storage, secret manager, deployment region,
 domain, pricing limits, and retention policy. Then configure those choices, clear the
 dashboard readiness report, run the replay/load/security/restore gates, and begin a
-small monitored pilot. Phases 18–23 provide the implementation contracts needed for
-that deployment without hard-coding a vendor or silently choosing legal policy.
+small monitored pilot. Phases 18–29 provide the implementation contracts without
+hard-coding a vendor or silently choosing legal policy; Phases 26–29 add the live
+semantic release gate, evidence review, measured field accuracy, drift lock, automatic
+sampling, integrity-checked dataset versions, consensus review, and controlled promotion.
 
 For a short demonstration, the existing platform can already show a live camera,
 compile a visual prompt, display its execution route, run bounded analysis, and create

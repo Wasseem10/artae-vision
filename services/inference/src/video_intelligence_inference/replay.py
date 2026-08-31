@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -129,6 +130,7 @@ def _run_semantic(
     source_factory: Callable[..., OpenCVVideoSource],
     provider_factory: Callable[[Settings], VisionObserverProvider],
     on_progress: Callable[[float], None] | None,
+    request_budget: RequestBudget | None,
 ) -> ReplayOutput:
     assert rule.instruction is not None
     source = source_factory(
@@ -145,9 +147,9 @@ def _run_semantic(
         frame_height=settings.observer_frame_height,
         columns=settings.observer_sheet_columns,
     )
-    budget = RequestBudget(
-        per_minute=settings.observer_max_requests_per_minute,
-        per_day=settings.observer_max_requests_per_day,
+    budget = request_budget or RequestBudget(
+        per_minute=settings.replay_max_requests_per_minute,
+        per_day=settings.replay_max_requests_per_day,
     )
     provider = provider_factory(settings)
     intervals: list[ReplayInterval] = []
@@ -155,7 +157,66 @@ def _run_semantic(
     input_tokens = 0
     output_tokens = 0
     positive_windows = 0
+    baseline_windows = 0
+    in_window_baseline_allowed = True
     last_emitted_at = float("-inf")
+
+    def process_window(window) -> None:
+        nonlocal provider_requests, input_tokens, output_tokens
+        nonlocal positive_windows, baseline_windows, in_window_baseline_allowed
+        nonlocal last_emitted_at
+        allowed, reason = budget.acquire(now_monotonic=time.monotonic())
+        if not allowed:
+            raise RuntimeError(f"Replay provider budget exhausted: {reason}")
+        decision = provider.analyze(window, rule.instruction)
+        provider_requests += 1
+        input_tokens += decision.input_tokens
+        output_tokens += decision.output_tokens
+        if not decision.triggered:
+            positive_windows = 0
+            if (
+                rule.temporal_mode == "transition"
+                and decision.confidence >= rule.minimum_confidence
+            ):
+                baseline_windows = min(baseline_windows + 1, rule.baseline_windows)
+                in_window_baseline_allowed = True
+            return
+        if decision.confidence < rule.minimum_confidence:
+            positive_windows = 0
+            return
+        has_in_window_baseline = (
+            in_window_baseline_allowed
+            and decision.first_frame is not None
+            and decision.first_frame > 1
+        )
+        if (
+            rule.temporal_mode == "transition"
+            and baseline_windows < rule.baseline_windows
+            and not has_in_window_baseline
+        ):
+            positive_windows = 0
+            return
+        positive_windows += 1
+        if positive_windows < rule.confirmation_windows:
+            return
+        positive_windows = 0
+        if window.ended_at - last_emitted_at < rule.cooldown_seconds:
+            return
+        last_emitted_at = window.ended_at
+        if rule.temporal_mode == "transition":
+            baseline_windows = 0
+            in_window_baseline_allowed = False
+        first_frame = decision.first_frame or 1
+        visible_at = window.started_at + ((first_frame - 1) / settings.observer_sample_fps)
+        interval = _bounded_interval(
+            start_seconds=visible_at,
+            end_seconds=window.ended_at,
+            duration_seconds=duration_seconds,
+            confidence=decision.confidence,
+        )
+        if interval is not None:
+            intervals.append(interval)
+
     try:
         with source:
             while True:
@@ -168,34 +229,10 @@ def _run_semantic(
                 window = sampler.add(packet.image, packet.timestamp_seconds)
                 if window is None:
                     continue
-                allowed, reason = budget.acquire(now_monotonic=window.ended_at)
-                if not allowed:
-                    logger.info("Replay window %d skipped: %s", window.sequence, reason)
-                    continue
-                decision = provider.analyze(window, rule.instruction)
-                provider_requests += 1
-                input_tokens += decision.input_tokens
-                output_tokens += decision.output_tokens
-                if not decision.triggered or decision.confidence < rule.minimum_confidence:
-                    positive_windows = 0
-                    continue
-                positive_windows += 1
-                if positive_windows < rule.confirmation_windows:
-                    continue
-                positive_windows = 0
-                if window.ended_at - last_emitted_at < rule.cooldown_seconds:
-                    continue
-                last_emitted_at = window.ended_at
-                first_frame = decision.first_frame or 1
-                visible_at = window.started_at + ((first_frame - 1) / settings.observer_sample_fps)
-                interval = _bounded_interval(
-                    start_seconds=visible_at,
-                    end_seconds=window.ended_at,
-                    duration_seconds=duration_seconds,
-                    confidence=decision.confidence,
-                )
-                if interval is not None:
-                    intervals.append(interval)
+                process_window(window)
+            partial = sampler.flush()
+            if partial is not None:
+                process_window(partial)
     finally:
         provider.close()
     return ReplayOutput(
@@ -216,6 +253,7 @@ def run_replay(
     detector_factory: Callable[..., YoloDetector] = YoloDetector,
     provider_factory: Callable[[Settings], VisionObserverProvider] = _semantic_provider,
     on_progress: Callable[[float], None] | None = None,
+    request_budget: RequestBudget | None = None,
 ) -> ReplayOutput:
     """Execute exactly one stored job over a finite video source."""
 
@@ -230,6 +268,7 @@ def run_replay(
             source_factory=source_factory,
             provider_factory=provider_factory,
             on_progress=on_progress,
+            request_budget=request_budget,
         )
     return _run_deterministic(
         settings,

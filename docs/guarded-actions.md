@@ -44,9 +44,27 @@ dashboard. Resolving the source alert suppresses work that has not started.
 - `generic_webhook` sends the standard bounded action envelope.
 - `messaging_webhook` converts that envelope into a concise message payload.
 - `ticket_webhook` converts it into a summary, description, and severity payload.
+- `telegram` sends a concise camera alert through the official Telegram Bot API.
+  The BotFather token is encrypted with the connector credentials; only the chat ID
+  is returned to the dashboard. Telegram uses its fixed HTTPS API endpoint so an
+  operator cannot redirect the token to another host.
 
 Vendor-specific OAuth and field mapping should be implemented as new adapters behind
 the same contract, not as branches in the vision rule engine.
+
+## Telegram quick start
+
+1. In Telegram, message `@BotFather`, create a bot with `/newbot`, and copy its token.
+2. Message the new bot once. Bots cannot initiate a private chat before the user does.
+3. Choose **Telegram** under **Choose what happens next**, enter the token, and select
+   **Find recent chats**. The token is sent only to the local API and Telegram's fixed
+   Bot API host; it is never included in logs or returned to the browser.
+4. Select the discovered destination chat, or enter its chat ID manually, then connect it.
+5. Use **Send Telegram test** before starting camera analysis.
+
+Confirmed incidents are automatic low-risk notifications. Delivery attempts use the
+same durable leases, retry limits, rate limits, dead-letter state, and audit surface as
+the other guarded connectors.
 
 ## Local operation
 

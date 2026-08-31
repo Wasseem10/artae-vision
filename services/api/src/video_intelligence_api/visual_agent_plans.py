@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 
 from video_intelligence_api.execution_plans import plan_job
 from video_intelligence_api.job_specs import CameraJobSpec
+from video_intelligence_api.visual_intelligence import VisualSupportAssessment, assess_visual_job
 from video_intelligence_api.visual_skills import SKILLS, select_visual_skills
 
 SUPPORTED_CAPABILITIES = frozenset(
@@ -44,6 +45,7 @@ class VisualAgentPlanDocument(BaseModel):
     summary: str
     strategy: Literal["deterministic_tracking", "semantic_window"]
     nodes: list[VisualAgentNode]
+    support: VisualSupportAssessment | None = None
 
 
 def _node(
@@ -71,7 +73,8 @@ def _node(
 
 def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPlanDocument:
     """Create the smallest auditable graph that can execute the accepted instruction."""
-    execution = plan_job(spec)
+    execution = plan_job(spec, prompt)
+    support = assess_visual_job(spec, prompt)
     nodes = [
         _node(
             "capture",
@@ -83,6 +86,24 @@ def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPl
             [],
         )
     ]
+    if support.tier == "not_visually_verifiable":
+        nodes.append(
+            _node(
+                "unsupported_visual_inference",
+                "decide",
+                "Unsupported visual inference",
+                support.reason,
+                "No valid camera executor",
+                "reasoning.not_visually_observable",
+                ["capture"],
+            )
+        )
+        return VisualAgentPlanDocument(
+            summary="This request cannot be deployed as a camera job.",
+            strategy=execution.strategy,
+            nodes=nodes,
+            support=support,
+        )
     if execution.strategy == "semantic_window":
         skills = select_visual_skills(prompt)
         if skills:
@@ -174,18 +195,39 @@ def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPl
     )
 
     lowered = prompt.casefold()
-    if any(term in lowered for term in ("access control", "badge swipe", "card swipe")):
-        query = _node(
-            "external_context",
-            "query",
-            "Check access-control context",
-            "Compare the visual event with an external badge or access-control record.",
-            "Unconfigured access-control connector",
-            "query.access_control",
-            decision_dependencies,
+    context_nodes: list[str] = []
+    for capability in support.required_context:
+        node_id = capability.replace(".", "_")
+        if capability == "query.access_control":
+            title = "Check access-control context"
+            description = (
+                "Compare the visual event with an external badge or access-control record."
+            )
+            executor = "Unconfigured access-control connector"
+        else:
+            title = "Check business-system context"
+            description = (
+                "Compare the visible event with the expected business or operational record."
+            )
+            executor = "Unconfigured business-system connector"
+        nodes.insert(
+            -2,
+            _node(
+                node_id,
+                "query",
+                title,
+                description,
+                executor,
+                capability,
+                decision_dependencies,
+            ),
         )
-        nodes.insert(-2, query)
-        nodes[-2] = nodes[-2].model_copy(update={"depends_on": ["decide", "external_context"]})
+        context_nodes.append(node_id)
+    if context_nodes:
+        verify_index = next(index for index, node in enumerate(nodes) if node.id == "verify")
+        nodes[verify_index] = nodes[verify_index].model_copy(
+            update={"depends_on": ["decide", *context_nodes]}
+        )
     if any(
         term in lowered
         for term in (
@@ -213,6 +255,7 @@ def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPl
         summary=f"Watch this camera and {prompt.strip().rstrip('.').casefold()}.",
         strategy=execution.strategy,
         nodes=nodes,
+        support=support,
     )
 
 

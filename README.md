@@ -7,8 +7,8 @@ and search the resulting evidence. The revised completion phases are in
 [`docs/product-roadmap.md`](docs/product-roadmap.md).
 
 The repository now contains the industry-neutral visual-alert foundation plus the
-Phase-16 through Phase-22 evaluation, visual-agent, guarded-action, context, visual-skill,
-multi-camera operations, and offline-edge layers:
+Phase-16 through Phase-25 evaluation, visual-agent, guarded-action, context, visual-skill,
+multi-camera operations, offline-edge, production-hardening, and commissioning layers:
 
 - webcam, MP4, or RTSP capture on the host;
 - YOLO object detection with persistent ByteTrack IDs;
@@ -25,6 +25,28 @@ multi-camera operations, and offline-edge layers:
 - a repeatable MP4-to-RTSP publisher for development without a webcam; and
 - dashboard Start/Stop controls backed by durable desired/observed agent state;
 - a bounded host supervisor that runs several independently leased cameras concurrently;
+- RTSP open/read timeouts, bounded exponential reconnects, frame-independent lease
+  heartbeats, and server-controlled restart backoff that prevents crash loops;
+- live camera health, last-frame time, processed-frame and reconnect counters in the
+  operator console and Prometheus metrics;
+- optional background continuous MP4 recording with atomic segment completion,
+  per-segment manifests, bounded queues, and age/byte retention enforcement;
+- durable edge upload spooling, tenant-scoped historical-video catalogs, signed
+  browser playback, administrator legal holds, and explicit retention execution;
+- edge-executed ONVIF WS-Discovery jobs with bounded multicast collection,
+  deduplication, device-token leases, and operator-visible results;
+- encrypted ONVIF credentials, authenticated media-profile resolution, automatic
+  RTSP selection, edge pinning, and mandatory real-frame preview verification;
+- operator-triggered, model-free camera commissioning with delivery, resolution,
+  frame-rate, exposure, focus, freeze, and black-frame readiness guidance;
+- always-on operational health incidents for stale camera workers, stalled video,
+  recording failures, and offline attached edge stations, with automatic recovery;
+- live semantic proposer-verifier quarantine with distinct-model enforcement,
+  signed evidence review, and explicit operator confirmation or rejection;
+- per-camera/job human field labels, rolling precision/recall/F1 gates, missed-event
+  capture, configurable thresholds, automatic drift lock, and permanent manual mode;
+- pluggable local or private S3-compatible recording storage with API-gated presigned
+  playback, exact-key retention deletion, and legal-hold enforcement;
 - live worker heartbeat, FPS, inference latency, and detection telemetry;
 - live detection boxes and labels aligned over the WebRTC player; and
 - completed evidence upload with size limits, SHA-256 checksums, and durable status;
@@ -42,6 +64,9 @@ multi-camera operations, and offline-edge layers:
 - automatic full-frame grounding when a semantic job needs no manually drawn geometry;
 - managed Gemini window evaluation with confidence, confirmation, cooldown, and cost ceilings;
 - reviewed execution plans that route jobs between local YOLO/tracking and bounded VLM windows;
+- honest per-job support levels that distinguish deterministic execution, general visual-AI
+  fallback, required business context, and conditions that pixels cannot verify;
+- state, transition, and sequence semantics, including baseline/rearm protection for visual changes;
 - semantic decisions entering the same incidents, evidence, WebSockets, and alert pipeline;
 - activation-time rejection when the configured model cannot support a job; and
 - durable labeled-video replay baselines with authenticated browser uploads, production
@@ -49,6 +74,9 @@ multi-camera operations, and offline-edge layers:
   precision/recall/F1/latency scoring, and provider-cost accounting;
 - durable batch regression suites with immutable run history and deterministic
   accuracy, false-alarm, pricing, worker-success, and cost promotion gates;
+- an eight-scenario cross-industry camera calibration pack that separates synthetic,
+  controlled, and field evidence, blocks premature accuracy claims, and recommends the
+  next missing recording or tuning action per capability;
   and
 - durable per-event incidents with acknowledge and resolve workflows;
 - encrypted webhook destinations, per-job routing, cooldowns, and delayed escalation;
@@ -64,7 +92,7 @@ multi-camera operations, and offline-edge layers:
 - encrypted, scoped integration connectors with fixed low/medium/high action risks;
 - manual approval, idempotent leases, rate limits, retries, dead letters, and operator
   retry/deny controls for external actions;
-- mock, generic-webhook, messaging-webhook, and ticket-webhook adapters, while physical
+- mock, Telegram, generic-webhook, messaging-webhook, and ticket-webhook adapters, while physical
   door, gate, and machine control remains explicitly disabled; and
 - normalized external observations and deterministic time-window correlations, with a
   safe two-people/one-swipe tailgating reference workflow; and
@@ -77,9 +105,26 @@ multi-camera operations, and offline-edge layers:
 - Docker Compose for MediaMTX, the web app, API, alert worker, and PostgreSQL.
 
 Artae Labs remains behind a separate asynchronous package and optional worker;
-camera inference and clip playback never depend on it being reachable. A complete
-hosted sign-in screen, Redis cross-instance fan-out, external object storage,
-and specialized model packs such as PPE/OCR are deliberately future milestones.
+camera inference and clip playback never depend on it being reachable. Hosted database
+cutover, Redis cross-instance fan-out, external evidence storage, and specialized model
+packs such as PPE/OCR are deliberately future milestones.
+
+## Accounts and saved workspaces
+
+The web app supports Supabase email/password authentication. A first-time verified
+identity is automatically assigned an isolated organization in the control-plane
+database; cameras, agents, events, evidence, connectors, and alerts are then loaded
+from that organization on every login. The native Windows launcher uses hybrid auth:
+its private bootstrap calls use the development dashboard key, while browser users
+use signed Supabase access tokens. Production must use OIDC-only mode and must not
+expose the development dashboard key.
+
+Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` in
+`apps/web/.env.local`. Configure the API issuer as
+`https://<project-ref>.supabase.co/auth/v1`, the audience as `authenticated`, and the
+JWKS URL as `https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json`. Only a
+publishable key belongs in the browser; never put a secret or service-role key in a
+`NEXT_PUBLIC_` variable.
 
 ## Repository layout
 
@@ -366,11 +411,16 @@ with bounded exponential backoff; other 4xx responses fail permanently.
 
 The signing secret is encrypted in PostgreSQL and never returned to the dashboard.
 The guided **Choose what happens next** section also supports rule-owned mock,
-generic-webhook, messaging-webhook, and ticket-webhook connectors. Notifications are
+Telegram, generic-webhook, messaging-webhook, and ticket-webhook connectors. Notifications are
 low risk and may run automatically; ticket and generic webhook actions default to
 manual approval. Physical-system actions remain unavailable. See
 [`docs/guarded-actions.md`](docs/guarded-actions.md) for the execution and safety
 boundaries.
+
+Telegram is the simplest phone-alert path. Create a bot with `@BotFather`, message the
+bot once, then enter its token and the destination chat ID in **Choose what happens
+next**. The bot token is encrypted and is never returned to the browser after setup.
+Use **Send Telegram test** to exercise the real outbound queue before starting analysis.
 
 ## 8. Search recorded evidence
 
@@ -525,6 +575,8 @@ VIDEO_INTEL_OBSERVER_PROVIDER=gemini
 VIDEO_INTEL_GEMINI_MODEL=gemini-3.5-flash-lite
 VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_MINUTE=1
 VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_DAY=20
+VIDEO_INTEL_REPLAY_MAX_REQUESTS_PER_MINUTE=20
+VIDEO_INTEL_REPLAY_MAX_REQUESTS_PER_DAY=20
 ```
 
 Each VLM call receives one numbered 10-frame sheet, returns schema-validated JSON,
@@ -566,6 +618,18 @@ enabled on the gateway.
 | Variable | Default | Purpose |
 |---|---:|---|
 | `VIDEO_INTEL_AGENT_SOURCE` | `webcam:0` | Local webcam, MP4 path, or RTSP source |
+| `VIDEO_INTEL_CAMERA_OPEN_TIMEOUT_SECONDS` | `10` | Maximum supported RTSP connection-open wait |
+| `VIDEO_INTEL_CAMERA_READ_TIMEOUT_SECONDS` | `10` | Maximum supported RTSP frame-read wait |
+| `VIDEO_INTEL_CAMERA_RECONNECT_ATTEMPTS` | `5` | Bounded reconnect attempts before the worker reports failure |
+| `VIDEO_INTEL_CAMERA_RECONNECT_BACKOFF_SECONDS` | `0.5` | Initial exponential reconnect delay |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_ENABLED` | `false` | Opt into rotating local edge recordings after approving retention |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_ARCHIVE_ENABLED` | `false` | Spool and upload completed segments for centralized signed playback |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_DIRECTORY` | `artifacts/recordings` | Edge-owned continuous segment root |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_SPOOL_DIRECTORY` | `artifacts/recording-upload-spool` | Restart-recoverable archive upload spool |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_SEGMENT_SECONDS` | `60` | Duration of each atomically finalized MP4 segment |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_RETENTION_HOURS` | `2` | Rolling local history retained per camera |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_MAX_BYTES` | `10737418240` | Per-worker local recording byte ceiling |
+| `VIDEO_INTEL_CONTINUOUS_RECORDING_QUEUE_SIZE` | `120` | Bounded recording queue before dropped frames are counted |
 | `VIDEO_INTEL_MODEL_NAME` | `yolo26n.pt` | Ultralytics weights or a local model path |
 | `VIDEO_INTEL_CONFIDENCE_THRESHOLD` | `0.25` | Local minimum detection confidence |
 | `VIDEO_INTEL_OBSERVER_ENABLED` | `false` | Enable overlapping semantic visual-window analysis |
@@ -575,7 +639,9 @@ enabled on the gateway.
 | `VIDEO_INTEL_OBSERVER_WINDOW_FRAMES` | `10` | Chronological frames included in one sheet |
 | `VIDEO_INTEL_OBSERVER_OVERLAP_FRAMES` | `5` | Frames retained between consecutive sheets |
 | `VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_MINUTE` | `1` | Hard short-term provider-call ceiling |
-| `VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_DAY` | `20` | Hard daily provider-call ceiling |
+| `VIDEO_INTEL_OBSERVER_MAX_REQUESTS_PER_DAY` | `20` | Per-observer process daily provider-call ceiling |
+| `VIDEO_INTEL_REPLAY_MAX_REQUESTS_PER_MINUTE` | `20` | Shared replay-worker short-term provider-call ceiling |
+| `VIDEO_INTEL_REPLAY_MAX_REQUESTS_PER_DAY` | `20` | Shared replay-worker process daily provider-call ceiling |
 | `VIDEO_INTEL_OBSERVER_ARTIFACT_MODE` | `triggered` | Persist no sheets, triggered sheets, or all sheets |
 | `VIDEO_INTEL_QWEN_MODEL` | `qwen3.7-flash` | Cost-efficient Alibaba vision model used by the observer |
 | `VIDEO_INTEL_QWEN_API_KEY` | none | Private key required only for the `qwen` provider |
@@ -594,7 +660,9 @@ enabled on the gateway.
 | `VIDEO_INTEL_WORKER_ID` | generated host/process ID | Stable name shown for a managed worker |
 | `VIDEO_INTEL_WORKER_POLL_SECONDS` | `2` | Delay between assignment claims while idle |
 | `VIDEO_INTEL_WORKER_TELEMETRY_SECONDS` | `0.5` | Minimum interval between live frame updates |
+| `VIDEO_INTEL_WORKER_HEARTBEAT_SECONDS` | `2` | Frame-independent camera lease heartbeat interval |
 | `VIDEO_INTEL_WORKER_MAX_CAMERAS` | `1` | Local concurrent camera-process capacity |
+| `VIDEO_INTEL_CAMERA_DISCOVERY_MAX_DEVICES` | `100` | Maximum ONVIF devices accepted from one bounded scan |
 | `VIDEO_INTEL_API_DATABASE_URL` | local PostgreSQL | Async SQLAlchemy database URL |
 | `VIDEO_INTEL_API_AGENT_KEY` | required | Minimum-16-character internal agent secret |
 | `VIDEO_INTEL_API_EDGE_AUTH_MODE` | `development` | Shared local key or production per-device authentication |
@@ -621,6 +689,16 @@ enabled on the gateway.
 | `VIDEO_INTEL_API_MEDIA_GATEWAY_WEBRTC_URL` | `http://127.0.0.1:8889` | Browser WebRTC/WHEP playback origin |
 | `VIDEO_INTEL_API_MEDIA_GATEWAY_RTSP_URL` | `rtsp://127.0.0.1:8554` | Publisher origin returned for webcam/file paths |
 | `VIDEO_INTEL_API_AGENT_LEASE_SECONDS` | `10` | Assignment ownership window renewed by worker heartbeats |
+| `VIDEO_INTEL_API_AGENT_RESTART_BACKOFF_BASE_SECONDS` | `5` | First retry delay after a failed camera runtime |
+| `VIDEO_INTEL_API_AGENT_RESTART_BACKOFF_MAX_SECONDS` | `300` | Maximum camera restart delay after repeated failures |
+| `VIDEO_INTEL_API_CAMERA_DISCOVERY_LEASE_SECONDS` | `30` | Exclusive ownership window for one edge discovery scan |
+| `VIDEO_INTEL_API_CAMERA_COMMISSIONING_LEASE_SECONDS` | `90` | Reclaimable edge lease for one camera health check |
+| `VIDEO_INTEL_API_OPERATIONAL_HEALTH_CAMERA_STALE_SECONDS` | `20` | Camera heartbeat age that opens a reliability incident |
+| `VIDEO_INTEL_API_OPERATIONAL_HEALTH_FRAME_STALE_SECONDS` | `15` | Live-frame age that opens a stalled-video incident |
+| `VIDEO_INTEL_API_OPERATIONAL_HEALTH_EDGE_STALE_SECONDS` | `30` | Attached edge-station check-in age that opens an incident |
+| `VIDEO_INTEL_API_RECORDING_ARCHIVE_DIRECTORY` | `artifacts/recording-archive` | Control-plane historical-video archive root |
+| `VIDEO_INTEL_API_RECORDING_UPLOAD_MAX_BYTES` | `1073741824` | Maximum accepted archived segment size |
+| `VIDEO_INTEL_API_RECORDING_RETENTION_HOURS` | `2` | Rolling playable cloud history retained per camera |
 | `VIDEO_INTEL_API_EVIDENCE_DIRECTORY` | `artifacts/evidence` | API-owned durable clip directory |
 | `VIDEO_INTEL_API_EVIDENCE_MAX_BYTES` | `536870912` | Maximum accepted evidence upload size |
 | `VIDEO_INTEL_API_EVIDENCE_LEASE_SECONDS` | `1800` | Long lease for provider indexing jobs |
@@ -631,6 +709,8 @@ enabled on the gateway.
 | `VIDEO_INTEL_EVIDENCE_AGENT_KEY` | required for worker | Internal key shared with FastAPI |
 | `VIDEO_INTEL_ALERT_CONTROL_PLANE_URL` | local API | Alert worker's FastAPI address |
 | `VIDEO_INTEL_ALERT_AGENT_KEY` | required for worker | Internal key shared with FastAPI |
+| `VIDEO_INTEL_ALERT_HEALTH_EVALUATION_SECONDS` | `10` | Reliability-watchdog evaluation interval |
+| `VIDEO_INTEL_ALERT_EVIDENCE_SAMPLING_SECONDS` | `30` | Active-evidence queue reconciliation interval |
 | `ARTAE_LABS_INDEX_ID` | none | Existing Labs index used by the evidence worker |
 | `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8000` | API address compiled into the web application |
 | `NEXT_PUBLIC_DASHBOARD_KEY` | none | Development WebSocket token visible to the browser |
