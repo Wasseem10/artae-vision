@@ -1,60 +1,49 @@
-# Camera Jobs Section — Design QA
+# Design QA — Hero evidence ribbon
 
-- Source visual truth: `C:\Users\wasse\AppData\Local\Temp\codex-clipboard-7f3ca1b9-7578-4a7c-8c34-ebd06d7f2149.png`
-- Desktop implementation: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts-camera-jobs-desktop.png`
-- Mobile implementation: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts-camera-jobs-mobile.png`
-- Combined comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\camera-jobs-design-comparison.png`
-- Desktop viewport: 1265 px wide, browser density 1; captured section is 1265 × 1590 px.
-- Mobile viewport: 390 × 844 CSS px, browser density 1; captured section content is 375 × 2762 px after page gutters.
-- Source pixels: 1896 × 1177 px. The source is a before-state used to preserve the established page language while correcting the repeated-card hierarchy requested by the user.
-- State: landing page `#features`, light theme, default interaction state.
+- Source visual truth: `C:\Users\wasse\.codex\generated_images\01a0416b-0da5-7e53-b3e5-893f92234733\exec-5d18d427-feeb-4a8f-80e0-84ea8bf84ff2.png`
+- Implementation screenshot: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-implementation-final.png`
+- Full-view comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-comparison-final.png`
+- Focused comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-focused-comparison.png`
+- Viewport: 1672 × 941 CSS pixels, desktop, device scale factor 1.
+- Pixel dimensions: source 1672 × 941; implementation 1672 × 941. No density normalization required.
+- State: marketing home page, hero at initial load.
 
 ## Full-view comparison evidence
 
-The source and desktop implementation were combined into `camera-jobs-design-comparison.png` and reviewed together. The update preserves the light technical grid, square borders, Geist typography, restrained green/yellow states, and numbered-section framing. It replaces six nearly identical abstract capability cards with a three-step product explanation, one detailed factory-flow example, and a readable directory of six operational uses.
+The implementation preserves the existing Artae header, announcement bar, centered headline, copy, calls to action, and three-step strip. The selected option's evidence ribbon appears beneath that strip without introducing a large image or changing the page's established visual language. The slightly more compact title and call-to-action scale is intentional because the user explicitly asked to keep the current style and add to it rather than redesign it.
 
-## Focused region evidence
+## Focused comparison evidence
 
-The whole section was captured at desktop and mobile sizes, so the important details remain readable without a second crop: product inputs, camera jobs, connected actions, camera overlays, WhatsApp-via-webhook copy, saved evidence, and the six-use-case directory.
+The focused comparison confirms the same four-column hierarchy as the source: event icon, orange outcome indicator, primary label, and supporting status. The source uses illustrative object drawings; the implementation deliberately uses the project's existing outline icon library so the addition matches the current product UI and remains sharp at responsive sizes.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Geist and the existing weight hierarchy are preserved. The product statement, featured factory example, and use-case directory create three clear reading levels. No clipping or unintended truncation was observed.
-- Spacing and layout rhythm: the desktop section moves from a three-step feature flow to one visual example and then a continuous use-case directory; mobile stacks each part with consistent gutters and readable action rows.
-- Colors and visual tokens: existing paper, gray, border, green detection, and yellow warning tokens remain consistent with the rest of the landing page.
-- Image quality and asset fidelity: the existing Artae-owned factory camera asset is used at a natural crop. Live-camera labels, the monitored queue, evidence states, and alert output clearly show the product in action.
-- Copy and content: the section now explains what footage can be connected, what jobs can be described, what actions Artae can perform, and what teams use it for. WhatsApp is accurately described as a webhook-delivered action rather than a native integration claim.
+- Fonts and typography: Existing Geist-based page typography, weights, line height, and hierarchy are preserved. Evidence labels remain legible and do not wrap at desktop width.
+- Spacing and layout rhythm: Ribbon aligns to the centered hero, uses the selected four-column rhythm, and retains clear separation from the three-step strip. No horizontal overflow at 1672 px or 390 px.
+- Colors and visual tokens: Existing cool white/gray surface, black copy, light borders, and orange action accent are reused consistently.
+- Image quality and asset fidelity: No raster hero image or placeholder was introduced. Icons come from the installed React Icons library and render cleanly at desktop and mobile sizes.
+- Copy and content: Outcomes communicate concrete Artae jobs: PPE verification, dock arrival notification, fall alert, and vehicle action.
 
 ## Comparison history
 
-### Initial finding
+1. Initial pass: the evidence outcomes were too small and arranged like settings rows (P2); status icons overlapped supporting copy (P2).
+2. Fixes: changed each outcome to a centered icon-first composition, increased icon and label scale, widened the evidence ribbon, and positioned status icons independently.
+3. Post-fix evidence: `hero-evidence-implementation-final.png` and `hero-evidence-focused-comparison.png` show distinct, readable outcomes with no overlap or overflow.
 
-- [P1] Six repeated capability boxes made every feature look identical and did not quickly explain that a camera can be assigned a job.
-- [P1] The section did not summarize the platform's core features or explain the breadth of operational use cases.
+## Interaction and responsive checks
 
-### Fixes made
+- Primary CTA resolves to `/login`.
+- Demo CTA scrolls to `#overview`.
+- Mobile check at 390 × 844: two-column evidence layout, 339 px ribbon width, 375 px document width, and no horizontal overflow.
+- Browser console errors: none.
+- Production build: passed.
 
-- Added a three-step explanation covering live/uploaded video, plain-language jobs, and alerts/actions.
-- Made factory bottleneck detection the dominant visual example with a complete watch-and-do workflow.
-- Added a six-item use-case directory covering workplace safety, factory flow, process compliance, loading docks, security/vehicle access, and recorded-footage search.
-- Preserved responsive behavior without returning to a grid of identical boxes.
+## Findings
 
-### Post-fix evidence
-
-- Desktop and mobile captures show clear hierarchy, readable features, a non-repetitive composition, product-in-action imagery, and a complete use-case summary.
-- TypeScript typecheck passed.
-- Browser console showed no errors. Two Next.js LCP warnings occurred only because QA opened the deep `#features` anchor, making below-the-fold images temporarily count as above-the-fold; this does not affect normal page entry.
-- No actionable P0, P1, or P2 issues remain.
-
-## Primary interactions tested
-
-- Anchor navigation to `#features`.
-- Desktop rendering.
-- Mobile responsive stacking at 390 × 844 CSS px.
-- Browser console error check.
+No actionable P0, P1, or P2 differences remain.
 
 ## Follow-up polish
 
-- [P3] A future real factory-line video could replace the current warehouse still when original production footage is available.
+- P3: Custom editorial illustrations could move even closer to the concept image, but they would be a broader asset-direction change than the requested additive update.
 
 final result: passed
