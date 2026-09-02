@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 
+import "@fontsource/ibm-plex-sans/400.css";
 import "./globals.css";
 
 const bodyFont = Geist({ subsets: ["latin"], variable: "--font-body" });

@@ -1,43 +1,31 @@
-# Design QA — Hero event illustration ribbon
+# Design QA — Conversation title overflow
 
-- Source visual truth: `C:\Users\wasse\AppData\Local\Temp\codex-clipboard-b7e8651f-6fe4-411b-9d75-fdf4a82a21f9.png`
-- Desktop implementation capture: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-detail.png`
-- Mobile implementation capture: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-mobile-detail.png`
-- Focused source/implementation comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-comparison.png`
-- Desktop viewport: 1340 × 655 CSS pixels.
-- Mobile viewport: 390 × 844 CSS pixels; document client and scroll widths both 375 px.
-- State: marketing home page, hero evidence ribbon visible.
+- Source visual truth: `C:\Users\wasse\AppData\Local\Temp\codex-clipboard-23a99297-7b8b-4455-b877-3f5fd120570a.png`
+- Updated desktop capture: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\conversation-overflow-fixed-full.png`
+- Focused before/after comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\conversation-overflow-comparison.png`
+- Verification viewport: 1440 × 756 CSS pixels.
+- Scope: logged-in workspace conversation list.
 
 ## Visual comparison
 
-The source ribbon appears in the upper half of the focused comparison and the implementation appears in the lower half. Both use the same four-event sequence, centered four-column rhythm, grayscale technical illustration language, orange scanner corners, circular outcome badges, and faint edge motion lines.
+The source shows long conversation names crossing the sidebar border and overlapping the workspace. In the updated capture, all three representative long titles and their subtitles remain inside their cards and end with a clear ellipsis.
 
-The implementation deliberately increases subject detail and display size slightly because the user explicitly rejected the prior generic outline icons. Each event now reads as a distinct real operational scene: a hard-hat worker, a delivery truck, a person falling, and a rear-view vehicle.
-
-## Required fidelity surfaces
-
-- Typography: Existing Geist page typography and hierarchy remain unchanged; labels are centered and readable.
-- Spacing: Four equal desktop columns and a two-by-two mobile grid preserve the existing hero structure.
-- Color: Cool white/gray hero surface, charcoal illustrations, and the existing orange action accent match the reference.
-- Asset quality: Four purpose-built raster illustrations replace generic React icon glyphs. Images retain detail at their refined 112 px desktop and 100 px mobile display sizes.
-- Responsiveness: No horizontal overflow at the checked mobile breakpoint. All four subjects, scanner corners, badges, labels, and supporting text remain visible.
-- Accessibility: Each illustration has descriptive alternative text; the surrounding list retains its descriptive ARIA label.
+The sidebar width, card height, spacing, typography, colors, and interaction targets remain unchanged.
 
 ## Findings and fixes
 
-1. P1 — Prior implementation used generic outline icons and did not match the selected visual target. Fixed with four detailed generated illustrations.
-2. P2 — Initial generated truck asset contained a baked transparency checkerboard. Rejected and regenerated with a true alpha background.
-3. P2 — The first render faded artwork to 42% opacity during its pulse animation, obscuring illustration detail. Raised the minimum opacity to 88% and added restrained contrast.
-4. P2 — Mobile layout risked crowding after the larger assets were introduced. Verified at 390 × 844; the two-column grid has no horizontal overflow.
-5. User polish — Reduced each illustration by roughly 11% while preserving legibility, badge clarity, and four-column alignment.
+1. P1 — The text wrapper inside each grid button retained its intrinsic width, so child ellipsis rules could not constrain the line. Fixed by setting the card and wrapper to a shrinkable minimum width and clipping overflow at both levels.
+2. P2 — A long title could visually escape even though the title itself declared `text-overflow: ellipsis`. Verified with three representative prompts: every card reports matching client and scroll widths with no card overflow.
+3. P2 — The fix could have widened or reflowed the sidebar. The updated capture confirms the existing 255 px sidebar and one-line card treatment are preserved.
 
 ## Verification
 
+- Three long conversation cards checked: `overflowing: false` for each.
 - TypeScript: passed.
 - Web tests: 17 passed.
 - Production build: passed.
 - ESLint: 0 errors; one pre-existing hook cleanup warning in `browser-webcam-preview.tsx`.
 
-No actionable P0, P1, or P2 visual differences remain for the requested hero illustration update.
+No actionable P0, P1, or P2 visual differences remain for the requested overflow fix.
 
 final result: passed
