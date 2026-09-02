@@ -404,7 +404,7 @@ def run(
     pose_detector = (
         YoloPoseDetector(
             model_name=settings.pose_model_name,
-            confidence_threshold=min(rule.minimum_confidence for rule in pose_rules),
+            confidence_threshold=min(0.25, *(rule.minimum_confidence for rule in pose_rules)),
             iou_threshold=settings.iou_threshold,
             device=settings.device,
         )

@@ -31,9 +31,11 @@ class PersonFallRule:
     id: str
     zone: Zone
     minimum_confidence: float = 0.5
+    detection_confidence: float = 0.25
     keypoint_confidence: float = 0.35
     minimum_descent_speed: float = 0.35
     fallen_confirmation_seconds: float = 0.7
+    partial_view_confirmation_seconds: float = 0.45
     candidate_timeout_seconds: float = 3.0
     recovery_seconds: float = 1.0
     absence_grace_seconds: float = 1.0
@@ -47,6 +49,7 @@ class _TrackState:
     last_seen_seconds: float = 0.0
     candidate_started_seconds: float | None = None
     down_started_seconds: float | None = None
+    down_evidence: Literal["horizontal", "partial_view"] | None = None
     recovery_started_seconds: float | None = None
     peak_descent_speed: float = 0.0
     last_event_seconds: float = float("-inf")
@@ -55,6 +58,7 @@ class _TrackState:
 @dataclass(frozen=True, slots=True)
 class _PoseFeatures:
     center_y: float
+    box_bottom_y: float
     verticality: float
     box_aspect_ratio: float
     visible_core_points: int
@@ -66,6 +70,20 @@ class _PoseFeatures:
     @property
     def down(self) -> bool:
         return self.verticality <= 0.48 and self.box_aspect_ratio >= 0.9
+
+    @property
+    def partial_view_down(self) -> bool:
+        """A person rapidly dropped behind the bottom edge of a fixed camera view.
+
+        This is weaker evidence than a horizontal full-body posture, so it is
+        only used after the same tracked person was upright and descended fast.
+        """
+        return (
+            self.center_y >= 0.62
+            and self.box_bottom_y >= 0.97
+            and self.verticality >= 0.62
+            and self.box_aspect_ratio <= 1.2
+        )
 
 
 _SHOULDERS = (5, 6)
@@ -114,6 +132,7 @@ def pose_features(
     height = max(1, box.y2 - box.y1)
     return _PoseFeatures(
         center_y=((shoulders[1] + hips[1]) / 2) / frame_height,
+        box_bottom_y=box.y2 / frame_height,
         verticality=abs(dy) / torso_length,
         box_aspect_ratio=width / height,
         visible_core_points=visible_core,
@@ -144,7 +163,7 @@ class PersonFallRuleEngine:
             track_id = detection.track_id
             if (
                 track_id is None
-                or detection.confidence < self.rule.minimum_confidence
+                or detection.confidence < self.rule.detection_confidence
                 or not self.rule.zone.contains_detection(
                     detection,
                     frame_width=frame_width,
@@ -172,13 +191,17 @@ class PersonFallRuleEngine:
             state.peak_descent_speed = max(state.peak_descent_speed, descent_speed)
 
             if state.phase in {"unarmed", "upright"}:
-                if features.upright:
-                    state.phase = "upright"
-                    state.recovery_started_seconds = None
-                elif state.phase == "upright" and descent_speed >= self.rule.minimum_descent_speed:
+                if state.phase == "upright" and descent_speed >= self.rule.minimum_descent_speed:
+                    # A falling person can remain vertically oriented during
+                    # the descent, especially in a cropped webcam view. Motion
+                    # must therefore take precedence over the static upright
+                    # classification.
                     state.phase = "descending"
                     state.candidate_started_seconds = timestamp_seconds
                     state.peak_descent_speed = descent_speed
+                elif features.upright:
+                    state.phase = "upright"
+                    state.recovery_started_seconds = None
                 continue
 
             if state.phase == "descending":
@@ -191,12 +214,22 @@ class PersonFallRuleEngine:
                 if features.down:
                     state.phase = "down"
                     state.down_started_seconds = timestamp_seconds
+                    state.down_evidence = "horizontal"
+                elif features.partial_view_down:
+                    state.phase = "down"
+                    state.down_started_seconds = timestamp_seconds
+                    state.down_evidence = "partial_view"
                 elif candidate_age > self.rule.candidate_timeout_seconds:
                     self._reset_candidate(state, armed=features.upright)
                 continue
 
             if state.phase == "down":
-                if not features.down:
+                still_down = (
+                    features.down
+                    if state.down_evidence == "horizontal"
+                    else features.partial_view_down
+                )
+                if not still_down:
                     candidate_started = (
                         state.candidate_started_seconds
                         if state.candidate_started_seconds is not None
@@ -212,14 +245,22 @@ class PersonFallRuleEngine:
                     else timestamp_seconds
                 )
                 down_for = timestamp_seconds - down_started
-                if down_for < self.rule.fallen_confirmation_seconds:
+                required_confirmation = (
+                    self.rule.partial_view_confirmation_seconds
+                    if state.down_evidence == "partial_view"
+                    else self.rule.fallen_confirmation_seconds
+                )
+                if down_for < required_confirmation:
                     continue
                 if timestamp_seconds - state.last_event_seconds < self.rule.cooldown_seconds:
                     state.phase = "alerted"
                     continue
+                confidence = self._event_confidence(observation, features, state)
+                if confidence < self.rule.minimum_confidence:
+                    continue
                 state.phase = "alerted"
                 state.last_event_seconds = timestamp_seconds
-                confidence = self._event_confidence(observation, features, state)
+                partial_view = state.down_evidence == "partial_view"
                 matches.append(
                     RuleMatch(
                         rule_id=self.rule.id,
@@ -245,12 +286,19 @@ class PersonFallRuleEngine:
                         event_type="person_fall",
                         details={
                             "visual_skill": "pose_action",
-                            "summary": "A tracked person rapidly descended and remained down.",
+                            "summary": (
+                                "Possible fall: a tracked person moved rapidly downward "
+                                "and remained low in a partially obstructed view."
+                                if partial_view
+                                else "A tracked person rapidly descended and remained down."
+                            ),
+                            "fall_evidence": state.down_evidence,
                             "peak_descent_speed_frame_heights_per_second": round(
                                 state.peak_descent_speed, 3
                             ),
                             "torso_verticality": round(features.verticality, 3),
                             "box_aspect_ratio": round(features.box_aspect_ratio, 3),
+                            "box_bottom_frame_ratio": round(features.box_bottom_y, 3),
                             "visible_core_keypoints": features.visible_core_points,
                             "decision_source": "local_pose_state_machine",
                         },
@@ -283,6 +331,7 @@ class PersonFallRuleEngine:
         state.phase = "upright" if armed else "unarmed"
         state.candidate_started_seconds = None
         state.down_started_seconds = None
+        state.down_evidence = None
         state.recovery_started_seconds = None
         state.peak_descent_speed = 0.0
 
@@ -293,7 +342,11 @@ class PersonFallRuleEngine:
         state: _TrackState,
     ) -> float:
         motion_score = min(1.0, state.peak_descent_speed / self.rule.minimum_descent_speed)
-        posture_score = min(1.0, (1.0 - features.verticality) / 0.52)
+        posture_score = (
+            0.25
+            if state.down_evidence == "partial_view"
+            else min(1.0, (1.0 - features.verticality) / 0.52)
+        )
         return max(
             0.0,
             min(

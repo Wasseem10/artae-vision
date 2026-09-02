@@ -47,6 +47,18 @@ def pose(
             15: (420, 730),
             16: (580, 730),
         }
+    elif posture == "partial_low":
+        box = (390, 420, 610, 1000)
+        coordinates = {
+            5: (470, 520),
+            6: (530, 520),
+            11: (480, 790),
+            12: (520, 790),
+            13: (480, 880),
+            14: (520, 880),
+            15: (480, 980),
+            16: (520, 980),
+        }
     else:
         box = (220, 650, 820, 930)
         coordinates = {
@@ -121,6 +133,27 @@ def test_sitting_and_starting_down_do_not_trigger() -> None:
     assert evaluate(engine, pose(1, posture="sitting"), 1.5) == []
     assert evaluate(engine, pose(2, posture="down"), 0.0) == []
     assert evaluate(engine, pose(2, posture="down"), 2.0) == []
+
+
+def test_fast_descent_behind_frame_edge_emits_labeled_possible_fall() -> None:
+    engine = PersonFallRuleEngine(
+        PersonFallRule(
+            id="fall-1",
+            zone=FULL_FRAME,
+            minimum_confidence=0.7,
+            partial_view_confirmation_seconds=0.4,
+        )
+    )
+
+    assert evaluate(engine, pose(8, posture="upright"), 0.0) == []
+    assert evaluate(engine, pose(8, posture="partial_low"), 0.25) == []
+    assert evaluate(engine, pose(8, posture="partial_low"), 0.5) == []
+    matches = evaluate(engine, pose(8, posture="partial_low"), 0.95)
+
+    assert len(matches) == 1
+    assert matches[0].details["fall_evidence"] == "partial_view"
+    assert matches[0].details["summary"].startswith("Possible fall:")
+    assert matches[0].confidence >= 0.7
 
 
 def test_recovery_rearms_track_for_a_later_fall() -> None:

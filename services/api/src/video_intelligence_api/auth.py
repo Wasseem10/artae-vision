@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 from dataclasses import dataclass
+from datetime import UTC, timedelta
 from typing import Annotated, Any
 
 import anyio
@@ -134,9 +135,19 @@ async def _identity_for_claims(
         session.add(identity)
         await session.flush()
     else:
-        identity.email = email or identity.email
-        identity.display_name = display_name or identity.display_name
-        identity.last_seen_at = utc_now()
+        if email and email != identity.email:
+            identity.email = email
+        if display_name and display_name != identity.display_name:
+            identity.display_name = display_name
+        # A page can make several authenticated polling requests per second.
+        # Updating this row for every request serializes otherwise read-only
+        # traffic on SQLite and can starve camera telemetry/event writes.
+        now = utc_now()
+        last_seen_at = identity.last_seen_at
+        if last_seen_at.tzinfo is None:
+            last_seen_at = last_seen_at.replace(tzinfo=UTC)
+        if now - last_seen_at >= timedelta(minutes=1):
+            identity.last_seen_at = now
     return identity
 
 
