@@ -7445,3 +7445,83 @@ footer {
 
 .guidedErrorToast strong { font-size: 12px; letter-spacing: .02em; }
 .guidedErrorToast > button { background: transparent; border: 0; color: #755a57; cursor: pointer; font-size: 22px; line-height: 1; margin-left: 8px; }
+
+.visionDemoLaunch {
+  align-items: center;
+  background: #f4f6f1;
+  border: 1px solid #d9ddd5;
+  border-radius: 13px;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding: 13px 14px 13px 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.visionDemoLaunch > span,
+.visionDemoLaunch > span > span,
+.visionCapabilityStatus span {
+  display: flex;
+}
+
+.visionDemoLaunch > span {
+  align-items: center;
+  gap: 11px;
+}
+
+.visionDemoLaunch > span > svg {
+  color: #39734f;
+  height: 18px;
+  width: 18px;
+}
+
+.visionDemoLaunch > span > span,
+.visionCapabilityStatus span {
+  flex-direction: column;
+  gap: 3px;
+}
+
+.visionDemoLaunch strong { color: #292c27; font-size: 11px; }
+.visionDemoLaunch small { color: #777c74; font-size: 9px; }
+
+.visionDemoLaunch > a {
+  align-items: center;
+  background: #26372d;
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 800;
+  gap: 8px;
+  padding: 11px 13px;
+  text-decoration: none;
+}
+
+.visionCapabilityStatus {
+  align-items: center;
+  background: #f7f7f4;
+  border-top: 1px solid #ecece7;
+  display: flex;
+  gap: 10px;
+  padding: 10px 23px;
+}
+
+.visionCapabilityStatus > i {
+  background: #9ba099;
+  border-radius: 50%;
+  height: 8px;
+  width: 8px;
+}
+
+.visionCapabilityStatus strong { color: #51554f; font-size: 10px; }
+.visionCapabilityStatus small { color: #888d85; font-size: 9px; }
+.visionCapabilityStatus.isReady { background: #f0f7f2; }
+.visionCapabilityStatus.isReady > i { background: #3fb469; box-shadow: 0 0 0 4px #dff2e5; }
+.visionCapabilityStatus.isReady strong { color: #276a40; }
+
+@media (max-width: 700px) {
+  .visionDemoLaunch { align-items: stretch; flex-direction: column; gap: 13px; }
+  .visionDemoLaunch > a { justify-content: center; }
+}

@@ -40,7 +40,7 @@ const agents: Record<AgentKey, { name: string; description: string; condition: s
 const faqGroups = [
   { title: "the product", items: [
     ["What is Artae?", "Artae gives live cameras and recorded footage plain-language jobs. Each visual agent watches for one condition, keeps reviewable evidence, and performs an approved action."],
-    ["What can Artae actually detect?", "Artae supports common objects, people, zones, motion, occupancy, vehicles, plates, PPE, and semantic visual checks. Accuracy depends on camera position, lighting, and the selected model."],
+    ["What can Artae actually detect today?", "The dependable live demo supports fall detection through local YOLO pose, plus people, common vehicles, object counts, and zone entry or exit through local YOLO tracking. PPE, license plates, and broader semantic requests remain experimental and are not presented as dependable live jobs."],
     ["Can I use existing cameras?", "Yes. Artae is designed for computer webcams, uploaded recordings, and supported IP camera feeds."],
     ["Does footage save to my account?", "When cloud recording is enabled, clips and their metadata are stored against the signed-in account so they can be viewed on another device."],
     ["Can I exclude sensitive cameras or hours?", "Yes. Recording and agent schedules can be limited by camera, workspace policy, and operating hours."],
@@ -84,7 +84,7 @@ export function MarketingPage() {
           <button type="button" aria-expanded={exploreOpen} onClick={() => setExploreOpen((value) => !value)}>Explore <FiChevronDown /></button>
           <a href="#use-cases">Use cases</a><a href="#features">Pricing</a><a href="#features">Enterprise</a><a href="#faq">Security</a>
         </nav>
-        <div className={styles.headerActions}><Link href="/login">Sign in</Link><Link className={styles.downloadButton} href="/login"><FiDownload /> Open Artae</Link></div>
+        <div className={styles.headerActions}><Link href="/demo">Try demo</Link><Link href="/login">Sign in</Link><Link className={styles.downloadButton} href="/login"><FiDownload /> Open Artae</Link></div>
         <button className={styles.menuButton} type="button" aria-label="Toggle menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <FiX /> : <FiMenu />}</button>
         {exploreOpen && <div className={styles.megaMenu}>
           <div className={styles.megaIntro}><strong>Explore Artae</strong><p>Connect video, find what matters, and give every camera a job.</p></div>
@@ -98,7 +98,7 @@ export function MarketingPage() {
       {mobileOpen && <nav className={styles.mobileNav} aria-label="Mobile navigation">
         <button type="button" aria-expanded={mobileExploreOpen} onClick={() => setMobileExploreOpen((value) => !value)}><span>Explore</span><b>{mobileExploreOpen ? "−" : "+"}</b></button>
         {mobileExploreOpen && <div className={styles.mobileExplore}><a href="#agents">Visual agents</a><a href="#remember">Video search</a><a href="#features">Operations workflows</a><a href="#faq">Security and privacy</a></div>}
-        <a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
+        <Link href="/demo">Try the demo <FiArrowRight /></Link><a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
       </nav>}
 
       <aside className={styles.saleBar}><span>● &nbsp; LIVE + RECORDED VIDEO</span><strong>Describe the event. Artae watches for it.</strong><code>SEE IT WORK</code><span>SAVE EVIDENCE · SEND ALERTS · RUN ACTIONS <FiArrowRight /></span></aside>
@@ -107,7 +107,7 @@ export function MarketingPage() {
         <div className={styles.heroEyebrow}><i /> AI video agents for safety and operations</div>
         <h1>Tell your cameras what to watch for.<br /><span>Artae alerts you and takes action.</span></h1>
         <p>Connect a live camera or upload video, then describe the event in plain language. Artae watches for it, saves the evidence, and sends an alert or triggers the action you choose.</p>
-        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/login"><FiVideo /> Give a camera a job</Link><a className={styles.heroSecondary} href="#overview"><FiEye /> Watch the 44-second demo <b>→</b></a></div>
+        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/login"><FiVideo /> Give a camera a job</Link><Link className={styles.heroSecondary} href="/demo"><FiEye /> Run the no-install demo <b>→</b></Link></div>
         <div className={styles.heroSteps} aria-label="How Artae works">
           <span><b>01</b> Connect video</span><FiArrowRight /><span><b>02</b> Describe the event</span><FiArrowRight /><span><b>03</b> Get alerts and actions</span>
         </div>
@@ -171,11 +171,11 @@ export function MarketingPage() {
       </section>
 
       <section className={styles.features} id="features">
-        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>What Artae does</small><p>Features + use cases</p></div><div><h2>Turn any camera into an AI worker for your operation.</h2><p>Artae watches live or recorded video, understands the job you describe, keeps the evidence, and performs the response you choose.</p></div></header>
+        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>What Artae does</small><p>Live capabilities + workflow concepts</p></div><div><h2>Turn a camera into a focused visual agent.</h2><p>The live demo currently handles falls, people, common vehicles, counts, and zone events. The broader examples below show the product direction.</p></div></header>
 
         <div className={styles.productFlow} aria-label="How Artae works">
           <div><span>01</span><FiVideo /><strong>Connect the video</strong><p>Use a live camera, an IP feed, or upload recorded footage.</p></div>
-          <div><span>02</span><FiEye /><strong>Describe the job</strong><p>Ask for a safety event, queue, vehicle, behavior, or process check in plain language.</p></div>
+          <div><span>02</span><FiEye /><strong>Choose a supported job</strong><p>Watch for a fall, a person or vehicle, an object count, or entry into a camera zone.</p></div>
           <div><span>03</span><FiZap /><strong>Choose what happens</strong><p>Send an alert, save the clip, create an incident, or call a connected webhook.</p></div>
         </div>
 
@@ -188,7 +188,7 @@ export function MarketingPage() {
             <div className={styles.jobSweep} />
           </div>
           <div className={styles.jobCopy}>
-            <small>Example · factory operations</small>
+            <small>Workflow concept · factory operations</small>
             <h3>Catch a bottleneck before it stops the line.</h3>
             <p>The camera agent watches Station 4 continuously, confirms that the queue is actually growing, and sends the shift manager the exact moment that needs attention.</p>
             <div className={styles.jobRule}>
@@ -212,7 +212,7 @@ export function MarketingPage() {
         </div>
       </section>
 
-      <section className={styles.downloadCta} id="use-cases"><h2>Build your visual workflow memory.</h2><p>Live cameras · uploaded video · account-saved agents · connected actions</p><Link className={styles.heroPrimary} href="/login"><FiVideo /> Start monitoring</Link></section>
+      <section className={styles.downloadCta} id="use-cases"><h2>See the complete camera-agent flow.</h2><p>Known sample video · visible detection · event log · in-app alert</p><Link className={styles.heroPrimary} href="/demo"><FiVideo /> Run the no-install demo</Link></section>
 
       <section className={styles.faqSection} id="faq">
         <header className={`${styles.sectionIntro} ${styles.faqIntro}`}><span className={styles.sectionNumber}>04</span><div><small>FAQ</small><p>Clear answers</p></div><div><h2>Questions before you give a camera a job.</h2><p>How Artae handles cameras, footage, alerts, actions, accounts, and team access.</p></div></header>
@@ -221,7 +221,7 @@ export function MarketingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <section className={styles.footerCta}><p>Your cameras already have the context</p><h2>Build your visual workflow memory.</h2><span>Tell Artae what matters, keep the evidence, and let approved agents perform the follow-up.</span><div><Link className={styles.heroPrimary} href="/login">Start monitoring</Link><a href="mailto:hello@artae.ai">Explore enterprise</a></div></section>
+        <section className={styles.footerCta}><p>See it before you install it</p><h2>Run a camera agent from start to alert.</h2><span>The guided sample makes the product flow testable in any modern browser. Live cameras use the local Artae YOLO service.</span><div><Link className={styles.heroPrimary} href="/demo">Try the demo</Link><Link href="/login">Open workspace</Link></div></section>
         <div className={styles.footerGrid}><div className={styles.footerBrand}><Link className={styles.brand} href="#top"><span className={styles.brandMark}><FiActivity /></span><strong>artae</strong></Link><p>Visual intelligence powered by everything your cameras have seen.</p><small>Account-saved · live · recorded</small></div>{[
           ["Product", ["Overview", "Agents", "Footage", "Alerts"]], ["Solutions", ["Workplace safety", "Loading docks", "Vehicle access", "Video review"]], ["Company", ["About", "Principles", "Contact", "Sign in"]], ["Trust", ["Security", "Privacy", "Retention", "Evidence review"]]
         ].map(([title, links]) => <nav key={title as string}><h3>{title}</h3>{(links as string[]).map((link) => <a href={link === "Sign in" ? "/login" : "#top"} key={link}>{link}</a>)}</nav>)}</div>

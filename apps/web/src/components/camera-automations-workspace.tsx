@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/icon";
@@ -31,6 +32,24 @@ interface Props {
 }
 
 type WorkspaceView = "conversation" | "agents" | "footage" | "investigate" | "alerts" | "settings";
+
+type ReliableLiveCapability = {
+  label: string;
+  route: string;
+} | null;
+
+function reliableLiveCapability(input: string): ReliableLiveCapability {
+  const text = input.toLowerCase();
+  if (/\b(fall|falls|fell|fallen|collapse|collapsed)\b/.test(text)) {
+    return { label: "Fall detection", route: "Local YOLO pose · checks every frame" };
+  }
+
+  const hasSupportedObject = /\b(person|people|car|vehicle|truck|bus|dog|cat)\b/.test(text);
+  const hasSupportedCondition = /\b(present|appears?|detect|enter|enters|exit|exits|leave|leaves|inside|count|at least|at most|cross|crosses|stay|stays|remain|remains)\b/.test(text);
+  return hasSupportedObject && hasSupportedCondition
+    ? { label: "Object and zone detection", route: "Local YOLO tracking · checks every frame" }
+    : null;
+}
 
 function formatTime(value: string) {
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
@@ -119,6 +138,7 @@ export function CameraAutomationsWorkspace({
   const activeBinding = bindings.find((binding) => binding.enabled) ?? null;
   const activeRuleRequested = Boolean(activeRule?.status === "active" && running);
   const activeRuleLive = Boolean(activeRule?.status === "active" && operating);
+  const liveCapability = sourceMode === "live" ? reliableLiveCapability(prompt) : null;
   const currentCases = activeRule
     ? verificationCases.filter((item) => item.event.rule_id === activeRule.id && !["confirmed", "rejected"].includes(item.status))
     : [];
@@ -260,6 +280,10 @@ export function CameraAutomationsWorkspace({
   async function startMonitoring() {
     if (!selectedCamera || prompt.trim().length < 8) return;
     if (sourceMode === "upload" && !uploadedVideo) { setMessage("Choose a video first, then start monitoring."); return; }
+    if (sourceMode === "live" && !liveCapability) {
+      setMessage("That live request is not a reliable real-time job yet. Choose Fall detection, Person present, People count, or Vehicle present.");
+      return;
+    }
     setWorking(true); setMessage("Building your monitoring agent…"); setSubmittedPrompt(prompt.trim());
     try {
       const result = await onCompile({ camera_id: selectedCamera.id, prompt: prompt.trim() }); setCompilation(result);
@@ -300,6 +324,10 @@ export function CameraAutomationsWorkspace({
         if (anotherAgentIsActive) await onStart();
         setMessage(`${ruleTitle(rule)} is paused.`);
       } else {
+        if (!reliableLiveCapability(rule.original_prompt ?? rule.name)) {
+          setMessage("This older agent uses an experimental visual request and cannot start in dependable live mode. Build a Fall detection, Person present, People count, or Vehicle present agent instead.");
+          return;
+        }
         if (running) await onStop();
         if (rule.status !== "active") {
           await onRuleStatusChange(rule.id, "active");
@@ -395,10 +423,10 @@ export function CameraAutomationsWorkspace({
     { id: "alerts", label: "Alerts", icon: "event" }, { id: "settings", label: "Settings", icon: "settings" },
   ];
   const starterPrompts = [
-    { label: "Fall detection", route: "Local pose AI", recipient: "Caregiver", prompt: "Alert the caregiver when a person falls to the ground." },
-    { label: "Workplace safety", route: "Visual AI", recipient: "Safety manager", prompt: "Tell the safety manager when someone enters this area without a hard hat." },
-    { label: "After-hours activity", route: "Local tracking", recipient: "Site manager", prompt: "Alert the site manager if a person enters this area after business hours." },
-    { label: "Loading dock", route: "Local tracking", recipient: "Operations lead", prompt: "Notify operations when a delivery truck arrives at the loading dock." },
+    { label: "Fall detection", route: "YOLO pose · real time", recipient: "Caregiver", prompt: "Alert the caregiver when a person falls to the ground." },
+    { label: "Person present", route: "YOLO tracking · real time", recipient: "Security team", prompt: "Alert me when a person is present in the camera view." },
+    { label: "People count", route: "YOLO tracking · real time", recipient: "Site manager", prompt: "Alert me when at least 2 people are present in the camera view." },
+    { label: "Vehicle present", route: "YOLO tracking · real time", recipient: "Operations lead", prompt: "Alert operations when a car is present in the camera view." },
   ];
 
   return (
@@ -430,7 +458,11 @@ export function CameraAutomationsWorkspace({
         {view === "conversation" && (!sessionStarted ? (
           <section className="visionWelcome">
             <h1>What should we watch for?</h1>
-            <p>Describe the moment you care about. Artae will turn it into a monitoring conversation.</p>
+            <p>Choose a supported live job below, or run the public demo to see the complete detection and alert flow.</p>
+            <div className="visionDemoLaunch">
+              <span><Icon name="spark" /><span><strong>See the product work first</strong><small>Run a guided camera agent—no account, install, or webcam needed.</small></span></span>
+              <Link href="/demo">Run no-install demo <Icon name="chevron" /></Link>
+            </div>
             <div className="visionSetupProgress" aria-label="Agent setup progress">
               <span className={selectedCamera ? "isDone" : "isCurrent"}><i>{selectedCamera ? "✓" : "1"}</i><b>Connect video</b></span>
               <span className={selectedCamera ? "isCurrent" : ""}><i>2</i><b>Describe the job</b></span>
@@ -445,7 +477,11 @@ export function CameraAutomationsWorkspace({
             ) : <>
               <div className="visionConnectedSource"><span><i />{selectedCamera.name}</span><button onClick={() => setView("settings")} type="button">Change</button></div>
               <div className="visionPromptCard">
-                <textarea id="monitoring-prompt" onChange={(event) => setPrompt(event.target.value)} placeholder="Ask Artae to watch for something…" rows={4} value={prompt} />
+                <textarea id="monitoring-prompt" onChange={(event) => setPrompt(event.target.value)} placeholder="Choose a supported job below or describe a person, vehicle, count, zone, or fall…" rows={4} value={prompt} />
+                {sourceMode === "live" && <div className={`visionCapabilityStatus ${liveCapability ? "isReady" : ""}`}>
+                  <i />
+                  <span>{liveCapability ? <><strong>{liveCapability.label} is supported live</strong><small>{liveCapability.route}</small></> : <><strong>Choose a reliable live job</strong><small>Fall detection, person/vehicle presence, counts, and zone entry or exit are available now.</small></>}</span>
+                </div>}
                 {sourceMode === "upload" && <label className="visionUploadPicker"><Icon name="camera" /><span><strong>{uploadedVideo?.name ?? "Choose a video"}</strong><small>MP4, MOV, MKV, WEBM, or AVI · up to 512 MB</small></span><input accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,.mkv,.avi" onChange={(event) => chooseUploadedVideo(event.target.files?.[0] ?? null)} type="file" /></label>}
                 <div className="visionAgentBuilderRows">
                   <div><span>IF</span><p>{prompt.trim() || "Describe the event this agent should watch for"}</p></div>
@@ -454,7 +490,7 @@ export function CameraAutomationsWorkspace({
                 <div className="visionActionPicker"><small>ACTION</small><div role="group" aria-label="Choose what the agent should do"><button className={actionDestination === "computer" ? "isActive" : ""} onClick={() => setActionDestination("computer")} type="button">In-app alert</button>{connectors.filter((connector) => connector.enabled && connector.connector_type !== "mock").map((connector) => <button className={actionDestination === connector.id ? "isActive" : ""} key={connector.id} onClick={() => setActionDestination(connector.id)} type="button">{connector.connector_type === "telegram" ? "Telegram" : connector.name}</button>)}{!telegramConnector && <button onClick={() => setTelegramSetupOpen(true)} type="button">+ Connect Telegram</button>}</div></div>
                 <div className="visionPromptActions">
                   <div aria-label="Choose what to monitor" className="visionSourceChoice" role="group"><button className={sourceMode === "live" ? "isActive" : ""} onClick={() => setSourceMode("live")} type="button"><Icon name="camera" /> Live camera</button><button className={sourceMode === "upload" ? "isActive" : ""} onClick={() => setSourceMode("upload")} type="button"><Icon name="plus" /> Upload video</button></div>
-                  <button className="visionStartButton" disabled={working || loading || !selectedCamera || prompt.trim().length < 8 || (sourceMode === "upload" && !uploadedVideo)} onClick={() => void startMonitoring()} type="button">{working ? "Building agent…" : "Build & deploy agent"}<Icon name="chevron" /></button>
+                  <button className="visionStartButton" disabled={working || loading || !selectedCamera || prompt.trim().length < 8 || (sourceMode === "live" && !liveCapability) || (sourceMode === "upload" && !uploadedVideo)} onClick={() => void startMonitoring()} type="button">{working ? "Building agent…" : "Build & deploy agent"}<Icon name="chevron" /></button>
                 </div>
               </div>
               <div className="visionStarterPrompts" aria-label="Example monitoring requests">
