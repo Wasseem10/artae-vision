@@ -4,9 +4,15 @@ import numpy as np
 import pytest
 from video_intelligence_inference.config import Settings
 from video_intelligence_inference.control_plane import resolve_rule_config
+from video_intelligence_inference.detector import (
+    Detection,
+    PoseKeypoint,
+    PoseObservation,
+)
 from video_intelligence_inference.observer import ObserverDecision, RequestBudget
 from video_intelligence_inference.replay import run_replay
 from video_intelligence_inference.source import EndOfStream, VideoFrame
+from video_intelligence_inference.zones import Point, Zone
 
 
 def semantic_rule():
@@ -129,6 +135,37 @@ class InWindowTransitionProvider:
         return None
 
 
+def replay_pose(posture: str) -> PoseObservation:
+    points = [PoseKeypoint(0, 0, 0) for _ in range(17)]
+    if posture == "upright":
+        box = (6, 1, 10, 15)
+        core = {
+            5: (7, 4), 6: (9, 4), 11: (7, 8), 12: (9, 8),
+            13: (7, 11), 14: (9, 11), 15: (7, 14), 16: (9, 14),
+        }
+    else:
+        box = (1, 10, 15, 15)
+        core = {
+            5: (4, 12), 6: (4, 13), 11: (12, 12), 12: (12, 13),
+            13: (13, 12), 14: (13, 13), 15: (14, 12), 16: (14, 13),
+        }
+    for index, (x, y) in core.items():
+        points[index] = PoseKeypoint(x, y, 0.95)
+    return PoseObservation(
+        Detection(*box, label="person", confidence=0.95, track_id=4),
+        tuple(points),
+    )
+
+
+class FakePoseDetector:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def track(self, _frame) -> list[PoseObservation]:
+        self.calls += 1
+        return [replay_pose("upright" if self.calls == 1 else "down")]
+
+
 def test_semantic_replay_processes_every_window_and_counts_usage() -> None:
     progress: list[float] = []
     output = run_replay(
@@ -227,6 +264,32 @@ def test_semantic_replay_fails_instead_of_silently_skipping_budgeted_windows() -
             provider_factory=lambda _settings: FakeProvider(),
             request_budget=RequestBudget(per_minute=1, per_day=10),
         )
+
+
+def test_specialized_pose_replay_runs_without_provider_requests() -> None:
+    rule = replace(
+        semantic_rule(),
+        instruction="Alert me if a person falls to the ground.",
+        minimum_confidence=0.5,
+        execution_strategy="specialized_pose",
+        geometry=Zone(
+            "Full frame",
+            (Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)),
+        ),
+    )
+    output = run_replay(
+        Settings(continuous_recording_archive_enabled=False),
+        source_uri="fixture.mp4",
+        duration_seconds=10,
+        rule=rule,
+        source_factory=lambda *_args, **_kwargs: FakeSource(),
+        pose_detector_factory=lambda **_kwargs: FakePoseDetector(),
+    )
+
+    assert output.provider_requests == 0
+    assert len(output.intervals) == 1
+    assert output.intervals[0].start_seconds == 1
+    assert output.intervals[0].end_seconds == 3
 
 
 @pytest.mark.parametrize("source_uri", ["webcam:0", "rtsp://camera/live"])

@@ -107,6 +107,59 @@ def test_pending_semantic_event_is_quarantined_until_operator_confirms(
     assert too_late.status_code == 409
 
 
+def test_specialized_pose_fall_event_is_released_to_alerts_without_vlm_review(
+    api_client: TestClient,
+) -> None:
+    camera = api_client.post(
+        "/api/v1/cameras",
+        json={"name": "fall-camera", "source_uri": "webcam:0"},
+    ).json()
+    compilation = api_client.post(
+        "/api/v1/rule-compilations",
+        json={
+            "camera_id": camera["id"],
+            "prompt": "Alert me if a person falls to the ground.",
+        },
+    ).json()
+    assert compilation["execution_plan"]["strategy"] == "specialized_pose"
+    rule = api_client.post(
+        f"/api/v1/rule-compilations/{compilation['id']}/accept",
+        json={},
+    ).json()
+    api_client.patch(f"/api/v1/rules/{rule['id']}/status", json={"status": "active"})
+
+    event = api_client.post(
+        "/api/v1/agent/events",
+        headers=AGENT_HEADERS,
+        json={
+            "schema_version": 2,
+            "id": str(uuid.uuid4()),
+            "event_type": "person_fall",
+            "rule_id": rule["id"],
+            "camera_id": camera["id"],
+            "track_id": 9,
+            "object_class": "person",
+            "zone_name": "Full frame (automatic)",
+            "entered_at_seconds": 1,
+            "occurred_at_seconds": 2,
+            "dwell_seconds": 1,
+            "confidence": 0.9,
+            "occurred_at": "2026-08-23T12:00:00Z",
+            "clip_path": "artifacts/events/fall.mp4",
+            "details": {
+                "visual_skill": "pose_action",
+                "decision_source": "local_pose_state_machine",
+                "summary": "A tracked person rapidly descended and remained down.",
+            },
+        },
+    )
+
+    assert event.status_code == 201, event.text
+    assert event.json()["verification_status"] == "not_required"
+    assert event.json()["event_type"] == "person_fall"
+    assert len(api_client.get("/api/v1/alerts").json()) == 1
+
+
 def test_distinct_verifier_stays_manual_until_field_gate_passes(
     api_client: TestClient,
 ) -> None:

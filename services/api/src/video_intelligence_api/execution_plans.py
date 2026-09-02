@@ -26,7 +26,7 @@ class ExecutionPlan(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     schema_version: Literal[1] = 1
-    strategy: Literal["deterministic_tracking", "semantic_window"]
+    strategy: Literal["deterministic_tracking", "semantic_window", "specialized_pose"]
     summary: str
     provider_requests: bool
     stages: list[ExecutionStage]
@@ -73,6 +73,41 @@ def plan_job(spec: CameraJobSpec, prompt: str | None = None) -> ExecutionPlan:
     support = assess_visual_job(spec, prompt)
     if spec.rule_type == "semantic_vision":
         visual_skills = list(select_visual_skills(prompt or spec.instruction))
+        if (
+            len(visual_skills) == 1
+            and visual_skills[0].id == "pose_action"
+            and visual_skills[0].execution_mode == "specialized"
+        ):
+            return ExecutionPlan(
+                strategy="specialized_pose",
+                summary=(
+                    "Track person pose on every frame and confirm an upright-to-descent-to-down "
+                    "transition locally before creating an event."
+                ),
+                provider_requests=False,
+                support=support,
+                visual_skills=visual_skills,
+                stages=[
+                    capture,
+                    _stage(
+                        "person_pose",
+                        "Person pose",
+                        "YOLO pose + ByteTrack",
+                        "every_frame",
+                        "edge",
+                        "Track each person and extract body landmarks continuously.",
+                    ),
+                    _stage(
+                        "fall_transition",
+                        "Fall transition",
+                        "PersonFallRuleEngine",
+                        "every_frame",
+                        "edge",
+                        "Require rapid descent followed by a sustained ground-level posture.",
+                    ),
+                    evidence,
+                ],
+            )
         return ExecutionPlan(
             strategy="semantic_window",
             summary=(

@@ -40,6 +40,7 @@ def test_visual_skill_registry_explains_fallback_and_benchmarks(
     assert skills["change_anomaly"]["temporal_support"] == ["transition", "sequence"]
     assert "source-frame" in skills["ocr_text"]["output_contract"]
     assert "replay gate" in skills["pose_action"]["benchmark_policy"]
+    assert skills["pose_action"]["status"] == "specialized_ready"
     assert len(skills) == 8
 
 

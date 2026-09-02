@@ -155,3 +155,55 @@ def test_fetch_agent_config_resolves_semantic_vision_job() -> None:
     assert rule.confirmation_windows == 2
     assert rule.cooldown_seconds == 120
     assert rule.execution_strategy == "semantic_window"
+
+
+def test_fetch_agent_config_routes_fall_job_to_specialized_pose() -> None:
+    payload = camera_payload()
+    payload["rules"] = [
+        {
+            "id": "fall-rule",
+            "key": "person-fall",
+            "rule_type": "semantic_vision",
+            "object_class": "visual_event",
+            "duration_seconds": 0,
+            "minimum_confidence": 0.5,
+            "absence_grace_seconds": 1,
+            "zone": {
+                "id": "full-frame-zone",
+                "name": "Full frame (automatic)",
+                "points": [
+                    {"x": 0, "y": 0},
+                    {"x": 1, "y": 0},
+                    {"x": 1, "y": 1},
+                    {"x": 0, "y": 1},
+                ],
+            },
+            "spec": {
+                "schema_version": 3,
+                "rule_type": "semantic_vision",
+                "instruction": "Alert me if a person falls to the ground.",
+                "object_class": "visual_event",
+                "zone_id": "full-frame-zone",
+                "zone_name": "Full frame (automatic)",
+                "minimum_confidence": 0.5,
+                "absence_grace_seconds": 1,
+                "confirmation_windows": 1,
+                "cooldown_seconds": 60,
+            },
+            "execution_plan": {
+                "schema_version": 1,
+                "strategy": "specialized_pose",
+                "provider_requests": False,
+            },
+        }
+    ]
+    config = fetch_agent_config(
+        "http://control-plane:8000",
+        agent_key="agent-secret",
+        camera_ref="camera-1",
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, json=payload)
+        ),
+    )
+
+    assert config.rules[0].execution_strategy == "specialized_pose"

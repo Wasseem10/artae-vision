@@ -27,7 +27,7 @@ from video_intelligence_inference.control_plane import (
     ResolvedRuleConfig,
     fetch_agent_config,
 )
-from video_intelligence_inference.detector import YoloDetector
+from video_intelligence_inference.detector import YoloDetector, YoloPoseDetector
 from video_intelligence_inference.events import (
     CompletedEvidence,
     EventRecord,
@@ -46,6 +46,11 @@ from video_intelligence_inference.observer import (
     OverlappingSheetSampler,
     QwenVisionClient,
     VisionObserverProvider,
+)
+from video_intelligence_inference.pose_action import (
+    PersonFallRule,
+    PersonFallRuleSetEngine,
+    pose_detections,
 )
 from video_intelligence_inference.recording_archive import BackgroundRecordingArchiveUploader
 from video_intelligence_inference.routing import route_rules
@@ -364,6 +369,7 @@ def run(
         source_name = source_override or remote.source_uri
         camera_id = remote.camera_id
     semantic_rules: list[ResolvedRuleConfig] = []
+    pose_rules: list[ResolvedRuleConfig] = []
     if remote is None:
         engines: list[RuleEngine] = [DwellRuleEngine(rule) for rule in rules]
         geometries: list[Zone | Line] = [rule.zone for rule in rules]
@@ -371,9 +377,10 @@ def run(
     else:
         execution_plan = route_rules(remote.rules)
         semantic_rules = list(execution_plan.semantic_rules)
+        pose_rules = list(execution_plan.pose_rules)
         deterministic_rules = list(execution_plan.deterministic_rules)
         engines = [_engine_for(rule) for rule in deterministic_rules]
-        geometries = [rule.geometry for rule in deterministic_rules]
+        geometries = [rule.geometry for rule in [*deterministic_rules, *pose_rules]]
         detector_rules = deterministic_rules
     engine = RuleSetEngine(engines) if engines else None
     geometries = list(dict.fromkeys(geometries))
@@ -392,6 +399,32 @@ def run(
             device=settings.device,
         )
         if detector_rules or semantic_rules
+        else None
+    )
+    pose_detector = (
+        YoloPoseDetector(
+            model_name=settings.pose_model_name,
+            confidence_threshold=min(rule.minimum_confidence for rule in pose_rules),
+            iou_threshold=settings.iou_threshold,
+            device=settings.device,
+        )
+        if pose_rules
+        else None
+    )
+    pose_engine = (
+        PersonFallRuleSetEngine(
+            [
+                PersonFallRule(
+                    id=rule.rule_id,
+                    zone=rule.zone,
+                    minimum_confidence=rule.minimum_confidence,
+                    absence_grace_seconds=rule.absence_grace_seconds,
+                    cooldown_seconds=rule.cooldown_seconds,
+                )
+                for rule in pose_rules
+            ]
+        )
+        if pose_rules
         else None
     )
     source = OpenCVVideoSource(
@@ -516,6 +549,7 @@ def run(
                         if semantic_rules
                         else 0
                     ),
+                    3 if pose_rules else 0,
                 ),
                 post_event_seconds=settings.evidence_post_seconds,
             )
@@ -543,6 +577,11 @@ def run(
                     height, width = frame.shape[:2]
                     inference_started = time.perf_counter()
                     detections = detector.track(frame) if detector is not None else []
+                    pose_observations = (
+                        pose_detector.track(frame) if pose_detector is not None else []
+                    )
+                    if detector is None and pose_observations:
+                        detections = pose_detections(pose_observations)
                     inference_latency_ms = (time.perf_counter() - inference_started) * 1000
                     frame_at = time.perf_counter()
                     fps = (
@@ -608,6 +647,15 @@ def run(
                         if engine is not None
                         else []
                     )
+                    if pose_engine is not None:
+                        matches.extend(
+                            pose_engine.evaluate(
+                                pose_observations,
+                                timestamp_seconds=packet.timestamp_seconds,
+                                frame_width=width,
+                                frame_height=height,
+                            )
+                        )
                     while True:
                         try:
                             matches.append(_semantic_match(semantic_outbox.get_nowait()))

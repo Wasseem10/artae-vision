@@ -9,6 +9,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from video_intelligence_inference.pose_action import is_person_fall_instruction
 from video_intelligence_inference.zones import Line, Point, Zone
 
 
@@ -71,7 +72,7 @@ class _JobSpecPayload(BaseModel):
 class _ExecutionPlanPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
     schema_version: Literal[1] = 1
-    strategy: Literal["deterministic_tracking", "semantic_window"]
+    strategy: Literal["deterministic_tracking", "semantic_window", "specialized_pose"]
     provider_requests: bool
 
 
@@ -113,7 +114,9 @@ class ResolvedRuleConfig:
     cooldown_seconds: float = 60.0
     temporal_mode: Literal["state", "transition", "sequence"] = "state"
     baseline_windows: int = 0
-    execution_strategy: Literal["deterministic_tracking", "semantic_window"] | None = None
+    execution_strategy: (
+        Literal["deterministic_tracking", "semantic_window", "specialized_pose"] | None
+    ) = None
 
     @property
     def zone(self) -> Zone:
@@ -157,9 +160,13 @@ def _resolved_rule(rule: _RulePayload) -> ResolvedRuleConfig:
         raise ValueError("Count jobs require a comparison and threshold")
     if spec.rule_type == "semantic_vision" and not spec.instruction:
         raise ValueError("Semantic vision jobs require an instruction")
-    inferred_strategy: Literal["deterministic_tracking", "semantic_window"] = (
-        "semantic_window" if spec.rule_type == "semantic_vision" else "deterministic_tracking"
-    )
+    inferred_strategy: Literal["deterministic_tracking", "semantic_window", "specialized_pose"]
+    if spec.rule_type == "semantic_vision" and is_person_fall_instruction(spec.instruction):
+        inferred_strategy = "specialized_pose"
+    elif spec.rule_type == "semantic_vision":
+        inferred_strategy = "semantic_window"
+    else:
+        inferred_strategy = "deterministic_tracking"
     if rule.execution_plan is not None and rule.execution_plan.strategy != inferred_strategy:
         raise ValueError(
             f"Execution plan '{rule.execution_plan.strategy}' conflicts with {spec.rule_type}"

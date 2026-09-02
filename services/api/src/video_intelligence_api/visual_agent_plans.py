@@ -43,7 +43,7 @@ class VisualAgentPlanDocument(BaseModel):
 
     schema_version: Literal[1] = 1
     summary: str
-    strategy: Literal["deterministic_tracking", "semantic_window"]
+    strategy: Literal["deterministic_tracking", "semantic_window", "specialized_pose"]
     nodes: list[VisualAgentNode]
     support: VisualSupportAssessment | None = None
 
@@ -104,7 +104,7 @@ def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPl
             nodes=nodes,
             support=support,
         )
-    if execution.strategy == "semantic_window":
+    if execution.strategy in {"semantic_window", "specialized_pose"}:
         skills = select_visual_skills(prompt)
         if skills:
             for skill in skills:
@@ -114,8 +114,8 @@ def compile_visual_agent_plan(spec: CameraJobSpec, prompt: str) -> VisualAgentPl
                         "observe",
                         skill.label,
                         (
-                            "Apply only this required visual capability. The temporal VLM "
-                            "fallback remains active until a specialized executor passes its gate."
+                            "Apply this required visual capability using the selected "
+                            "specialized or fallback executor."
                         ),
                         skill.executor,
                         skill.capability,

@@ -12,6 +12,8 @@ multi-camera operations, offline-edge, production-hardening, and commissioning l
 
 - webcam, MP4, or RTSP capture on the host;
 - YOLO object detection with persistent ByteTrack IDs;
+- continuous local person-pose tracking for fall/collapse jobs, with an
+  upright-to-descent-to-ground confirmation state machine;
 - normalized polygon zones and directed two-point crossing lines;
 - reusable dwell, presence, entry, exit, count-threshold, and line-crossing jobs;
 - pre/post-event clips, JSONL output, and optional webhooks;
@@ -63,7 +65,8 @@ multi-camera operations, offline-edge, production-hardening, and commissioning l
 - a `camera-job/3` semantic-vision contract for open-ended visible conditions;
 - automatic full-frame grounding when a semantic job needs no manually drawn geometry;
 - managed Gemini window evaluation with confidence, confirmation, cooldown, and cost ceilings;
-- reviewed execution plans that route jobs between local YOLO/tracking and bounded VLM windows;
+- reviewed execution plans that route jobs between local YOLO/tracking,
+  specialized pose analysis, and bounded VLM windows;
 - honest per-job support levels that distinguish deterministic execution, general visual-AI
   fallback, required business context, and conditions that pixels cannot verify;
 - state, transition, and sequence semantics, including baseline/rearm protection for visual changes;

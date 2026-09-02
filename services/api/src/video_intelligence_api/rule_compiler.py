@@ -24,6 +24,7 @@ from video_intelligence_api.job_specs import (
 )
 from video_intelligence_api.models import GeometryType, Zone
 from video_intelligence_api.visual_intelligence import infer_temporal_mode
+from video_intelligence_api.visual_skills import is_person_fall_prompt
 
 logger = logging.getLogger(__name__)
 COMPILER_VERSION = "camera-job/3"
@@ -430,7 +431,10 @@ def _resolve_candidate(
             object_class=candidate.object_class or "visual_event",
             zone_id=geometry.id,
             zone_name=geometry.name,
-            minimum_confidence=max(candidate.minimum_confidence, 0.7),
+            minimum_confidence=max(
+                candidate.minimum_confidence,
+                0.5 if is_person_fall_prompt(candidate.instruction) else 0.7,
+            ),
             temporal_mode=temporal_mode,
             baseline_windows=1 if temporal_mode == "transition" else 0,
         )

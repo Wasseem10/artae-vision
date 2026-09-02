@@ -8,10 +8,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from video_intelligence_api.job_specs import CameraJobSpec
+from video_intelligence_api.visual_skills import is_person_fall_prompt
 
 TemporalMode = Literal["state", "transition", "sequence"]
 SupportTier = Literal[
     "deterministic",
+    "specialized",
     "semantic_fallback",
     "requires_context",
     "not_visually_verifiable",
@@ -131,6 +133,24 @@ def assess_visual_job(spec: CameraJobSpec, prompt: str | None = None) -> VisualS
             limitations=["Connect and test the required source before deployment."],
             required_context=list(dict.fromkeys(required_context)),
             temporal_mode=temporal_mode,
+        )
+
+    if spec.rule_type == "semantic_vision" and is_person_fall_prompt(instruction):
+        return VisualSupportAssessment(
+            tier="specialized",
+            label="Continuous local fall detection",
+            deployable=True,
+            reason=(
+                "A person-pose model and temporal state machine evaluate every frame without "
+                "waiting for a vision-provider request."
+            ),
+            limitations=[
+                "Falls hidden by furniture, poor camera angles, darkness, and track loss "
+                "can be missed.",
+                "This is an operational alerting aid, not a medical device.",
+                "The exact camera and scenario must pass a labeled replay test before deployment.",
+            ],
+            temporal_mode="transition",
         )
 
     if spec.rule_type != "semantic_vision":

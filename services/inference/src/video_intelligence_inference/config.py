@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     continuous_recording_queue_size: int = Field(default=120, ge=1, le=10000)
 
     model_name: str = Field(default="yolo26n.pt", min_length=1)
+    pose_model_name: str = Field(default="yolo11n-pose.pt", min_length=1)
     confidence_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
     iou_threshold: float = Field(default=0.45, ge=0.0, le=1.0)
     device: str | None = None

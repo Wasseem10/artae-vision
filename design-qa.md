@@ -1,49 +1,43 @@
-# Design QA — Hero evidence ribbon
+# Design QA — Hero event illustration ribbon
 
-- Source visual truth: `C:\Users\wasse\.codex\generated_images\01a0416b-0da5-7e53-b3e5-893f92234733\exec-5d18d427-feeb-4a8f-80e0-84ea8bf84ff2.png`
-- Implementation screenshot: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-implementation-final.png`
-- Full-view comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-comparison-final.png`
-- Focused comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\.codex-design-refs\hero-evidence-focused-comparison.png`
-- Viewport: 1672 × 941 CSS pixels, desktop, device scale factor 1.
-- Pixel dimensions: source 1672 × 941; implementation 1672 × 941. No density normalization required.
-- State: marketing home page, hero at initial load.
+- Source visual truth: `C:\Users\wasse\AppData\Local\Temp\codex-clipboard-b7e8651f-6fe4-411b-9d75-fdf4a82a21f9.png`
+- Desktop implementation capture: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-detail.png`
+- Mobile implementation capture: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-mobile-detail.png`
+- Focused source/implementation comparison: `C:\Users\wasse\OneDrive\Documents\ChatGPT\Project2\artifacts\hero-event-ribbon-comparison.png`
+- Desktop viewport: 1340 × 655 CSS pixels.
+- Mobile viewport: 390 × 844 CSS pixels; document client and scroll widths both 375 px.
+- State: marketing home page, hero evidence ribbon visible.
 
-## Full-view comparison evidence
+## Visual comparison
 
-The implementation preserves the existing Artae header, announcement bar, centered headline, copy, calls to action, and three-step strip. The selected option's evidence ribbon appears beneath that strip without introducing a large image or changing the page's established visual language. The slightly more compact title and call-to-action scale is intentional because the user explicitly asked to keep the current style and add to it rather than redesign it.
+The source ribbon appears in the upper half of the focused comparison and the implementation appears in the lower half. Both use the same four-event sequence, centered four-column rhythm, grayscale technical illustration language, orange scanner corners, circular outcome badges, and faint edge motion lines.
 
-## Focused comparison evidence
-
-The focused comparison confirms the same four-column hierarchy as the source: event icon, orange outcome indicator, primary label, and supporting status. The source uses illustrative object drawings; the implementation deliberately uses the project's existing outline icon library so the addition matches the current product UI and remains sharp at responsive sizes.
+The implementation deliberately increases subject detail and display size slightly because the user explicitly rejected the prior generic outline icons. Each event now reads as a distinct real operational scene: a hard-hat worker, a delivery truck, a person falling, and a rear-view vehicle.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Existing Geist-based page typography, weights, line height, and hierarchy are preserved. Evidence labels remain legible and do not wrap at desktop width.
-- Spacing and layout rhythm: Ribbon aligns to the centered hero, uses the selected four-column rhythm, and retains clear separation from the three-step strip. No horizontal overflow at 1672 px or 390 px.
-- Colors and visual tokens: Existing cool white/gray surface, black copy, light borders, and orange action accent are reused consistently.
-- Image quality and asset fidelity: No raster hero image or placeholder was introduced. Icons come from the installed React Icons library and render cleanly at desktop and mobile sizes.
-- Copy and content: Outcomes communicate concrete Artae jobs: PPE verification, dock arrival notification, fall alert, and vehicle action.
+- Typography: Existing Geist page typography and hierarchy remain unchanged; labels are centered and readable.
+- Spacing: Four equal desktop columns and a two-by-two mobile grid preserve the existing hero structure.
+- Color: Cool white/gray hero surface, charcoal illustrations, and the existing orange action accent match the reference.
+- Asset quality: Four purpose-built raster illustrations replace generic React icon glyphs. Images retain detail at their refined 112 px desktop and 100 px mobile display sizes.
+- Responsiveness: No horizontal overflow at the checked mobile breakpoint. All four subjects, scanner corners, badges, labels, and supporting text remain visible.
+- Accessibility: Each illustration has descriptive alternative text; the surrounding list retains its descriptive ARIA label.
 
-## Comparison history
+## Findings and fixes
 
-1. Initial pass: the evidence outcomes were too small and arranged like settings rows (P2); status icons overlapped supporting copy (P2).
-2. Fixes: changed each outcome to a centered icon-first composition, increased icon and label scale, widened the evidence ribbon, and positioned status icons independently.
-3. Post-fix evidence: `hero-evidence-implementation-final.png` and `hero-evidence-focused-comparison.png` show distinct, readable outcomes with no overlap or overflow.
+1. P1 — Prior implementation used generic outline icons and did not match the selected visual target. Fixed with four detailed generated illustrations.
+2. P2 — Initial generated truck asset contained a baked transparency checkerboard. Rejected and regenerated with a true alpha background.
+3. P2 — The first render faded artwork to 42% opacity during its pulse animation, obscuring illustration detail. Raised the minimum opacity to 88% and added restrained contrast.
+4. P2 — Mobile layout risked crowding after the larger assets were introduced. Verified at 390 × 844; the two-column grid has no horizontal overflow.
+5. User polish — Reduced each illustration by roughly 11% while preserving legibility, badge clarity, and four-column alignment.
 
-## Interaction and responsive checks
+## Verification
 
-- Primary CTA resolves to `/login`.
-- Demo CTA scrolls to `#overview`.
-- Mobile check at 390 × 844: two-column evidence layout, 339 px ribbon width, 375 px document width, and no horizontal overflow.
-- Browser console errors: none.
+- TypeScript: passed.
+- Web tests: 17 passed.
 - Production build: passed.
+- ESLint: 0 errors; one pre-existing hook cleanup warning in `browser-webcam-preview.tsx`.
 
-## Findings
-
-No actionable P0, P1, or P2 differences remain.
-
-## Follow-up polish
-
-- P3: Custom editorial illustrations could move even closer to the concept image, but they would be a broader asset-direction change than the requested additive update.
+No actionable P0, P1, or P2 visual differences remain for the requested hero illustration update.
 
 final result: passed

@@ -10,12 +10,13 @@ from dataclasses import dataclass
 from video_intelligence_inference.agent import _engine_for, _semantic_provider
 from video_intelligence_inference.config import Settings
 from video_intelligence_inference.control_plane import ResolvedRuleConfig
-from video_intelligence_inference.detector import YoloDetector
+from video_intelligence_inference.detector import YoloDetector, YoloPoseDetector
 from video_intelligence_inference.observer import (
     OverlappingSheetSampler,
     RequestBudget,
     VisionObserverProvider,
 )
+from video_intelligence_inference.pose_action import PersonFallRule, PersonFallRuleEngine
 from video_intelligence_inference.source import EndOfStream, OpenCVVideoSource
 
 logger = logging.getLogger(__name__)
@@ -243,6 +244,65 @@ def _run_semantic(
     )
 
 
+def _run_pose(
+    settings: Settings,
+    source_uri: str,
+    duration_seconds: float,
+    rule: ResolvedRuleConfig,
+    *,
+    source_factory: Callable[..., OpenCVVideoSource],
+    pose_detector_factory: Callable[..., YoloPoseDetector],
+    on_progress: Callable[[float], None] | None,
+) -> ReplayOutput:
+    source = source_factory(
+        source_uri,
+        width=settings.camera_width,
+        height=settings.camera_height,
+        fps=settings.camera_fps,
+    )
+    detector = pose_detector_factory(
+        model_name=settings.pose_model_name,
+        confidence_threshold=rule.minimum_confidence,
+        iou_threshold=settings.iou_threshold,
+        device=settings.device,
+    )
+    engine = PersonFallRuleEngine(
+        PersonFallRule(
+            id=rule.rule_id,
+            zone=rule.zone,
+            minimum_confidence=rule.minimum_confidence,
+            absence_grace_seconds=rule.absence_grace_seconds,
+            cooldown_seconds=rule.cooldown_seconds,
+        )
+    )
+    intervals: list[ReplayInterval] = []
+    with source:
+        while True:
+            try:
+                packet = source.read()
+            except EndOfStream:
+                break
+            if on_progress is not None:
+                on_progress(min(packet.timestamp_seconds, duration_seconds))
+            height, width = packet.image.shape[:2]
+            matches = engine.evaluate(
+                detector.track(packet.image),
+                timestamp_seconds=packet.timestamp_seconds,
+                frame_width=width,
+                frame_height=height,
+            )
+            for match in matches:
+                interval = _bounded_interval(
+                    start_seconds=match.entered_at_seconds,
+                    end_seconds=match.occurred_at_seconds,
+                    duration_seconds=duration_seconds,
+                    confidence=match.confidence,
+                )
+                if interval is not None:
+                    intervals.append(interval)
+    return ReplayOutput(tuple(intervals))
+
+
 def run_replay(
     settings: Settings,
     *,
@@ -251,6 +311,7 @@ def run_replay(
     rule: ResolvedRuleConfig,
     source_factory: Callable[..., OpenCVVideoSource] = OpenCVVideoSource,
     detector_factory: Callable[..., YoloDetector] = YoloDetector,
+    pose_detector_factory: Callable[..., YoloPoseDetector] = YoloPoseDetector,
     provider_factory: Callable[[Settings], VisionObserverProvider] = _semantic_provider,
     on_progress: Callable[[float], None] | None = None,
     request_budget: RequestBudget | None = None,
@@ -259,6 +320,16 @@ def run_replay(
 
     if source_uri.casefold().startswith(("webcam:", "rtsp://", "rtsps://")):
         raise ValueError("Replay evaluations require a finite video file")
+    if rule.execution_strategy == "specialized_pose":
+        return _run_pose(
+            settings,
+            source_uri,
+            duration_seconds,
+            rule,
+            source_factory=source_factory,
+            pose_detector_factory=pose_detector_factory,
+            on_progress=on_progress,
+        )
     if rule.rule_type == "semantic_vision":
         return _run_semantic(
             settings,

@@ -1268,6 +1268,7 @@ class AgentEventIngest(ApiModel):
         "count_threshold",
         "line_crossing",
         "semantic_vision",
+        "person_fall",
     ]
     rule_id: str = Field(min_length=1, max_length=120)
     camera_id: str = Field(min_length=1, max_length=120)

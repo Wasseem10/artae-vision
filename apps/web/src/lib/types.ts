@@ -464,6 +464,7 @@ export interface ExecutionStage {
 export interface VisualSupportAssessment {
   tier:
     | "deterministic"
+    | "specialized"
     | "semantic_fallback"
     | "requires_context"
     | "not_visually_verifiable";
@@ -489,7 +490,7 @@ export interface VisualSkillSelection {
 
 export interface ExecutionPlan {
   schema_version: 1;
-  strategy: "deterministic_tracking" | "semantic_window";
+  strategy: "deterministic_tracking" | "semantic_window" | "specialized_pose";
   summary: string;
   provider_requests: boolean;
   stages: ExecutionStage[];

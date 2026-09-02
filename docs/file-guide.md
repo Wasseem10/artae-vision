@@ -124,6 +124,10 @@ downloaded weights, virtual-environment files, and runtime artifacts are exclude
 - `services/inference/src/video_intelligence_inference/visualization.py` draws boxes,
   track IDs, confidence scores, normalized zones, directed crossing lines, and the
   latest semantic-observer result on a copy of each frame.
+- `services/inference/src/video_intelligence_inference/pose_action.py` converts tracked
+  COCO pose landmarks into a continuous fall state machine. It requires a visible
+  upright baseline, rapid descent, and a sustained down posture before emitting one
+  `person_fall` event, then rearms only after recovery.
 - `services/inference/src/video_intelligence_inference/app.py` is the composition
   root: it wires configuration, camera, detector, rendering, keyboard handling, and
   shutdown together.

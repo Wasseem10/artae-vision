@@ -5,11 +5,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   FiActivity,
-  FiAlertTriangle,
   FiArrowRight,
   FiBell,
   FiCheck,
-  FiCheckCircle,
   FiChevronDown,
   FiCpu,
   FiDownload,
@@ -19,10 +17,8 @@ import {
   FiMenu,
   FiMessageCircle,
   FiSearch,
-  FiSend,
   FiShield,
   FiTrendingDown,
-  FiTruck,
   FiVideo,
   FiX,
   FiZap,
@@ -116,10 +112,10 @@ export function MarketingPage() {
           <span><b>01</b> Connect video</span><FiArrowRight /><span><b>02</b> Describe the event</span><FiArrowRight /><span><b>03</b> Get alerts and actions</span>
         </div>
         <ul className={styles.heroEvidence} aria-label="Examples of events Artae can detect and act on">
-          <li><span className={styles.heroEvidenceIcon}><FiShield /></span><div><strong>PPE checked</strong><small>Safety rule verified</small></div><FiCheckCircle className={styles.heroEvidenceStatus} aria-hidden="true" /></li>
-          <li><span className={styles.heroEvidenceIcon}><FiTruck /></span><div><strong>Truck arrived</strong><small>Dock team notified</small></div><FiCheckCircle className={styles.heroEvidenceStatus} aria-hidden="true" /></li>
-          <li><span className={styles.heroEvidenceIcon}><FiAlertTriangle /></span><div><strong>Fall detected</strong><small>Alert sent instantly</small></div><FiSend className={styles.heroEvidenceStatus} aria-hidden="true" /></li>
-          <li><span className={styles.heroEvidenceIcon}><FiZap /></span><div><strong>Vehicle stopped</strong><small>Action triggered</small></div><FiCheckCircle className={styles.heroEvidenceStatus} aria-hidden="true" /></li>
+          <li><span className={styles.heroEvidenceArt}><Image src="/marketing/hero-event-ppe.png" alt="Illustration of Artae verifying a worker's hard hat" width={220} height={220} priority /></span><div><strong>PPE checked</strong><small>Safety rule verified</small></div></li>
+          <li><span className={styles.heroEvidenceArt}><Image src="/marketing/hero-event-truck.png" alt="Illustration of Artae detecting a delivery truck arrival" width={220} height={220} priority /></span><div><strong>Truck arrived</strong><small>Dock team notified</small></div></li>
+          <li><span className={styles.heroEvidenceArt}><Image src="/marketing/hero-event-fall.png" alt="Illustration of Artae detecting a person falling" width={220} height={220} priority /></span><div><strong>Fall alert sent</strong><small>Help notified instantly</small></div></li>
+          <li><span className={styles.heroEvidenceArt}><Image src="/marketing/hero-event-vehicle.png" alt="Illustration of Artae detecting and acting on a stopped vehicle" width={220} height={220} priority /></span><div><strong>Vehicle stopped</strong><small>Action triggered</small></div></li>
         </ul>
         <form className={styles.mobileEmail} onSubmit={(event) => event.preventDefault()}><strong>Send the workspace link</strong><input aria-label="Email address" placeholder="you@example.com" type="email" /><button type="submit">Email me the link</button><small>We will send the access link and occasional product updates.</small></form>
       </section>

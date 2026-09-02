@@ -61,6 +61,26 @@ def test_skill_router_selects_only_prompt_required_capabilities() -> None:
     assert "vision.skill.ppe_compliance" not in capabilities
 
 
+def test_fall_plan_uses_continuous_local_pose_without_provider_requests() -> None:
+    plan = compile_visual_agent_plan(
+        SemanticVisionJob(
+            instruction="Alert me if a worker falls to the ground",
+            object_class="visual_event",
+            zone_id="zone-1",
+            zone_name="Full frame (automatic)",
+            minimum_confidence=0.5,
+        ),
+        "Alert me if a worker falls to the ground",
+    )
+
+    assert plan.strategy == "specialized_pose"
+    pose = next(
+        node for node in plan.nodes if node.capability == "vision.skill.pose_action"
+    )
+    assert pose.executor == "Pose/action model"
+    assert plan.nodes[-1].side_effect is True
+
+
 def test_context_dependent_plan_is_explicitly_blocked() -> None:
     plan = compile_visual_agent_plan(
         SemanticVisionJob(

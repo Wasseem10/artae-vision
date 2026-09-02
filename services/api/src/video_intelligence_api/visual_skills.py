@@ -6,6 +6,16 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Literal
 
+_PERSON_FALL_PATTERN = re.compile(
+    r"\b(?:fall|falls|fell|fallen|falling|collapse|collapses|collapsed|collapsing)\b",
+    re.IGNORECASE,
+)
+
+
+def is_person_fall_prompt(prompt: str) -> bool:
+    """Return true only for fall/collapse transitions handled by the pose skill."""
+    return bool(_PERSON_FALL_PATTERN.search(prompt))
+
 
 @dataclass(frozen=True, slots=True)
 class VisualSkillDefinition:
@@ -93,10 +103,25 @@ SKILLS: tuple[VisualSkillDefinition, ...] = (
         id="pose_action",
         label="Pose and action analysis",
         capability="vision.skill.pose_action",
-        terms=("fall", "fallen", "lying", "backflip", "jump", "gesture", "posture"),
+        terms=(
+            "fall",
+            "falls",
+            "fell",
+            "fallen",
+            "falling",
+            "collapse",
+            "collapses",
+            "collapsed",
+            "collapsing",
+            "lying",
+            "backflip",
+            "jump",
+            "gesture",
+            "posture",
+        ),
         preferred_executor="Pose/action model",
         fallback_executor="Temporal VLM windows",
-        status="fallback_only",
+        status="specialized_ready",
         benchmark_policy="action-duration replay gate required before deployment",
         input_contract="Chronological person-centered frame window",
         output_contract="Visible pose/action, confidence, temporal span, and evidence rationale",
@@ -161,14 +186,21 @@ def select_visual_skills(prompt: str) -> tuple[VisualSkillSelection, ...]:
     selected: list[VisualSkillSelection] = []
     for definition in SKILLS:
         if any(f" {term} " in normalized for term in definition.terms):
+            specialized = definition.status == "specialized_ready"
+            if definition.id == "pose_action":
+                specialized = specialized and is_person_fall_prompt(prompt)
             selected.append(
                 VisualSkillSelection(
                     id=definition.id,
                     label=definition.label,
                     capability=definition.capability,
-                    executor=definition.fallback_executor,
-                    execution_mode="semantic_fallback",
-                    provider_requests=True,
+                    executor=(
+                        definition.preferred_executor
+                        if specialized
+                        else definition.fallback_executor
+                    ),
+                    execution_mode="specialized" if specialized else "semantic_fallback",
+                    provider_requests=not specialized,
                     benchmark_policy=definition.benchmark_policy,
                     readiness=definition.status,
                 )

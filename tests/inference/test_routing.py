@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from video_intelligence_inference.control_plane import ResolvedRuleConfig
 from video_intelligence_inference.routing import route_rules
@@ -50,3 +52,16 @@ def test_router_skips_detector_for_semantic_only_camera() -> None:
 def test_router_rejects_plan_that_changes_rule_semantics() -> None:
     with pytest.raises(ValueError, match="conflicts"):
         route_rules((rule("unsafe", "zone_entry", "semantic_window"),))
+
+
+def test_router_sends_fall_instruction_to_specialized_pose() -> None:
+    fall = replace(
+        rule("fall", "semantic_vision", "specialized_pose"),
+        instruction="Alert me if a person falls to the ground",
+    )
+
+    plan = route_rules((fall,))
+
+    assert [item.rule_id for item in plan.pose_rules] == ["fall"]
+    assert plan.needs_pose_detector is True
+    assert plan.needs_vision_provider is False

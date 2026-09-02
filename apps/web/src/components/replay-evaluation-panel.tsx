@@ -521,7 +521,11 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
                 <span>{evaluation.status}</span>
                 <strong>{evaluation.name}</strong>
                 <small>
-                  {evaluation.execution_strategy === "semantic_window" ? "VLM windows" : "YOLO + tracking"}
+                  {evaluation.execution_strategy === "semantic_window"
+                    ? "VLM windows"
+                    : evaluation.execution_strategy === "specialized_pose"
+                      ? "Local pose"
+                      : "YOLO + tracking"}
                   {evaluation.status === "scored" ? ` · F1 ${percentage(evaluation.metrics.f1)}` : " · awaiting results"}
                 </small>
               </button>
@@ -651,7 +655,13 @@ export function ReplayEvaluationPanel({ cameras, onError }: ReplayEvaluationPane
                   />
                   <span>
                     <strong>{evaluation.name}</strong>
-                    <small>{evaluation.execution_strategy === "semantic_window" ? "VLM windows" : "Local tracking"}</small>
+                    <small>
+                      {evaluation.execution_strategy === "semantic_window"
+                        ? "VLM windows"
+                        : evaluation.execution_strategy === "specialized_pose"
+                          ? "Local pose"
+                          : "Local tracking"}
+                    </small>
                   </span>
                 </label>
               ))}

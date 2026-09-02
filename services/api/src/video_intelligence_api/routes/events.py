@@ -9,7 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from video_intelligence_api.auth import ActorDependency
 from video_intelligence_api.camera_secrets import CameraSecretError, resolved_camera_source
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
+from video_intelligence_api.execution_plans import plan_job
 from video_intelligence_api.field_accuracy import automatic_release_allowed
+from video_intelligence_api.job_specs import validate_job_spec
 from video_intelligence_api.live_verification import (
     assess_semantic_event,
     finalize_confirmed_event,
@@ -175,7 +177,26 @@ async def ingest_agent_event(
         raise HTTPException(status_code=409, detail="Rule is not active")
 
     raw_payload = payload.model_dump(mode="json")
-    is_semantic = rule.rule_type == "semantic_vision" or payload.event_type == "semantic_vision"
+    specialized_pose = False
+    if rule.spec is not None:
+        try:
+            specialized_pose = (
+                plan_job(
+                    validate_job_spec(rule.spec),
+                    rule.original_prompt or rule.name,
+                ).strategy
+                == "specialized_pose"
+            )
+        except ValidationError:
+            specialized_pose = False
+    if payload.event_type == "person_fall" and not specialized_pose:
+        raise HTTPException(
+            status_code=422,
+            detail="This rule is not configured for specialized fall detection",
+        )
+    is_semantic = (
+        rule.rule_type == "semantic_vision" and not specialized_pose
+    ) or payload.event_type == "semantic_vision"
     assessment = assess_semantic_event(rule, payload.details) if is_semantic else None
     if (
         assessment is not None

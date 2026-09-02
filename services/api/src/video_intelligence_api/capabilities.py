@@ -61,6 +61,7 @@ def registry_payload(settings: ApiSettings) -> dict[str, object]:
             "directional_lines",
             "temporal_confirmation",
             "semantic_vision",
+            "specialized_pose",
         ],
         "routing_strategies": {
             "deterministic_tracking": {
@@ -70,6 +71,12 @@ def registry_payload(settings: ApiSettings) -> dict[str, object]:
             "semantic_window": {
                 "provider_requests": True,
                 "description": "Overlapping frame windows evaluated by the configured VLM.",
+            },
+            "specialized_pose": {
+                "provider_requests": False,
+                "description": (
+                    "Continuous person-pose tracking and a local temporal fall state machine."
+                ),
             },
         },
         "visual_skills": visual_skill_registry(),

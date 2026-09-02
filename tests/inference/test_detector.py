@@ -3,7 +3,13 @@ from typing import Any, ClassVar
 import numpy as np
 import pytest
 import video_intelligence_inference.detector as detector_module
-from video_intelligence_inference.detector import Detection, YoloDetector
+from video_intelligence_inference.detector import (
+    Detection,
+    PoseKeypoint,
+    PoseObservation,
+    YoloDetector,
+    YoloPoseDetector,
+)
 
 
 class FakeTensor:
@@ -43,6 +49,14 @@ class FakeTrackedResult(FakeResult):
     boxes = FakeTrackedBoxes()
 
 
+class FakeKeypoints:
+    data = FakeTensor([[[float(index), float(index + 1), 0.9] for index in range(17)]])
+
+
+class FakePoseResult(FakeTrackedResult):
+    keypoints = FakeKeypoints()
+
+
 class FakeModel:
     def __init__(self) -> None:
         self.predict_arguments: dict[str, Any] = {}
@@ -55,6 +69,12 @@ class FakeModel:
     def track(self, **kwargs: Any) -> list[FakeTrackedResult]:
         self.track_arguments = kwargs
         return [FakeTrackedResult()]
+
+
+class FakePoseModel(FakeModel):
+    def track(self, **kwargs: Any) -> list[FakePoseResult]:
+        self.track_arguments = kwargs
+        return [FakePoseResult()]
 
 
 def test_detector_converts_yolo_result_to_model_independent_detection(
@@ -102,3 +122,31 @@ def test_detector_returns_persistent_track_ids(monkeypatch: pytest.MonkeyPatch) 
         "tracker": "bytetrack.yaml",
         "verbose": False,
     }
+
+
+def test_pose_detector_returns_tracked_person_landmarks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_model = FakePoseModel()
+    monkeypatch.setattr(detector_module, "YOLO", lambda _: fake_model)
+    detector = YoloPoseDetector("fake-pose.pt", 0.4, 0.5, "cpu")
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    observations = detector.track(frame)
+
+    assert observations == [
+        PoseObservation(
+            detection=Detection(
+                x1=10,
+                y1=20,
+                x2=81,
+                y2=91,
+                label="person",
+                confidence=0.876,
+                track_id=42,
+            ),
+            keypoints=tuple(
+                PoseKeypoint(float(index), float(index + 1), 0.9) for index in range(17)
+            ),
+        )
+    ]
