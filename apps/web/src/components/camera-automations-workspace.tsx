@@ -39,6 +39,7 @@ function formatTime(value: string) {
 function ruleTitle(rule: Rule | null) {
   if (!rule) return "New monitoring conversation";
   const text = `${rule.name} ${rule.original_prompt ?? ""}`.toLowerCase();
+  if (/\b(fall|falls|fell|fallen|collapse|collapsed)\b/.test(text)) return "Fall detection";
   if (text.includes("hard hat") || text.includes("helmet")) return "Hard hat compliance";
   return rule.name || "Monitoring conversation";
 }
@@ -361,9 +362,10 @@ export function CameraAutomationsWorkspace({
     { id: "alerts", label: "Alerts", icon: "event" }, { id: "settings", label: "Settings", icon: "settings" },
   ];
   const starterPrompts = [
-    { label: "Workplace safety", prompt: "Tell the safety manager when someone enters this area without a hard hat." },
-    { label: "After-hours activity", prompt: "Alert the site manager if a person enters this area after business hours." },
-    { label: "Loading dock", prompt: "Notify operations when a delivery truck arrives at the loading dock." },
+    { label: "Fall detection", route: "Local pose AI", recipient: "Caregiver", prompt: "Alert the caregiver when a person falls to the ground." },
+    { label: "Workplace safety", route: "Visual AI", recipient: "Safety manager", prompt: "Tell the safety manager when someone enters this area without a hard hat." },
+    { label: "After-hours activity", route: "Local tracking", recipient: "Site manager", prompt: "Alert the site manager if a person enters this area after business hours." },
+    { label: "Loading dock", route: "Local tracking", recipient: "Operations lead", prompt: "Notify operations when a delivery truck arrives at the loading dock." },
   ];
 
   return (
@@ -423,7 +425,7 @@ export function CameraAutomationsWorkspace({
                 </div>
               </div>
               <div className="visionStarterPrompts" aria-label="Example monitoring requests">
-                {starterPrompts.map((item) => <button key={item.label} onClick={() => setPrompt(item.prompt)} type="button"><small>{item.label}</small><span>{item.prompt}</span></button>)}
+                {starterPrompts.map((item) => <button key={item.label} onClick={() => { setPrompt(item.prompt); setRecipient(item.recipient); }} type="button"><small>{item.label}</small><span>{item.prompt}</span><em>{item.route}</em></button>)}
               </div>
             </>}
             <small className="visionPrivacy"><Icon name="shield" /> Video is processed on this computer whenever possible.</small>
@@ -459,7 +461,7 @@ export function CameraAutomationsWorkspace({
 
         {view === "settings" && <section className="visionSimplePage visionSettingsPage"><header><small>SETTINGS</small><h1>Monitoring settings</h1><p>Choose the real camera and where confirmed alerts should go.</p></header><div className="visionSettingsCard">
           <label><span>Camera</span><select value={selectedCamera?.id ?? ""} onChange={(event) => onSelectCamera(event.target.value)}>{cameras.map((camera) => <option key={camera.id} value={camera.id}>{camera.name}</option>)}</select></label>
-          <label><span>Alert recipient</span><select value={recipient} onChange={(event) => setRecipient(event.target.value)}><option>Safety manager</option><option>Site manager</option><option>Operations lead</option></select></label>
+          <label><span>Alert recipient</span><select value={recipient} onChange={(event) => setRecipient(event.target.value)}><option>Caregiver</option><option>Safety manager</option><option>Site manager</option><option>Operations lead</option></select></label>
           <label><span>Default agent action</span><select value={actionDestination} onChange={(event) => setActionDestination(event.target.value)}><option value="computer">Create an in-app alert</option>{connectors.filter((connector) => connector.enabled && connector.connector_type !== "mock").map((connector) => <option key={connector.id} value={connector.id}>{connector.connector_type === "telegram" ? "Send Telegram message" : connector.name}</option>)}</select></label>
           <div className="visionSettingAction"><span><strong>Telegram</strong><small>{telegramConnector ? `${telegramConnector.name} is connected` : "Send confirmed alerts to a Telegram chat"}</small></span><button onClick={() => setTelegramSetupOpen(true)} type="button">{telegramConnector ? "View connection" : "Connect"}</button></div>
           <div className="visionSettingAction"><span><strong>Safe test</strong><small>Verify delivery without creating fake camera evidence</small></span><button disabled={!activeRule || working} onClick={() => void runSafeTest()} type="button">Run test</button></div>

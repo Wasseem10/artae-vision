@@ -6930,7 +6930,7 @@ footer {
 .visionStarterPrompts {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   margin-top: 13px;
   max-width: 820px;
   width: 100%;
@@ -6951,6 +6951,7 @@ footer {
 .visionStarterPrompts button:hover { border-color: #a9aaa3; transform: translateY(-2px); }
 .visionStarterPrompts small { color: #92948e; display: block; font-size: 8px; font-weight: 800; letter-spacing: .08em; margin-bottom: 7px; text-transform: uppercase; }
 .visionStarterPrompts span { display: -webkit-box; font-size: 10px; line-height: 1.45; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.visionStarterPrompts em { color: #7b7e77; display: block; font-size: 8px; font-style: normal; font-weight: 750; letter-spacing: .08em; margin-top: 9px; text-transform: uppercase; }
 
 .visionConversation { max-width: 900px; }
 .visionConversation > header { background: rgba(255,255,255,.95); border-color: #e2e2dc; }
