@@ -99,6 +99,7 @@ export function CameraAutomationsWorkspace({
   const [telegramSetupMessage, setTelegramSetupMessage] = useState<string | null>(null);
   const dispatchedEvaluationId = useRef<string | null>(null);
   const deliveryInitialized = useRef(false);
+  const restoredRunningSession = useRef(false);
 
   const activeRule = rules.find((rule) => rule.id === selectedRuleId) ?? null;
   const running = agent?.desired_status === "running";
@@ -116,6 +117,7 @@ export function CameraAutomationsWorkspace({
   const currentExecutions = executions.filter((execution) => currentAlertIds.has(execution.alert_id));
   const visibleRecordings = recordings.filter((recording) => recording.status !== "expired");
   const activeBinding = bindings.find((binding) => binding.enabled) ?? null;
+  const activeRuleRequested = Boolean(activeRule?.status === "active" && running);
   const activeRuleLive = Boolean(activeRule?.status === "active" && operating);
   const currentCases = activeRule
     ? verificationCases.filter((item) => item.event.rule_id === activeRule.id && !["confirmed", "rejected"].includes(item.status))
@@ -157,6 +159,23 @@ export function CameraAutomationsWorkspace({
   useEffect(() => () => { if (uploadedVideoUrl) URL.revokeObjectURL(uploadedVideoUrl); }, [uploadedVideoUrl]);
 
   useEffect(() => {
+    if (restoredRunningSession.current || !agent || rules.length === 0) return;
+    restoredRunningSession.current = true;
+    const savedRule = agent.desired_status === "running"
+      ? rules.find((rule) => rule.status === "active") ?? rules[0]
+      : rules[0];
+    if (!savedRule) return;
+    const restoredPrompt = savedRule.original_prompt ?? savedRule.name;
+    const timer = window.setTimeout(() => {
+      setSelectedRuleId(savedRule.id);
+      setSubmittedPrompt(restoredPrompt);
+      setPrompt(restoredPrompt);
+      setView("conversation");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [agent, rules]);
+
+  useEffect(() => {
     if (!uploadEvaluation || !["queued", "running"].includes(uploadEvaluation.status)) return;
     const timer = window.setInterval(() => {
       void api.getReplayEvaluation(uploadEvaluation.id).then(setUploadEvaluation).catch((failure) => {
@@ -181,6 +200,8 @@ export function CameraAutomationsWorkspace({
 
   const conversationMessage = uploadEvaluation?.status === "scored" && uploadEvaluation.predicted_intervals.length === 0
     ? "Analysis complete. The condition was not found in this video."
+    : operating && message?.startsWith("Starting ")
+      ? `AI is watching the live feed. When the condition is confirmed, Artae will ${bindingActionLabel(activeBinding).toLowerCase()}.`
     : message;
 
   async function ensureLocalConnector() {
@@ -229,7 +250,7 @@ export function CameraAutomationsWorkspace({
     await onRuleStatusChange(rule.id, "active"); setBindings((current) => [binding, ...current.filter((item) => item.id !== binding.id)]);
     if (sourceMode === "live") {
       await onStart();
-      setMessage(`Agent deployed on ${selectedCamera?.name ?? "this camera"}. When the condition is confirmed, I will ${actionLabel(connector, recipient).toLowerCase()}.`);
+      setMessage(`Starting camera AI on ${selectedCamera?.name ?? "this camera"}. The first start can take several seconds while the vision models load.`);
     } else {
       await runUploadedAnalysis(rule); setMessage("The uploaded video is being analyzed with your rule now.");
     }
@@ -284,10 +305,22 @@ export function CameraAutomationsWorkspace({
           await onRuleStatusChange(rule.id, "active");
         }
         await onStart();
-        setMessage(`${ruleTitle(rule)} is live on ${selectedCamera?.name ?? "this camera"}.`);
+        setMessage(`Starting ${ruleTitle(rule).toLowerCase()} on ${selectedCamera?.name ?? "this camera"}.`);
       }
     } catch (failure) { setMessage(failure instanceof Error ? failure.message : "Could not change the agent status."); }
     finally { setWorking(false); }
+  }
+
+  async function stopCameraAndRecording() {
+    setWorking(true);
+    try {
+      await onStop();
+      setMessage("Camera, AI analysis, and video recording stopped.");
+    } catch (failure) {
+      setMessage(failure instanceof Error ? failure.message : "Could not stop the camera.");
+    } finally {
+      setWorking(false);
+    }
   }
 
   async function runSafeTest() {
@@ -390,7 +423,7 @@ export function CameraAutomationsWorkspace({
           <span><strong>{identity?.display_name ?? identity?.email ?? "Local preview"}</strong><small>{identity ? `${identity.role} workspace` : "Development session"}</small></span>
           <button onClick={() => void onSignOut()} type="button">Sign out</button>
         </div>
-        <div className="visionSidebarStatus"><i className={operating ? "isOnline" : ""} /><span><strong>{operating ? "Monitoring live" : nativeDeployment ? "Ready on this computer" : "Browser preview mode"}</strong><small>{nativeDeployment ? "Camera service available locally" : "Run the Artae camera service for AI detection"}</small></span></div>
+        <div className="visionSidebarStatus"><i className={operating ? "isOnline" : ""} /><span><strong>{operating ? "AI is watching" : running ? "Starting camera AI" : nativeDeployment ? "Ready to start" : "Preview only"}</strong><small>{operating ? `${agent?.frame_width ?? "—"}×${agent?.frame_height ?? "—"} · ${agent?.recording_state === "recording" ? "video saving" : "video live"}` : running ? "Loading the local vision service" : nativeDeployment ? "Choose an agent and press start" : "Install the camera service for AI detection"}</small></span></div>
       </aside>
 
       <main className="visionMain">
@@ -432,23 +465,23 @@ export function CameraAutomationsWorkspace({
           </section>
         ) : (
           <section className="visionConversation">
-            <header><div><small>VIDEO AGENT</small><h1>{ruleTitle(activeRule)}</h1></div>{activeRule ? <button className={activeRuleLive ? "isRunning" : ""} disabled={working || sourceMode === "upload"} onClick={() => void toggleRuleAgent(activeRule)} type="button"><i />{activeRuleLive ? "Pause agent" : "Deploy agent"}</button> : <button disabled type="button"><i />Building agent</button>}</header>
+            <header><div><small>VIDEO AGENT</small><h1>{ruleTitle(activeRule)}</h1></div>{activeRule ? <button className={activeRuleRequested ? "isRunning" : ""} disabled={working || sourceMode === "upload"} onClick={() => void toggleRuleAgent(activeRule)} type="button"><i />{activeRuleRequested ? "Stop agent" : "Start agent"}</button> : <button disabled type="button"><i />Building agent</button>}</header>
             <div className="visionThread">
               <article className="visionAssistantMessage"><div><strong>What should we watch for?</strong><p>Describe the condition and the action you want me to take.</p></div></article>
               <article className="visionUserMessage"><p>{submittedPrompt}</p></article>
               <article className="visionAssistantMessage"><div>
-                <strong>{working ? "Building your monitoring agent…" : compilation?.status === "needs_clarification" ? "One quick question" : operating || uploadEvaluation ? "Your monitoring agent is running" : running ? "Waiting for the camera service" : "Your monitoring rule is ready"}</strong>
-                {compilation?.status === "needs_clarification" ? <div className="visionClarification"><p>{compilation.clarification_question?.includes("named zones or lines") ? "Which part of the camera should I watch?" : compilation.clarification_question}</p>{compilation.clarification_question?.includes("named zones or lines") && <button className="visionEntireViewChoice" disabled={working} onClick={() => void chooseEntireCameraView()} type="button">Use the entire camera view</button>}<form onSubmit={(event) => { event.preventDefault(); void answerClarification(); }}><input aria-label="Rule clarification" onChange={(event) => setClarification(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && clarification.trim()) { event.preventDefault(); void answerClarification(); } }} placeholder="Or type the name of a saved camera area" value={clarification} /><button disabled={working || !clarification.trim()} type="submit">{working ? "Applying…" : "Continue"}</button></form></div> : <div className="visionBuildSteps" aria-label="Monitoring setup progress"><span className="isDone"><i>1</i><b>Rule described</b></span><span className={activeRule ? "isDone" : ""}><i>2</i><b>Agent built</b></span><span className={activeRule ? "isDone" : ""}><i>3</i><b>Action reviewed</b></span><span className={operating || uploadEvaluation ? "isDone" : ""}><i>4</i><b>{running && !operating ? "Connecting" : "Running"}</b></span></div>}
-                {activeRule && <div className="visionDeployedAgent"><header><span><i className={activeRuleLive ? "isOnline" : ""} />{activeRuleLive ? "AGENT LIVE" : running ? "WAITING FOR CAMERA SERVICE" : activeRule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div><b>IF</b><p>{activeRule.original_prompt ?? activeRule.name}</p></div><div><b>THEN</b><p>{bindingActionLabel(activeBinding)}</p></div><footer><span>{Math.round(activeRule.minimum_confidence * 100)}% minimum confidence</span><button disabled={!activeBinding || working} onClick={() => void runSafeTest()} type="button">Test action</button></footer></div>}
+                <strong>{working ? "Updating your monitoring agent…" : compilation?.status === "needs_clarification" ? "One quick question" : operating || uploadEvaluation ? "Your monitoring agent is running" : running ? agent?.observed_status === "error" ? "Camera AI could not start" : "Starting camera AI…" : "Your monitoring rule is ready"}</strong>
+                {compilation?.status === "needs_clarification" ? <div className="visionClarification"><p>{compilation.clarification_question?.includes("named zones or lines") ? "Which part of the camera should I watch?" : compilation.clarification_question}</p>{compilation.clarification_question?.includes("named zones or lines") && <button className="visionEntireViewChoice" disabled={working} onClick={() => void chooseEntireCameraView()} type="button">Use the entire camera view</button>}<form onSubmit={(event) => { event.preventDefault(); void answerClarification(); }}><input aria-label="Rule clarification" onChange={(event) => setClarification(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && clarification.trim()) { event.preventDefault(); void answerClarification(); } }} placeholder="Or type the name of a saved camera area" value={clarification} /><button disabled={working || !clarification.trim()} type="submit">{working ? "Applying…" : "Continue"}</button></form></div> : <div className="visionBuildSteps" aria-label="Monitoring setup progress"><span className="isDone"><i>1</i><b>Rule described</b></span><span className={activeRule ? "isDone" : ""}><i>2</i><b>Agent built</b></span><span className={activeRule ? "isDone" : ""}><i>3</i><b>Action ready</b></span><span className={operating || uploadEvaluation ? "isDone" : ""}><i>4</i><b>{running && !operating ? "Starting AI" : running ? "Running" : "Stopped"}</b></span></div>}
+                {activeRule && <div className="visionDeployedAgent"><header><span><i className={activeRuleLive ? "isOnline" : ""} />{activeRuleLive ? "AI WATCHING" : activeRuleRequested ? "AI STARTING" : activeRule.status === "active" ? "READY" : activeRule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div><b>WATCH FOR</b><p>{activeRule.original_prompt ?? activeRule.name}</p></div><div><b>WHEN SEEN</b><p>{bindingActionLabel(activeBinding)}</p></div><footer><span>{activeRule.execution_plan?.strategy === "specialized_pose" ? "YOLO pose · checks every frame" : `${Math.round(activeRule.minimum_confidence * 100)}% minimum confidence`}</span><button disabled={!activeBinding || working} onClick={() => void runSafeTest()} type="button">Send test alert</button></footer></div>}
                 {conversationMessage && <p className="visionStatusMessage" role="status">{conversationMessage}</p>}
               </div></article>
               {(running || uploadEvaluation || uploadedVideoUrl) && sourceMode === "upload" && <section className="visionRealPreview"><header><span><i className={uploadEvaluation?.status === "running" ? "isOnline" : ""} /><strong>{uploadedVideo?.name}</strong></span><em>{uploadEvaluation?.status?.replaceAll("_", " ") ?? "ready"}</em></header><div className="visionVideoStage">{uploadedVideoUrl && <video controls preload="metadata" src={uploadedVideoUrl} />}</div></section>}
-              {running && sourceMode === "live" && selectedCamera && <MonitoringFeed alerts={currentAlerts} camera={selectedCamera} detections={detections} events={currentEvents} nativePreviewEnabled={nativePreviewEnabled} onPreviewAvailabilityChange={setPreviewReady} operating={operating} previewReady={previewReady} recordings={recordings} stream={stream} />}
+              {running && sourceMode === "live" && selectedCamera && <MonitoringFeed agent={agent} alerts={currentAlerts} analysisLabel={activeRule?.execution_plan?.strategy === "specialized_pose" ? "YOLO pose" : activeRule?.execution_plan?.strategy === "semantic_window" ? "Visual AI" : "YOLO tracking"} busy={busy || working} camera={selectedCamera} detections={detections} events={currentEvents} nativePreviewEnabled={nativePreviewEnabled} onPreviewAvailabilityChange={setPreviewReady} onStop={stopCameraAndRecording} operating={operating} previewReady={previewReady} recordings={recordings} stream={stream} />}
             </div>
           </section>
         ))}
 
-        {view === "agents" && <section className="visionSimplePage visionAgentsPage"><header><div><small>VIDEO AGENTS</small><h1>Your cameras have jobs.</h1><p>Each agent watches one condition and performs one connected action.</p></div><button onClick={startNewConversation} type="button"><Icon name="plus" /> Build agent</button></header>{message && <p className="visionAgentsMessage" role="status">{message}</p>}{rules.length === 0 ? <div className="visionEmptyState"><Icon name="rule" /><strong>No agents yet</strong><p>Build your first agent by describing what a camera should watch for and what it should do.</p><button onClick={startNewConversation} type="button">Build first agent</button></div> : <div className="visionAgentGrid">{rules.map((rule) => { const ruleBindings = agentBindings[rule.id] ?? []; const binding = ruleBindings.find((item) => item.enabled) ?? null; const ruleEvents = events.filter((event) => event.rule_id === rule.id); const isLive = rule.status === "active" && running; return <article key={rule.id}><header><span><i className={isLive ? "isOnline" : ""} />{isLive ? "LIVE" : rule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div className="visionAgentStatement"><span>IF</span><p>{rule.original_prompt ?? rule.name}</p></div><div className="visionAgentStatement"><span>THEN</span><p>{bindingActionLabel(binding)}</p></div><dl><div><dt>Events</dt><dd>{ruleEvents.length}</dd></div><div><dt>Confidence</dt><dd>{Math.round(rule.minimum_confidence * 100)}%</dd></div><div><dt>Model route</dt><dd>{rule.execution_plan?.strategy === "semantic_window" ? "Visual AI" : "Local vision"}</dd></div></dl><footer><button onClick={() => openAgent(rule)} type="button">Open</button><button disabled={working} onClick={() => void testAgentAction(rule)} type="button">Test action</button><button className={isLive ? "isPause" : ""} disabled={working} onClick={() => void toggleRuleAgent(rule)} type="button">{isLive ? "Pause" : "Deploy"}</button></footer></article>; })}</div>}</section>}
+        {view === "agents" && <section className="visionSimplePage visionAgentsPage"><header><div><small>VIDEO AGENTS</small><h1>Your cameras have jobs.</h1><p>Each agent watches one condition and performs one connected action.</p></div><button onClick={startNewConversation} type="button"><Icon name="plus" /> Build agent</button></header>{message && <p className="visionAgentsMessage" role="status">{message}</p>}{rules.length === 0 ? <div className="visionEmptyState"><Icon name="rule" /><strong>No agents yet</strong><p>Build your first agent by describing what a camera should watch for and what it should do.</p><button onClick={startNewConversation} type="button">Build first agent</button></div> : <div className="visionAgentGrid">{rules.map((rule) => { const ruleBindings = agentBindings[rule.id] ?? []; const binding = ruleBindings.find((item) => item.enabled) ?? null; const ruleEvents = events.filter((event) => event.rule_id === rule.id); const isLive = rule.status === "active" && operating; const isRequested = rule.status === "active" && running; return <article key={rule.id}><header><span><i className={isLive ? "isOnline" : ""} />{isLive ? "AI WATCHING" : isRequested ? "STARTING" : rule.status === "active" ? "READY" : rule.status.toUpperCase()}</span><small>{selectedCamera?.name}</small></header><div className="visionAgentStatement"><span>IF</span><p>{rule.original_prompt ?? rule.name}</p></div><div className="visionAgentStatement"><span>THEN</span><p>{bindingActionLabel(binding)}</p></div><dl><div><dt>Events</dt><dd>{ruleEvents.length}</dd></div><div><dt>Confidence</dt><dd>{Math.round(rule.minimum_confidence * 100)}%</dd></div><div><dt>Model route</dt><dd>{rule.execution_plan?.strategy === "specialized_pose" ? "YOLO pose" : rule.execution_plan?.strategy === "semantic_window" ? "Visual AI" : "YOLO tracking"}</dd></div></dl><footer><button onClick={() => openAgent(rule)} type="button">Open</button><button disabled={working} onClick={() => void testAgentAction(rule)} type="button">Send test alert</button><button className={isRequested ? "isPause" : ""} disabled={working} onClick={() => void toggleRuleAgent(rule)} type="button">{isRequested ? "Stop" : "Start"}</button></footer></article>; })}</div>}</section>}
 
         {view === "footage" && <section className="visionSimplePage visionFootagePage"><header><div><small>SAVED FOOTAGE · TWO-HOUR ROLLING HISTORY</small><h1>Your video history.</h1><p>The newest two hours from {selectedCamera?.name ?? "your selected camera"} are private, saved to this account, and available on every device.</p></div><button disabled={working || !selectedCamera} onClick={() => void onRefreshRecordings()} type="button">Refresh</button></header>{message && <p className="visionAgentsMessage" role="status">{message}</p>}{!selectedCamera ? <div className="visionEmptyState"><Icon name="camera" /><strong>Connect a camera first</strong><p>Once a camera is connected, its retained footage will appear here.</p></div> : visibleRecordings.length === 0 ? <div className="visionEmptyState"><Icon name="camera" /><strong>No saved footage yet</strong><p>Deploy a live agent and keep recording enabled. New archived clips will appear here automatically.</p></div> : <div className="visionFootageGrid">{visibleRecordings.map((recording) => <article className="visionFootageCard" key={recording.id}>{recording.content_url ? <video controls preload="metadata" src={`${API_URL}${recording.content_url}`} /> : <div className="visionFootageUnavailable"><Icon name="camera" /><span>{recording.status === "local_only" ? "Uploading from this computer" : recording.status.replaceAll("_", " ")}</span></div>}<div><strong>{new Date(recording.started_at).toLocaleString()}</strong><span>{Math.round(recording.duration_seconds)} sec · {recording.width}×{recording.height}</span><small>Rolling history · oldest footage deletes automatically</small></div></article>)}</div>}</section>}
 

@@ -7,15 +7,19 @@ import { BrowserWebcamPreview } from "@/components/browser-webcam-preview";
 import { LiveStreamPlayer } from "@/components/live-stream-player";
 import { NativePreview } from "@/components/native-preview";
 import { API_URL } from "@/lib/api";
-import type { AlertIncident, Camera, CameraStream, LiveDetection, RecordingSegment, VideoEvent } from "@/lib/types";
+import type { AlertIncident, Camera, CameraAgent, CameraStream, LiveDetection, RecordingSegment, VideoEvent } from "@/lib/types";
 
 interface Props {
+  agent: CameraAgent | null;
   alerts: AlertIncident[];
+  analysisLabel: string;
+  busy: boolean;
   camera: Camera;
   detections: LiveDetection[];
   events: VideoEvent[];
   nativePreviewEnabled: boolean;
   onPreviewAvailabilityChange: (available: boolean) => void;
+  onStop: () => Promise<void> | void;
   operating: boolean;
   previewReady: boolean;
   recordings: RecordingSegment[];
@@ -40,7 +44,7 @@ function verificationLabel(event: VideoEvent, hasAlert: boolean) {
   return "Detected";
 }
 
-export function MonitoringFeed({ alerts, camera, detections, events, nativePreviewEnabled, onPreviewAvailabilityChange, operating, previewReady, recordings, stream }: Props) {
+export function MonitoringFeed({ agent, alerts, analysisLabel, busy, camera, detections, events, nativePreviewEnabled, onPreviewAvailabilityChange, onStop, operating, previewReady, recordings, stream }: Props) {
   const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(null);
   const playableRecordings = useMemo(
     () => [...recordings]
@@ -57,6 +61,26 @@ export function MonitoringFeed({ alerts, camera, detections, events, nativePrevi
   );
   const alertEventIds = useMemo(() => new Set(alerts.map((alert) => alert.event_id)), [alerts]);
   const timelineValue = selectedRecording ? playableRecordings.findIndex((recording) => recording.id === selectedRecording.id) : playableRecordings.length;
+  const recording = operating && agent?.recording_state === "recording";
+  const runtimeError = agent?.observed_status === "error" || agent?.health_status === "error";
+  const liveStatus = runtimeError
+    ? "AI needs attention"
+    : operating
+      ? recording ? "AI watching · recording" : "AI watching · video live"
+      : "Starting camera AI";
+  const historyLabel = playableRecordings.length === 0
+    ? recording ? "Saving the first playback segment…" : "Playback starts when recording begins"
+    : `${playableRecordings.length} saved segment${playableRecordings.length === 1 ? "" : "s"}`;
+  const visiblePeople = detections.filter((detection) => detection.label.toLowerCase() === "person").length;
+  const emptyLogTitle = browserPreviewEnabled
+    ? "Preview only"
+    : runtimeError
+      ? "AI could not start"
+      : operating
+        ? visiblePeople > 0
+          ? `Watching — ${visiblePeople} ${visiblePeople === 1 ? "person" : "people"} visible`
+          : "Watching — no person visible"
+        : "Connecting to camera AI";
 
   function recordingForEvent(event: VideoEvent) {
     const occurredAt = new Date(event.occurred_at).getTime();
@@ -68,7 +92,7 @@ export function MonitoringFeed({ alerts, camera, detections, events, nativePrevi
       <div className="visionRealPreview">
         <header>
           <span><i className={operating && !selectedRecording ? "isOnline" : ""} /><strong>{camera.name}</strong></span>
-          <div className="visionFeedMode">{selectedRecording ? <button onClick={() => setSelectedRecordingId(null)} type="button"><i /> Go live</button> : <em>{operating ? browserPreviewEnabled ? "local preview · camera service offline" : "live · recording" : "starting"}</em>}</div>
+          <div className="visionFeedMode">{selectedRecording ? <button onClick={() => setSelectedRecordingId(null)} type="button"><i /> Go live</button> : <><em className={runtimeError ? "hasError" : ""}>{liveStatus}</em><button className="visionStopAgent" disabled={busy} onClick={() => void onStop()} title="Stop live analysis and video recording" type="button">Stop camera</button></>}</div>
         </header>
         <div className="visionVideoStage">
           {selectedRecording?.content_url ? <video autoPlay controls key={selectedRecording.id} preload="metadata" src={`${API_URL}${selectedRecording.content_url}`} /> : <>
@@ -81,16 +105,22 @@ export function MonitoringFeed({ alerts, camera, detections, events, nativePrevi
           {selectedRecording && <span className="visionPlaybackBadge"><Icon name="clock" /> REPLAY · {shortTime(selectedRecording.started_at)}</span>}
           {!selectedRecording && browserPreviewEnabled && previewReady && <span className="visionPlaybackBadge"><Icon name="camera" /> LOCAL PREVIEW · CAMERA SERVICE NOT CONNECTED</span>}
         </div>
+        <div className="visionRuntimeStrip" aria-label="Camera agent status">
+          <span><small>AI</small><strong>{runtimeError ? "Problem" : operating ? "Watching" : "Starting"}</strong></span>
+          <span><small>DETECTOR</small><strong>{analysisLabel}</strong></span>
+          <span><small>VIDEO</small><strong>{recording ? "Recording" : agent?.recording_state === "error" ? "Error" : "Starting"}</strong></span>
+          <span><small>PROCESSED</small><strong>{agent?.frames_processed?.toLocaleString() ?? "0"} frames</strong></span>
+        </div>
         <div className="visionRewindPanel">
-          <div><span><Icon name="clock" /> Scroll back</span><strong>{selectedRecording ? shortTime(selectedRecording.started_at) : "LIVE"}</strong></div>
+          <div><span><Icon name="clock" /> {historyLabel}</span><strong>{selectedRecording ? shortTime(selectedRecording.started_at) : "LIVE"}</strong></div>
           <input aria-label="Rewind live feed" disabled={playableRecordings.length === 0} max={playableRecordings.length} min={0} onChange={(event) => { const nextIndex = Number(event.target.value); setSelectedRecordingId(nextIndex === playableRecordings.length ? null : playableRecordings[nextIndex]?.id ?? null); }} step={1} type="range" value={timelineValue} />
-          <div className="visionRewindLabels"><span>{playableRecordings[0] ? shortTime(playableRecordings[0].started_at) : "History appears after the first recording segment"}</span><span>Now</span></div>
+          <div className="visionRewindLabels"><span>{playableRecordings[0] ? shortTime(playableRecordings[0].started_at) : "Keep this page open; saved video will appear automatically"}</span><span>Now</span></div>
         </div>
       </div>
 
       <aside aria-label="Detection log" className="visionDetectionLog">
         <header><div><small>DETECTION LOG</small><strong>What the agent saw</strong></div><span>{eventLog.length}</span></header>
-        {eventLog.length === 0 ? <div className="visionDetectionEmpty"><Icon name="activity" /><strong>{browserPreviewEnabled ? "Preview only" : "No matches yet"}</strong><p>{browserPreviewEnabled ? "You can see this webcam locally. Connect the Artae Windows camera service to enable AI detection, cloud recording, and alerts." : "The feed is recording. Confirmed matches will appear here with their time and alert status."}</p></div> : <div className="visionDetectionRows">{eventLog.map((event) => {
+        {eventLog.length === 0 ? <div className="visionDetectionEmpty"><Icon name="activity" /><strong>{emptyLogTitle}</strong><p>{browserPreviewEnabled ? "This is only a browser preview. Start the Artae camera service to enable detection, recording, and alerts." : runtimeError ? agent?.last_error ?? "Stop the agent, check the camera service, and try again." : operating ? `${analysisLabel} is analyzing the live video. The requested condition has not been confirmed yet.` : "The camera can appear before the AI is ready. Model loading normally takes several seconds."}</p></div> : <div className="visionDetectionRows">{eventLog.map((event) => {
           const hasAlert = alertEventIds.has(event.id);
           const matchingRecording = recordingForEvent(event);
           return <button disabled={!matchingRecording} key={event.id} onClick={() => matchingRecording && setSelectedRecordingId(matchingRecording.id)} type="button"><i className={event.verification_status === "rejected" ? "isRejected" : ""} /><span><strong>{eventLabel(event)}</strong><small>{shortTime(event.occurred_at)} · {Math.round(event.confidence * 100)}% confidence</small><em>{verificationLabel(event, hasAlert)}{matchingRecording ? " · View moment" : " · Clip processing"}</em></span><Icon name="chevron" /></button>;

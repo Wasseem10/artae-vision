@@ -6629,11 +6629,20 @@ footer {
 
 .visionMonitorWorkspace { display: grid; gap: 14px; grid-template-columns: minmax(0, 1.7fr) minmax(250px, .8fr); margin-top: 16px; }
 .visionMonitorWorkspace .visionRealPreview { margin: 0; max-width: none; }
-.visionFeedMode { align-items: center; display: flex; }
+.visionFeedMode { align-items: center; display: flex; gap: 10px; }
+.visionFeedMode em.hasError { color: #b84545; }
 .visionFeedMode button { align-items: center; background: #eef8f1; border: 1px solid #cbe8d3; border-radius: 999px; color: #247442; cursor: pointer; display: flex; font-size: 9px; font-weight: 850; gap: 6px; min-height: 28px; padding: 0 10px; }
 .visionFeedMode button i { background: #32a95b !important; box-shadow: none; height: 6px !important; width: 6px !important; }
+.visionFeedMode button.visionStopAgent { background: #fff; border-color: #d7d8d3; color: #343632; white-space: nowrap; }
+.visionFeedMode button.visionStopAgent:hover { border-color: #b85d5d; color: #a23b3b; }
+.visionFeedMode button.visionStopAgent:disabled { cursor: wait; opacity: .45; }
 .visionPlaybackBadge { align-items: center; background: rgb(15 23 42 / .82); border: 1px solid rgb(255 255 255 / .18); border-radius: 7px; color: #fff; display: flex; font-size: 8px; font-weight: 850; gap: 6px; left: 10px; padding: 7px 8px; position: absolute; top: 10px; z-index: 7; }
 .visionPlaybackBadge svg { height: 12px; width: 12px; }
+.visionRuntimeStrip { background: #f7f7f3; border-top: 1px solid #e1e2dc; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.visionRuntimeStrip > span { display: flex; flex-direction: column; min-width: 0; padding: 10px 12px; }
+.visionRuntimeStrip > span + span { border-left: 1px solid #e1e2dc; }
+.visionRuntimeStrip small { color: #93958e; font-size: 7px; font-weight: 800; letter-spacing: .1em; }
+.visionRuntimeStrip strong { color: #3c3e39; font-size: 9px; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .visionRewindPanel { background: #fff; border-top: 1px solid #e5e9ef; padding: 11px 13px 12px; }
 .visionRewindPanel > div:first-child { align-items: center; display: flex; justify-content: space-between; }
 .visionRewindPanel > div:first-child span { align-items: center; color: #596579; display: flex; font-size: 9px; font-weight: 800; gap: 6px; }
@@ -6668,6 +6677,9 @@ footer {
   .visionMonitorWorkspace { grid-template-columns: 1fr; }
   .visionDetectionLog { min-height: 0; }
   .visionDetectionEmpty { min-height: 170px; }
+  .visionRuntimeStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .visionRuntimeStrip > span:nth-child(3) { border-left: 0; border-top: 1px solid #e1e2dc; }
+  .visionRuntimeStrip > span:nth-child(4) { border-top: 1px solid #e1e2dc; }
 }
 
 .visionSimplePage { margin: 0 auto; max-width: 900px; padding: 76px 34px; }
