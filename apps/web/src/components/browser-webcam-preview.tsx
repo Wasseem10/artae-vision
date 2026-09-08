@@ -13,6 +13,7 @@ export function BrowserWebcamPreview({ name, onAvailabilityChange }: BrowserWebc
   useEffect(() => {
     let cancelled = false;
     let media: MediaStream | null = null;
+    const videoElement = videoRef.current;
 
     void navigator.mediaDevices.getUserMedia({
       video: {
@@ -28,7 +29,7 @@ export function BrowserWebcamPreview({ name, onAvailabilityChange }: BrowserWebc
         return;
       }
       media = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoElement) videoElement.srcObject = stream;
       onAvailabilityChange(true);
     }).catch(() => onAvailabilityChange(false));
 
@@ -36,7 +37,7 @@ export function BrowserWebcamPreview({ name, onAvailabilityChange }: BrowserWebc
       cancelled = true;
       onAvailabilityChange(false);
       media?.getTracks().forEach((track) => track.stop());
-      if (videoRef.current) videoRef.current.srcObject = null;
+      if (videoElement) videoElement.srcObject = null;
     };
   }, [onAvailabilityChange]);
 

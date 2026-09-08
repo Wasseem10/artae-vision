@@ -45,6 +45,13 @@ function verificationLabel(event: VideoEvent, hasAlert: boolean) {
   return "Detected";
 }
 
+function coordinationLabel(event: VideoEvent) {
+  const run = event.details.strands_agent;
+  if (!run || typeof run !== "object" || Array.isArray(run)) return "";
+  const status = "status" in run ? run.status : null;
+  return status === "completed" ? " · Strands coordinated" : " · Safety fallback";
+}
+
 export function MonitoringFeed({ agent, alerts, analysisLabel, busy, camera, detections, events, nativePreviewEnabled, onPreviewAvailabilityChange, onStop, operating, previewReady, recordings, running, stream }: Props) {
   const [selectedRecordingId, setSelectedRecordingId] = useState<string | null>(null);
   const playableRecordings = useMemo(
@@ -125,7 +132,7 @@ export function MonitoringFeed({ agent, alerts, analysisLabel, busy, camera, det
         {eventLog.length === 0 ? <div className="visionDetectionEmpty"><Icon name="activity" /><strong>{emptyLogTitle}</strong><p>{browserPreviewEnabled ? "This is only a browser preview. Start the Artae camera service to enable detection, recording, and alerts." : runtimeError ? agent?.last_error ?? "Stop the agent, check the camera service, and try again." : operating ? `${analysisLabel} is analyzing the live video. The requested condition has not been confirmed yet.` : running ? "The camera can appear before the AI is ready. Model loading normally takes several seconds." : "No matching event was confirmed. Saved footage remains available for review."}</p></div> : <div className="visionDetectionRows">{eventLog.map((event) => {
           const hasAlert = alertEventIds.has(event.id);
           const matchingRecording = recordingForEvent(event);
-          return <button disabled={!matchingRecording} key={event.id} onClick={() => matchingRecording && setSelectedRecordingId(matchingRecording.id)} type="button"><i className={event.verification_status === "rejected" ? "isRejected" : ""} /><span><strong>{eventLabel(event)}</strong><small>{shortTime(event.occurred_at)} · {Math.round(event.confidence * 100)}% confidence</small><em>{verificationLabel(event, hasAlert)}{matchingRecording ? " · View moment" : " · Clip processing"}</em></span><Icon name="chevron" /></button>;
+          return <button disabled={!matchingRecording} key={event.id} onClick={() => matchingRecording && setSelectedRecordingId(matchingRecording.id)} type="button"><i className={event.verification_status === "rejected" ? "isRejected" : ""} /><span><strong>{eventLabel(event)}</strong><small>{shortTime(event.occurred_at)} · {Math.round(event.confidence * 100)}% confidence</small><em>{verificationLabel(event, hasAlert)}{coordinationLabel(event)}{matchingRecording ? " · View moment" : " · Clip processing"}</em></span><Icon name="chevron" /></button>;
         })}</div>}
       </aside>
     </section>

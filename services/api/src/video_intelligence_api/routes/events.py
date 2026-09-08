@@ -40,6 +40,7 @@ from video_intelligence_api.security import (
     ensure_edge_organization,
     require_edge_device,
 )
+from video_intelligence_api.strands_orchestrator import coordinate_incident
 from video_intelligence_api.tenancy import tenant_event
 
 router = APIRouter(tags=["events"])
@@ -248,8 +249,22 @@ async def ingest_agent_event(
         if verification_status in {VerificationStatus.CONFIRMED, VerificationStatus.REJECTED}
         else None,
     )
+    agent_run = None
+    if verification_status in {VerificationStatus.NOT_REQUIRED, VerificationStatus.CONFIRMED}:
+        agent_run = await coordinate_incident(
+            event,
+            camera,
+            rule,
+            request.app.state.settings,
+        )
+        if agent_run is not None:
+            event.details = {
+                **event.details,
+                "strands_agent": agent_run.model_dump(mode="json"),
+            }
     session.add(event)
-    session.add(EvidenceAsset(event_id=event.id))
+    if agent_run is None or agent_run.requested("preserve_evidence"):
+        session.add(EvidenceAsset(event_id=event.id))
     if assessment is not None:
         session.add(
             VerificationCase(
@@ -270,7 +285,14 @@ async def ingest_agent_event(
             )
         )
     if verification_status in {VerificationStatus.NOT_REQUIRED, VerificationStatus.CONFIRMED}:
-        await finalize_confirmed_event(session, event, camera)
+        await finalize_confirmed_event(
+            session,
+            event,
+            camera,
+            notify_responder=(
+                agent_run is None or agent_run.requested("notify_responder")
+            ),
+        )
     try:
         await session.commit()
     except IntegrityError:

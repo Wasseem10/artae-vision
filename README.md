@@ -1,10 +1,44 @@
 # AI Video Intelligence Platform
 
+> **Agents for Humans 2026:** Artae uses the Strands Agents SDK and Amazon
+> Bedrock to turn confirmed visual events into evidence, responder notifications,
+> and human-review requests. See the [submission plan](docs/hackathon-submission.md)
+> and [architecture diagrams](docs/hackathon-architecture.md).
+
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
 combine what it sees with authorized business-system context, take guarded actions,
 and search the resulting evidence. The revised completion phases are in
 [`docs/product-roadmap.md`](docs/product-roadmap.md).
+
+## Hackathon demo path
+
+The submission deliberately proves one dependable workflow instead of claiming
+that every visual prompt is equally reliable:
+
+1. A camera or recorded test clip runs through the YOLO pose detector.
+2. The fall state machine confirms a staged fall across multiple frames.
+3. The API sends the grounded event to the **Strands Incident Coordinator**.
+4. The coordinator invokes `preserve_evidence` and `notify_responder`, adding
+   `request_human_review` when the supplied facts are ambiguous.
+5. Artae stores the event and evidence job, creates the alert, and shows the
+   auditable Strands trace in the operator console.
+
+Strands is disabled by default so ordinary development never spends AWS credits.
+After configuring an AWS credential supported by the AWS SDK, set:
+
+```dotenv
+VIDEO_INTEL_API_STRANDS_ENABLED=true
+VIDEO_INTEL_API_STRANDS_MODEL_ID=us.amazon.nova-premier-v1:0
+VIDEO_INTEL_API_STRANDS_REGION=us-east-1
+```
+
+Then run the normal API and camera stack below. A Bedrock outage does not suppress
+a confirmed safety event: the local safety policy still preserves evidence and
+queues a responder alert, and records that the run used the availability fallback.
+See the [submission checklist](docs/hackathon-submission.md),
+[architecture](docs/hackathon-architecture.md), and
+[third-party disclosure](docs/hackathon-disclosures.md).
 
 The repository now contains the industry-neutral visual-alert foundation plus the
 Phase-16 through Phase-25 evaluation, visual-agent, guarded-action, context, visual-skill,
@@ -65,6 +99,8 @@ multi-camera operations, offline-edge, production-hardening, and commissioning l
 - a `camera-job/3` semantic-vision contract for open-ended visible conditions;
 - automatic full-frame grounding when a semantic job needs no manually drawn geometry;
 - managed Gemini window evaluation with confidence, confirmation, cooldown, and cost ceilings;
+- a Strands Incident Coordinator on Amazon Bedrock that invokes evidence,
+  notification, and human-review tools after a visual event is confirmed;
 - reviewed execution plans that route jobs between local YOLO/tracking,
   specialized pose analysis, and bounded VLM windows;
 - honest per-job support levels that distinguish deterministic execution, general visual-AI

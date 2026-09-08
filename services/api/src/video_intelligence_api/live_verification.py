@@ -111,6 +111,8 @@ async def finalize_confirmed_event(
     session: AsyncSession,
     event: Event,
     camera: Camera,
+    *,
+    notify_responder: bool = True,
 ) -> None:
     """Release a confirmed event to scene memory, correlation, alerts, and actions."""
     observations = scene_observations(event.details)
@@ -123,7 +125,7 @@ async def finalize_confirmed_event(
             occurred_at=event.occurred_at,
             event_id=event.id,
         )
-    if not await enqueue_event_correlations(session, event):
+    if not await enqueue_event_correlations(session, event) and notify_responder:
         await enqueue_event_alert(session, event)
 
 
