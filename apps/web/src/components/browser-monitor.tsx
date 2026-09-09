@@ -119,6 +119,14 @@ export function BrowserMonitor() {
     },
     [replay],
   );
+  useEffect(() => {
+    const video = playbackRef.current;
+    // Selecting another event in the same cloud clip does not reload metadata.
+    // Seek immediately when that clip is already loaded.
+    if (replay && video && video.readyState >= 1 && video.currentSrc === replay.url) {
+      video.currentTime = replay.seek;
+    }
+  }, [replay]);
   function persist(s: BrowserSession) {
     if (mounted.current && accountScope.current === s.scope) {
       setSession({ ...s, events: [...s.events], clips: [...s.clips] });

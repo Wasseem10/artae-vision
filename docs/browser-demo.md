@@ -54,6 +54,15 @@ flush ordering also ensures an observation exists before its alert is inserted.
 Replay account copy reads fresh cloud metadata and streams the remote footage,
 without relying on or deleting locally recorded blobs.
 
+Production Chrome verification on September 8: the 12-second lateral-fall sample
+produced an account alert at six seconds and uploaded two WebM segments (423,013
+and 67,522 bytes). Cloud-only replay loaded through a signed API URL with a
+9.95-second seekable range and no video error. This confirms remote storage and
+replay, not testing on every phone/browser. The private `artae-recordings` bucket
+now allows `video/mp4` and `video/webm` and retains its 50 MiB per-file limit.
+Uploads stage in the OS temporary directory rather than Vercel's read-only app
+bundle. Retries of the same saved content are idempotent; changed content conflicts.
+
 Run `pnpm test`, `pnpm typecheck`, `pnpm lint`, and `pnpm build` in `apps/web`.
 Run `pytest tests/api` in the configured Python environment. The browser harness
 is `scripts/check-browser-monitor.cjs` and requires Playwright plus installed
@@ -69,8 +78,8 @@ SHA-256 checked by `apps/web/scripts/prepare-vision.mjs` before dev/build.
 - Phone/SMS/WhatsApp delivery: not enabled in this route (Twilio work remains on hold).
 - Continuous unattended monitoring, multi-person tracking, arbitrary prompts,
   validated fall accuracy, production support and emergency response.
-- Cross-device recording must be verified against the deployed backend and
-  storage before calling it production-ready; local API tests alone do not prove it.
+- Phone/browser compatibility and separate-device sign-in testing remain;
+  successful desktop cloud replay alone is not universal-device certification.
 
 The existing native YOLO/RTSP workspace is separate. Browser MediaPipe is the
 no-install path; it is not YOLO and never shows fabricated YOLO boxes.

@@ -246,7 +246,9 @@ async def upload_recording_content(
                 # A successful upload response can be lost in transit. Retrying
                 # the same bytes must not upload a duplicate cloud object.
                 return recording_response(segment, settings)
-            raise HTTPException(status_code=409, detail="This recording already has different content")
+            raise HTTPException(
+                status_code=409, detail="This recording already has different content"
+            )
         storage = recording_storage(settings)
         storage_uri = await anyio.to_thread.run_sync(
             lambda: storage.put(
