@@ -63,15 +63,17 @@ class _ToolLedger:
 
 def _event_prompt(event: Event, camera: Camera, rule: Rule) -> str:
     summary = event.details.get("summary")
-    browser_report = event.details.get("source") == "browser_pose"
+    browser_report = event.details.get("source") in {"browser_pose", "bedrock_vision"}
     source = (
-        "unverified browser pose report; possible event only"
+        "unverified browser pose report; possible event only" if event.details.get("source") == "browser_pose"
+        else "AWS visual model observation of sampled frames; requires human review"
         if browser_report
         else "camera detector"
     )
     score_name = (
         "Landmark visibility (NOT event probability)" if browser_report else "Detector score"
     )
+    score = f"{score_name}: {event.confidence:.3f}" if event.details.get("source") != "bedrock_vision" else "No calibrated event probability is supplied"
     return (
         "Coordinate this detector observation. Use the available tools instead of only "
         "describing what should happen. Never invent people, injuries, camera observations, "
@@ -85,7 +87,7 @@ def _event_prompt(event: Event, camera: Camera, rule: Rule) -> str:
         f"Camera job: {rule.original_prompt or rule.name}\n"
         f"Detected event: {event.event_type}\n"
         f"Object: {event.object_class or 'not supplied'}\n"
-        f"{score_name}: {event.confidence:.3f}\n"
+        f"{score}\n"
         f"Detector summary: {summary if isinstance(summary, str) else 'not supplied'}\n"
         f"Evidence clip reference: {event.clip_uri or 'pending'}"
     )

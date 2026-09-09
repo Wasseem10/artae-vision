@@ -34,7 +34,7 @@ def create(client, job="presence"):
 
 
 def test_named_agent_persists_and_can_start_independent_runs(api_client):
-    payload = {"id": str(uuid.uuid4()), "name": "Hallway safety", "job": "fall"}
+    payload = {"id": str(uuid.uuid4()), "name": "Hallway safety", "job": "fall", "prompt": ""}
     path = "/api/v1/browser-sessions/jobs"
     saved = api_client.post(path, json=payload)
     assert saved.status_code == 200, saved.text

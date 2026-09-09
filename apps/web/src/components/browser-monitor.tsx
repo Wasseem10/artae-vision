@@ -5,11 +5,11 @@ import {
   BrowserPoseRule,
   POSE_CONNECTIONS,
   poseFeatures,
-  type BrowserJob,
   type Landmark,
 } from "@/lib/browser-pose";
 import {
   createCloudSession,
+  analyzeCloudFrames,
   cloudEventFields,
   formatTime,
   listCloudSessions,
@@ -27,6 +27,7 @@ import {
   type BrowserEvent,
   type ReviewOutcome,
   type SavedBrowserJob,
+  type MonitoringJob,
 } from "@/lib/browser-sessions";
 import {
   getSupabaseBrowserClient,
@@ -49,7 +50,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   const [scope, setScope] = useState("guest"),
     [source, setSource] = useState<"sample" | "file" | "webcam">(workspace ? "webcam" : "sample"),
     [file, setFile] = useState<File | null>(null);
-  const [job, setJob] = useState<BrowserJob>("presence"),
+  const [job, setJob] = useState<MonitoringJob>("presence"),
     [phase, setPhase] = useState("Ready"),
     [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null),
@@ -79,13 +80,17 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
   const [savingJob, setSavingJob] = useState(false);
   const [sessionMinutes, setSessionMinutes] = useState(2);
+  const [prompt, setPrompt] = useState("");
+  const [cloudConsent, setCloudConsent] = useState(false);
+  const [visualStatus, setVisualStatus] = useState("");
+  const [visualFrames, setVisualFrames] = useState(0);
 
   async function saveAgent() {
     if (scope === "guest" || !agentName.trim() || savingJob || running) return;
     const owner = scope;
     setSavingJob(true);
     try {
-      const saved = await saveBrowserJob({ id: crypto.randomUUID(), name: agentName.trim(), job });
+      const saved = await saveBrowserJob({ id: crypto.randomUUID(), name: agentName.trim(), job, prompt: job === "custom" ? prompt.trim() : "" });
       if (accountScope.current !== owner) return;
       setJobs((rows) => [saved, ...rows]);
       setSelectedAgent(saved.id);
@@ -140,6 +145,8 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           setAgentName("");
           setJobs([]);
           setSessionMinutes(2);
+          setCloudConsent(false);
+          setPrompt("");
           if (mounted.current) setScope(next);
         }
         syncApiSession(s);
@@ -255,6 +262,10 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     const video = videoRef.current,
       canvas = canvasRef.current;
     if (!video || !canvas) return;
+    if (job === "custom" && (scope === "guest" || !cloudConsent || !prompt.trim())) {
+      setProblem("Sign in, describe a visible condition, and allow AWS frame analysis before starting.");
+      return;
+    }
     if (source === "file" && !file) {
       setProblem("Choose a video file first.");
       return;
@@ -265,6 +276,8 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     setSaveProblem(null);
     setReplay(null);
     setPhase("Loading pose model…");
+    setVisualStatus("");
+    setVisualFrames(0);
     setMetrics({ frames: 0, people: 0, seconds: 0, state: "Loading" });
     const s: BrowserSession = {
       id: crypto.randomUUID(),
@@ -279,6 +292,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
               : "Sample: person in view",
       job,
       agentId: selectedAgent,
+      prompt: job === "custom" ? prompt.trim() : "",
       createdAt: new Date().toISOString(),
       events: [],
       clips: [],
@@ -303,7 +317,10 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
       startTime = 0;
     let cancelLoading: (() => void) | undefined;
     let points: Landmark[] = [];
-    const engine = new BrowserPoseRule(job);
+    const engine = new BrowserPoseRule(job === "custom" ? "presence" : job);
+    const frameCanvas = document.createElement("canvas");
+    const visualBuffer: { at_seconds: number; jpeg: string }[] = [];
+    let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
     const now = () =>
       source === "webcam"
         ? (performance.now() - startTime) / 1000
@@ -501,7 +518,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
         points = data.landmarks;
         frames++;
         const f = poseFeatures(points, canvas.width, canvas.height);
-        if (engine.update(f, lastSent) && s.events.length < 20) {
+        if (job !== "custom" && engine.update(f, lastSent) && s.events.length < 20) {
           const event = {
             id: crypto.randomUUID(),
             at: lastSent,
@@ -558,6 +575,44 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           return;
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (job === "custom" && video.readyState >= 2 && lastAt - lastVisualSample >= 1) {
+          lastVisualSample = lastAt;
+          const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+          frameCanvas.width = Math.round(video.videoWidth * scale);
+          frameCanvas.height = Math.round(video.videoHeight * scale);
+          frameCanvas.getContext("2d")!.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+          visualBuffer.push({ at_seconds: lastAt, jpeg: frameCanvas.toDataURL("image/jpeg", .7).split(",")[1] });
+          if (visualBuffer.length > 4) visualBuffer.shift();
+          if (visualBuffer.length === 4 && !visualPending && lastAt - lastVisualCheck >= 5) {
+            visualPending = true;
+            lastVisualCheck = lastAt;
+            const batch = [...visualBuffer];
+            setVisualStatus("AWS is checking four sampled frames…");
+            queueCloud(s, async () => {
+              try {
+                await createCloudSession(s);
+                const result = await analyzeCloudFrames(s, batch);
+                if (accountScope.current !== s.scope) return;
+                setVisualFrames((n) => n + result.frames_analyzed);
+                setVisualStatus(`${result.status === "match" ? "Condition matched" : result.status === "no_match" ? "Not seen" : result.status === "uncertain" ? "Uncertain" : "Unsupported request"}: ${result.summary}${result.cooldown ? " (duplicate alert suppressed)" : ""}`);
+                if (result.event) {
+                  s.events.push({ id: result.event.source_event_id, at: result.event.occurred_at_seconds,
+                    title: "Visual condition matched", visibility: 0, ...cloudEventFields(result.event) });
+                  s.cloud = true;
+                  persist(s);
+                  if (!stopped) beep();
+                }
+                if (result.status === "unsupported" || s.events.length >= 20) {
+                  stop();
+                  setProblem(result.status === "unsupported" ? result.summary : "20-alert limit reached. Start another run when ready.");
+                }
+              } catch (e) {
+                stop();
+                setProblem(e instanceof Error ? e.message : "AWS visual analysis failed; this job has stopped.");
+              } finally { visualPending = false; }
+            });
+          }
+        }
         ctx.strokeStyle = "#43df86";
         ctx.lineWidth = 3;
         for (const [a, b] of POSE_CONNECTIONS) {
@@ -713,10 +768,11 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
             <select
               value={job}
               disabled={running || saving > 0}
-              onChange={(e) => { setJob(e.target.value as BrowserJob); setSelectedAgent(undefined); }}
+              onChange={(e) => { setJob(e.target.value as MonitoringJob); setSelectedAgent(undefined); }}
             >
               <option value="presence">A person in view</option>
               <option value="fall">A possible fall · experimental</option>
+              <option value="custom" disabled={scope === "guest"}>Describe a visual condition · AWS · sign-in required</option>
             </select>
           </label>
           <label>
@@ -774,8 +830,18 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
             </select>
           </label>}
         </div>
+        {job === "custom" && <div className={styles.customJob}>
+          <label>What visible condition should trigger an in-app alert?
+            <textarea maxLength={500} value={prompt} disabled={running || saving > 0} placeholder="e.g. Someone is holding a red bottle" onChange={(e) => { setPrompt(e.target.value); setSelectedAgent(undefined); }} />
+          </label>
+          <div className={styles.clipList}>
+            {["A person is raising a hand", "A person is wearing a blue top", "A worker is not wearing a hard hat"].map((example) => <button key={example} disabled={running || saving > 0} onClick={() => { setPrompt(example); setSelectedAgent(undefined); }}>{example}</button>)}
+          </div>
+          <label className={styles.consent}><input type="checkbox" checked={cloudConsent} disabled={running} onChange={(e) => setCloudConsent(e.target.checked)} /> Allow sampled video frames to be sent to Amazon Bedrock for this job. Use footage you have permission to share.</label>
+          <p>Four frames are sampled over about four seconds, then checked by AWS. Checks depend on network/model speed and can miss brief actions. Only an in-app alert is sent—no phone calls, identity recognition, or medical decisions.</p>
+        </div>}
         <p className={styles.note}>
-          {job === "fall"
+          {job === "custom" ? "Describe one observable condition. Clear lighting and an unobstructed view improve results. An AI match still needs your review." : job === "fall"
             ? "Keep one person’s full body visible. A possible fall requires upright posture, descent, then a sustained horizontal posture. Use a recorded clip; do not fall to test this. This is experimental, not an emergency monitoring system."
             : "A visible body pose sustained for one second creates an alert. One person is tracked at a time; small or obscured people may not be detected."}{" "}
           This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, or when you press Stop. No audio is recorded. The browser must stay open; closing your laptop stops monitoring.
@@ -813,7 +879,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
                 </div>
               )}
               <span className={styles.cameraLabel}>
-                MediaPipe pose · on-device
+                {job === "custom" ? "AWS visual checks · real pose overlay" : "MediaPipe pose · on-device"}
               </span>
             </div>
             <div className={styles.controls}>
@@ -824,6 +890,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
               <span>{metrics.state}</span>
             </div>
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
+            {job === "custom" && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || "Collecting the first four frames…"}</p>}
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
               <p>
@@ -879,8 +946,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
                     <div>
                       <strong>{event.title}</strong>
                       <small>
-                        {formatTime(event.at)} · Landmark visibility{" "}
-                        {Math.round(event.visibility * 100)}%
+                        {formatTime(event.at)} · {event.visibility > 0 ? `Landmark visibility ${Math.round(event.visibility * 100)}%` : "AWS visual observation · review required"}
                       </small>
                       <span>
                         {event.saved
@@ -1017,10 +1083,10 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
         <header><h2>My agents</h2></header>
         <p>{scope === "guest" ? "Sign in to keep named agents in your account." : "Choose a saved job, connect your video, then press Start agent. Saved does not mean it is running."}</p>
         <div>{jobs.map((saved) => <button key={saved.id} disabled={running || saving > 0 || savingJob} onClick={() => {
-          setJob(saved.job); setAgentName(saved.name); setSelectedAgent(saved.id);
+          setJob(saved.job); setAgentName(saved.name); setSelectedAgent(saved.id); setPrompt(saved.prompt ?? "");
           setPhase(`${saved.name} selected · press Start agent`);
           document.getElementById("monitor-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }}><strong>{saved.name}</strong><span>{saved.job === "fall" ? "Possible fall · experimental" : "Person in view"} · In-app alert</span></button>)}</div>
+        }}><strong>{saved.name}</strong><span>{saved.job === "custom" ? saved.prompt : saved.job === "fall" ? "Possible fall · experimental" : "Person in view"} · In-app alert</span></button>)}</div>
         {scope !== "guest" && !jobs.length && <p>Name your first agent above to save it for next time.</p>}
       </section>
       <section id="history" className={styles.history}>
@@ -1049,7 +1115,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
               <strong>{s.name}</strong>
               <span>
                 {new Date(s.createdAt).toLocaleString()} ·{" "}
-                {s.job === "fall" ? "Possible fall" : "Person detection"} ·{" "}
+                {s.job === "custom" ? "Custom visual job" : s.job === "fall" ? "Possible fall" : "Person detection"} ·{" "}
                 {s.cloud ? "Account" : "This device"}
               </span>
             </button>

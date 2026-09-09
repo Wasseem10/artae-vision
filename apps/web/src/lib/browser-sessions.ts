@@ -1,5 +1,6 @@
 import { API_URL, request as apiRequest } from "./api";
 import type { BrowserJob } from "./browser-pose";
+export type MonitoringJob = BrowserJob | "custom";
 function request<T>(path: string, init?: RequestInit): Promise<T> {
   return apiRequest<T>(path, { ...init, signal: AbortSignal.timeout(45000) });
 }
@@ -60,14 +61,15 @@ export type BrowserSession = {
   id: string;
   scope: string;
   name: string;
-  job: BrowserJob;
+  job: MonitoringJob;
+  prompt?: string;
   createdAt: string;
   events: BrowserEvent[];
   clips: BrowserClip[];
   cloud?: boolean;
   agentId?: string;
 };
-export type SavedBrowserJob = { id: string; name: string; job: BrowserJob };
+export type SavedBrowserJob = { id: string; name: string; job: MonitoringJob; prompt?: string };
 export const listSavedBrowserJobs = () => request<SavedBrowserJob[]>("/browser-sessions/jobs");
 export const saveBrowserJob = (job: SavedBrowserJob) => request<SavedBrowserJob>("/browser-sessions/jobs", {
   method: "POST", body: JSON.stringify(job),
@@ -143,6 +145,7 @@ export async function createCloudSession(s: BrowserSession) {
       job: s.job,
       started_at: s.createdAt,
       agent_id: s.agentId,
+      prompt: s.prompt ?? "",
     }),
   });
 }
@@ -157,6 +160,19 @@ export async function saveCloudEvent(
       at_seconds: event.at,
       landmark_visibility: event.visibility,
     }),
+  });
+}
+export type VisualCheckResult = {
+  status: "match" | "no_match" | "uncertain" | "unsupported";
+  summary: string;
+  frames_analyzed: number;
+  cooldown: boolean;
+  event: (CloudEventResult & { source_event_id: string; occurred_at_seconds: number }) | null;
+};
+export function analyzeCloudFrames(s: BrowserSession, frames: { at_seconds: number; jpeg: string }[]) {
+  return apiRequest<VisualCheckResult>(`/browser-sessions/${s.id}/analyze`, {
+    method: "POST", body: JSON.stringify({ id: crypto.randomUUID(), frames }),
+    signal: AbortSignal.timeout(70000),
   });
 }
 export async function saveCloudClip(s: BrowserSession, clip: BrowserClip) {
@@ -193,7 +209,7 @@ export async function listCloudSessions(
 ): Promise<BrowserSession[]> {
   const rows =
     await request<
-      { id: string; name: string; job: BrowserJob; created_at: string; agent_id?: string }[]
+      { id: string; name: string; job: MonitoringJob; created_at: string; agent_id?: string; prompt?: string }[]
     >("/browser-sessions");
   return rows.map((r) => ({
     id: r.id,
@@ -203,6 +219,7 @@ export async function listCloudSessions(
     scope,
     cloud: true,
     agentId: r.agent_id,
+    prompt: r.prompt,
     events: [],
     clips: [],
   }));
@@ -238,7 +255,7 @@ export async function loadCloudSession(
       at: e.occurred_at_seconds,
       visibility: e.confidence,
       title:
-        e.event_type === "person_fall"
+        e.event_type === "visual_match" ? "Visual condition matched" : e.event_type === "person_fall"
           ? "Possible fall — please review"
           : "Person detected",
       ...cloudEventFields(e),
