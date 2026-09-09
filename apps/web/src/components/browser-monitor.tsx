@@ -816,7 +816,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
             disabled={!running && (saving > 0 || !authReady || loadedScope !== scope)}
             onClick={() => (running ? stopRef.current() : void start())}
           >
-            {running ? "Stop agent" : !authReady ? "Checking account…" : "Start agent"}
+            {running ? "Stop agent" : !authReady ? "Checking account…" : loadedScope !== scope ? "Loading your workspace…" : saving > 0 ? "Finishing uploads…" : "Start agent"}
           </button>
           {source === "file" && (
             <label>
