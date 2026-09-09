@@ -10,7 +10,7 @@ describe("merging account and local history", () => {
       .mockResolvedValueOnce([]);
     const loaded = await loadCloudSession({ id: "session", scope: "account", name: "Office", job: "custom",
       createdAt: "2026-09-09T12:00:00Z", events: [], clips: [] });
-    expect(request).toHaveBeenCalledWith("/browser-sessions/session/events");
+    expect(request).toHaveBeenCalledWith("/browser-sessions/session/events", expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(loaded.events).toHaveLength(1);
     expect(loaded.events[0].review?.status).toBe("resolved");
     expect(loaded.events[0].title).toBe("Visual condition matched");
