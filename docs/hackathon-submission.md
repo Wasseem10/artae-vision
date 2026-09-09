@@ -1,5 +1,27 @@
 # Agents for Humans submission plan
 
+## AWS setup status — September 9, 2026
+
+- Submitted the Nova 2 Lite cross-region token quota request in `us-east-1`.
+- Quota `L-C6F5908D`: applied 8,000,000 tokens/minute, verified in a freshly
+  loaded AWS console page (the older open tab was stale).
+- Request ID: `0baa1cd9ad5e4b90841a7b6fece6f019ujkqBOCH`; **Case Closed**.
+- Actual Nova 2 Lite US-profile playground invocation succeeded with synthetic
+  incident text: 151 input tokens, 332 output tokens, 3,634 ms reported latency.
+  This proves account model access, not website integration or vision accuracy.
+- No plan upgrade or persistent credential was created. Production Vercel-to-AWS
+  OIDC role creation requires the owner's confirmation. Backend exchange code
+  is prepared, but Strands remains disabled until that connection is verified.
+- Next acceptance gate: a real Strands
+  tool-use run whose evidence and alert outcomes are verified end to end.
+- Strands is required by the [official rules](https://agentsforhumans.devpost.com/rules).
+  Bedrock is our selected provider; AgentCore deployment is optional.
+- See [AWS's quota request process](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-runtime.html).
+
+The no-install `/demo` already performs browser MediaPipe inference and saves
+account alerts/recordings. It is not yet proof of the AWS agentic workflow
+described below. Use licensed recorded fall samples, not a person falling live.
+
 ## Submission identity
 
 - **Track:** Professional Agents
@@ -9,7 +31,7 @@
 - **Problem:** Important incidents are buried in hours of ordinary footage, and
   a person usually notices too late.
 - **Promise demonstrated:** Connect a camera, select fall detection, run the
-  agent, trigger a controlled fall, and receive a persistent alert with evidence.
+  agent on a licensed recorded fall sample, and receive a persistent alert with evidence.
 
 ## One-sentence pitch
 
@@ -49,7 +71,7 @@ tool calls, token counts, completion state, and safe fallback state.
 - [x] MIT license
 - [ ] Enable Amazon Bedrock credentials and run the live Strands path
 - [ ] Capture a repeatable end-to-end fall-detection demonstration
-- [ ] Add test credentials or a no-login judging path
+- [x] Add a no-login judging path (`/demo`; live Strands integration still pending)
 - [ ] Make the submission repository public
 - [ ] Put the MIT license in the GitHub About panel
 - [ ] Record and publish a maximum five-minute YouTube or Vimeo video

@@ -24,6 +24,13 @@ const assert = require('node:assert/strict');
     console.log('STOPPED',await page.locator('body').innerText());
     await page.screenshot({path:'browser-monitor-stopped.png',fullPage:true});
     if(process.env.ARTAE_EXPECT_EVENTS==='yes')assert.ok(await page.getByRole('button',{name:'Review footage',exact:true}).count(),'Real detection must create an event');
+    if(process.env.ARTAE_EXPECT_EVENTS==='yes'){
+      await page.getByRole('button',{name:'Acknowledge',exact:true}).first().click();
+      await page.getByText('Acknowledged · awaiting resolution',{exact:true}).first().waitFor();
+      await page.getByRole('button',{name:'False alarm',exact:true}).first().click();
+      await page.getByText('Closed · marked as false alarm',{exact:true}).first().waitFor();
+      await page.getByText('Review saved on this device',{exact:true}).first().waitFor();
+    }
     if(process.env.ARTAE_EXPECT_EVENTS==='no')assert.equal(await page.getByRole('button',{name:'Review footage',exact:true}).count(),0,'Negative footage must not create an event');
     const history=page.getByRole('button').filter({hasText:label});
     assert.ok(await history.count(),'Stopped session should appear in history');
@@ -32,6 +39,8 @@ const assert = require('node:assert/strict');
     await page.getByRole('button').filter({hasText:label}).first().click();
     await page.waitForFunction(()=>Array.from(document.querySelectorAll('video')).some(v=>v.controls&&v.readyState>=1),{},{timeout:10000});
     if(process.env.ARTAE_EXPECT_EVENTS==='yes')assert.ok(await page.getByRole('button',{name:'Review footage',exact:true}).count(),'Event must remain after reload');
+    console.log('RELOADED',await page.locator('body').innerText());
+    if(process.env.ARTAE_EXPECT_EVENTS==='yes')await page.getByText('Closed · marked as false alarm',{exact:true}).first().waitFor();
     console.log('PERSISTENCE_OK');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

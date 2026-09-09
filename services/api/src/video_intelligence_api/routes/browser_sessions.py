@@ -18,6 +18,7 @@ from video_intelligence_api.auth import ActorDependency, EditorDependency
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.models import (
     Alert,
+    AlertStatus,
     Camera,
     Event,
     Rule,
@@ -51,6 +52,10 @@ class BrowserObservation(BaseModel):
     id: UUID
     at_seconds: float = Field(ge=0, le=3600, allow_inf_nan=False)
     landmark_visibility: float = Field(ge=0, le=1, allow_inf_nan=False)
+
+
+class IncidentReview(BaseModel):
+    outcome: Literal["acknowledged", "resolved", "false_alarm"]
 
 
 async def owned_session(camera_id: str, session, actor):
@@ -208,9 +213,19 @@ async def record_observation(
             "job": rule.key,
         },
     )
-    run = await coordinate_incident(event, camera, rule, request.app.state.settings)
+    run = await coordinate_incident(
+        event, camera, rule, request.app.state.settings,
+        oidc_token=request.headers.get("x-vercel-oidc-token"),
+    )
     if run:
         event.details = {**event.details, "strands_agent": run.model_dump(mode="json")}
+    event.details = {
+        **event.details,
+        "review": {"status": "open", "outcome": None},
+        # All browser fall candidates require a person, regardless of the model's opinion.
+        "requires_human": fall or bool(run and run.requires_human),
+        "notification": {"channel": "in_app", "status": "saved"},
+    }
     try:
         session.add(event)
         await session.flush()
@@ -227,6 +242,56 @@ async def record_observation(
         if duplicate is None:
             raise
         return duplicate
+    await session.refresh(event)
+    return event
+
+
+@router.patch("/{camera_id}/events/{source_event_id}/review", response_model=EventRead)
+async def review_browser_incident(
+    camera_id: str,
+    source_event_id: UUID,
+    payload: IncidentReview,
+    session: SessionDependency,
+    actor: EditorDependency,
+):
+    """Persist a human decision; never mark the detector/model as independently verified."""
+    await owned_session(camera_id, session, actor)
+    event = await session.scalar(
+        select(Event).where(
+            Event.camera_id == camera_id, Event.source_event_id == str(source_event_id)
+        ).with_for_update()
+    )
+    if event is None:
+        raise HTTPException(404, "Incident not found")
+    alert = await session.scalar(select(Alert).where(Alert.event_id == event.id))
+    if alert is None:
+        raise HTTPException(409, "Incident alert is not ready")
+    previous = (event.details or {}).get("review", {})
+    if previous.get("outcome") == payload.outcome:
+        return event
+    if alert.status == AlertStatus.RESOLVED:
+        raise HTTPException(409, "This incident has already been closed")
+    now = utc_now()
+    alert.acknowledged_at = alert.acknowledged_at or now
+    alert.acknowledged_by = alert.acknowledged_by or actor.subject
+    alert.status = (
+        AlertStatus.ACKNOWLEDGED if payload.outcome == "acknowledged" else AlertStatus.RESOLVED
+    )
+    if alert.status == AlertStatus.RESOLVED:
+        alert.resolved_at, alert.resolved_by = now, actor.subject
+    alert.updated_at = now
+    review = {
+        "status": alert.status.value,
+        "outcome": payload.outcome,
+        "reviewed_at": now.isoformat(),
+        "reviewed_by": actor.subject,
+    }
+    event.details = {
+        **(event.details or {}),
+        "review": review,
+        "review_history": [*(event.details or {}).get("review_history", []), review],
+    }
+    await session.commit()
     await session.refresh(event)
     return event
 

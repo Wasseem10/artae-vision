@@ -10,7 +10,34 @@ export type BrowserEvent = {
   visibility: number;
   saved?: boolean;
   coordinator?: string;
+  summary?: string;
+  review?: IncidentReview;
 };
+export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
+export type IncidentReview = {
+  status: "open" | "acknowledged" | "resolved";
+  outcome: ReviewOutcome | null;
+  reviewed_at?: string;
+};
+export type CloudEventResult = {
+  details: {
+    strands_agent?: { status: string; summary: string };
+    review?: IncidentReview;
+  };
+};
+export function cloudEventFields(result: CloudEventResult) {
+  return {
+    saved: true,
+    coordinator: result.details.strands_agent?.status,
+    summary: result.details.strands_agent?.summary,
+    review: result.details.review,
+  };
+}
+export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
+  return request<CloudEventResult>(`/browser-sessions/${s.id}/events/${event.id}/review`, {
+    method: "PATCH", body: JSON.stringify({ outcome }),
+  });
+}
 export type BrowserClip = {
   id: string;
   start: number;
@@ -108,9 +135,7 @@ export async function saveCloudEvent(
   session: BrowserSession,
   event: BrowserEvent,
 ) {
-  return request<{
-    details: { strands_agent?: { status: string; summary: string } };
-  }>(`/browser-sessions/${session.id}/events`, {
+  return request<CloudEventResult>(`/browser-sessions/${session.id}/events`, {
     method: "POST",
     body: JSON.stringify({
       id: event.id,
@@ -176,7 +201,7 @@ export async function loadCloudSession(
         occurred_at_seconds: number;
         confidence: number;
         event_type: string;
-        details: { strands_agent?: { status: string } };
+        details: CloudEventResult["details"];
       }[]
     >(`/events?camera_id=${s.id}`),
     request<
@@ -200,8 +225,7 @@ export async function loadCloudSession(
         e.event_type === "person_fall"
           ? "Possible fall — please review"
           : "Person detected",
-      saved: true,
-      coordinator: e.details.strands_agent?.status,
+      ...cloudEventFields(e),
     })),
     clips: clips
       .filter((c) => c.content_url)

@@ -17,6 +17,8 @@
 .clipList { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; }
 .clipList button,.log article button,.storage button,.history button { background:#f1f5f9; color:#253f56; border:1px solid #ced8e1; border-radius:7px; padding:9px 12px; font:inherit; font-size:12px; cursor:pointer; }
 .log article button { margin-top:12px; }
+.reviewActions { display:flex; flex-wrap:wrap; gap:6px; }
+.log .incidentSummary { font-size:12px; line-height:1.6; color:#46535d; overflow-wrap:anywhere; }
 .storage { display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:20px 24px; border-top:1px solid #dfe2dc; font-size:13px; }
 .storage span { color:#626d76; flex:1; min-width:180px; }
 .history { max-width:1180px; margin:36px auto 0; padding:0 24px 60px; }

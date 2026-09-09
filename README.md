@@ -44,7 +44,7 @@ After configuring an AWS credential supported by the AWS SDK, set:
 
 ```dotenv
 VIDEO_INTEL_API_STRANDS_ENABLED=true
-VIDEO_INTEL_API_STRANDS_MODEL_ID=us.amazon.nova-premier-v1:0
+VIDEO_INTEL_API_STRANDS_MODEL_ID=us.amazon.nova-2-lite-v1:0
 VIDEO_INTEL_API_STRANDS_REGION=us-east-1
 ```
 

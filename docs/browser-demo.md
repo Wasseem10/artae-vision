@@ -2,6 +2,22 @@
 
 ## What runs
 
+Incident cards support Acknowledge, Mark reviewed, and False alarm. Guest reviews
+persist on the device; account reviews update the existing alert and event in
+one tenant-scoped transaction, using the authenticated actor. Closed incidents
+cannot be silently reopened. A human review does not change the detector's
+`independently_verified: false` flag. Model summaries appear only when returned
+by the server; fallback status is displayed separately from success.
+
+Bedrock account access was verified on September 9 with a real Nova 2 Lite
+console response. This is not yet a deployed Strands acceptance test. The
+backend supports a configured `VIDEO_INTEL_API_STRANDS_ROLE_ARN` and exchanges
+the Vercel request's OIDC header through STS for 15-minute credentials. The role
+must restrict issuer, audience, production project subject and Nova model
+resources. Missing/invalid identity fails closed into the disclosed fallback.
+Do not enable Strands in production before creating and testing that restricted
+role. See [Vercel's OIDC setup](https://vercel.com/docs/oidc/aws).
+
 `/demo` is real inference, not a timed animation. A Web Worker runs pinned
 MediaPipe Pose Landmarker Lite (Tasks Vision 0.10.32). The UI draws the measured
 landmarks. A one-person temporal rule produces either a person-in-view event or

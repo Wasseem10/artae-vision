@@ -207,11 +207,12 @@ class ApiSettings(BaseSettings):
     openai_rule_compiler_model: str = Field(default="gpt-5-mini", min_length=1, max_length=120)
     strands_enabled: bool = False
     strands_model_id: str = Field(
-        default="us.amazon.nova-premier-v1:0",
+        default="us.amazon.nova-2-lite-v1:0",
         min_length=1,
         max_length=255,
     )
     strands_region: str = Field(default="us-east-1", min_length=1, max_length=64)
+    strands_role_arn: str | None = None
     strands_timeout_seconds: float = Field(default=30, ge=3, le=120)
     detector_model: str = Field(default="yolo26n.pt", min_length=1, max_length=255)
     object_classes: list[str] = Field(default_factory=lambda: list(DEFAULT_OBJECT_CLASSES))

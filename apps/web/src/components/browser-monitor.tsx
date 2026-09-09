@@ -10,16 +10,20 @@ import {
 } from "@/lib/browser-pose";
 import {
   createCloudSession,
+  cloudEventFields,
   formatTime,
   listCloudSessions,
   loadCloudSession,
   mergeSession,
   readLocal,
+  reviewCloudEvent,
   saveCloudClip,
   saveCloudEvent,
   saveLocal,
   type BrowserClip,
   type BrowserSession,
+  type BrowserEvent,
+  type ReviewOutcome,
 } from "@/lib/browser-sessions";
 import {
   getSupabaseBrowserClient,
@@ -66,6 +70,37 @@ export function BrowserMonitor() {
   const [inferenceMs, setInferenceMs] = useState(0);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured());
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<string | null>(null);
+
+  async function reviewIncident(event: BrowserEvent, outcome: ReviewOutcome) {
+    const s = current.current;
+    if (!s || reviewing || s.scope !== accountScope.current) return;
+    const previousReview = event.review;
+    setReviewing(event.id);
+    try {
+      if (s.scope === "guest") {
+        event.review = {
+          status: outcome === "acknowledged" ? "acknowledged" : "resolved",
+          outcome, reviewed_at: new Date().toISOString(),
+        };
+      } else {
+        // Wait for the account's create/event queue; never claim a remote save optimistically.
+        await cloudQueue.current;
+        if (!event.saved || s.scope !== accountScope.current)
+          throw new Error("Save this alert to your account before reviewing it.");
+        Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome)));
+      }
+      // Do not show a completed review before the IndexedDB transaction commits;
+      // an immediate reload can otherwise lose the user's last decision.
+      await saveLocal(s);
+      persist(s);
+    } catch (e) {
+      if (s.scope === "guest") event.review = previousReview;
+      setSaveProblem(e instanceof Error ? e.message : "Review could not be saved. Please retry.");
+    } finally {
+      setReviewing(null);
+    }
+  }
 
   useEffect(() => {
     mounted.current = true;
@@ -442,10 +477,7 @@ export function BrowserMonitor() {
           queueCloud(s, async () => {
             await createCloudSession(s);
             const result = await saveCloudEvent(s, event);
-            Object.assign(event, {
-              saved: true,
-              coordinator: result.details.strands_agent?.status,
-            });
+            Object.assign(event, cloudEventFields(result));
             s.cloud = true;
             persist(s);
           });
@@ -557,8 +589,7 @@ export function BrowserMonitor() {
       for (const e of s.events)
         if (!e.saved) {
           const result = await saveCloudEvent(s, e);
-          e.saved = true;
-          e.coordinator = result.details.strands_agent?.status;
+          Object.assign(e, cloudEventFields(result));
         }
       for (const clip of s.clips)
         if (!clip.saved && clip.blob) await saveCloudClip(s, clip);
@@ -579,7 +610,7 @@ export function BrowserMonitor() {
     }
   }
   async function openSession(s: BrowserSession, cloudOnly = false) {
-    if (running || saving) return;
+    if (running || saving || reviewing) return;
     setSaveProblem(null);
     let loaded = s;
     if (s.cloud)
@@ -806,6 +837,12 @@ export function BrowserMonitor() {
                             : "unavailable; local alert kept"}
                         </small>
                       )}
+                      {event.summary && <p className={styles.incidentSummary}>{event.summary}</p>}
+                      <span>
+                        {event.review?.status === "resolved"
+                          ? event.review.outcome === "false_alarm" ? "Closed · marked as false alarm" : "Closed · reviewed"
+                          : event.review?.status === "acknowledged" ? "Acknowledged · awaiting resolution" : "Needs review"}
+                      </span>
                       <button
                         onClick={() => {
                           const clip = session.clips.find(
@@ -825,6 +862,16 @@ export function BrowserMonitor() {
                       >
                         Review footage
                       </button>
+                      <div className={styles.reviewActions}>
+                        {event.review?.status !== "resolved" && (
+                          <>
+                            {event.review?.status !== "acknowledged" && <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "acknowledged")}>Acknowledge</button>}
+                            <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "resolved")}>Mark reviewed</button>
+                            <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "false_alarm")}>False alarm</button>
+                          </>
+                        )}
+                      </div>
+                      <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" ? "on this device" : "to account"}` : "No text message or phone call is sent."}</small>
                     </div>
                   </article>
                 ))

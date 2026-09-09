@@ -99,11 +99,13 @@ def _metric_number(summary: dict[str, Any], section: str, name: str) -> int:
     return int(number) if isinstance(number, (int, float)) else 0
 
 
-def _run_agent(event: Event, camera: Camera, rule: Rule, settings: ApiSettings) -> IncidentAgentRun:
+def _run_agent(event: Event, camera: Camera, rule: Rule, settings: ApiSettings,
+               oidc_token: str | None = None) -> IncidentAgentRun:
     # Imports stay inside the enabled path so normal camera ingestion remains
     # lightweight and tests can run without AWS credentials.
     from strands import Agent, tool
     from strands.models import BedrockModel
+    from video_intelligence_api.bedrock_identity import bedrock_session
 
     ledger = _ToolLedger()
 
@@ -150,6 +152,7 @@ def _run_agent(event: Event, camera: Camera, rule: Rule, settings: ApiSettings) 
         return ledger.record("request_human_review", reason=reason[:500])
 
     model = BedrockModel(
+        boto_session=bedrock_session(settings.strands_role_arn, settings.strands_region, oidc_token),
         model_id=settings.strands_model_id,
         region_name=settings.strands_region,
         temperature=0,
@@ -193,7 +196,7 @@ def _run_agent(event: Event, camera: Camera, rule: Rule, settings: ApiSettings) 
     if "preserve_evidence" not in invoked:
         ledger.record(
             "preserve_evidence",
-            reason="Confirmed visual event",
+            reason="Detector observation requiring review",
             seconds_before=5,
             seconds_after=10,
             enforced_by="safety_policy",
@@ -242,7 +245,7 @@ def _fallback_run(
         tool_actions=[
             {
                 "tool": "preserve_evidence",
-                "reason": "Confirmed visual event",
+                "reason": "Detector observation requiring review",
                 "seconds_before": 5,
                 "seconds_after": 10,
                 "enforced_by": "availability_fallback",
@@ -263,6 +266,7 @@ async def coordinate_incident(
     camera: Camera,
     rule: Rule,
     settings: ApiSettings,
+    oidc_token: str | None = None,
 ) -> IncidentAgentRun | None:
     """Run Strands outside the async event loop and fail safely on provider errors."""
     if not settings.strands_enabled:
@@ -270,7 +274,7 @@ async def coordinate_incident(
     try:
         with anyio.fail_after(settings.strands_timeout_seconds):
             return await anyio.to_thread.run_sync(
-                partial(_run_agent, event, camera, rule, settings),
+                partial(_run_agent, event, camera, rule, settings, oidc_token),
                 abandon_on_cancel=True,
             )
     except Exception as exc:  # provider outages must not suppress a safety alert
