@@ -7,6 +7,7 @@ accepted in these payloads. Recording uploads reuse the tenant archive pipeline.
 
 from datetime import datetime, timedelta
 from functools import partial
+import logging
 from typing import Literal
 from uuid import UUID
 
@@ -44,6 +45,7 @@ from video_intelligence_api.strands_orchestrator import coordinate_incident
 from video_intelligence_api.tenancy import tenant_camera
 
 router = APIRouter(prefix="/browser-sessions", tags=["browser monitoring"])
+logger = logging.getLogger(__name__)
 
 
 class SessionCreate(BaseModel):
@@ -82,7 +84,7 @@ async def save_browser_job(payload: SavedJobCreate, session: SessionDependency, 
         if camera is None or not camera.source_uri.startswith("browser-job:"):
             raise HTTPException(404, "Saved job not found")
         rule = await session.scalar(select(Rule).where(Rule.camera_id == camera.id))
-        if not rule or rule.key != f"browser-template-{payload.job}" or camera.name != payload.name.strip():
+        if not rule or rule.key != f"browser-template-{payload.job}" or camera.name != payload.name.strip() or (rule.spec or {}).get("visual_prompt", "") != payload.prompt:
             raise HTTPException(409, "Job identity already exists with another configuration")
         return {"id": camera.id, "name": camera.name, "job": payload.job, "prompt": (rule.spec or {}).get("visual_prompt", "")}
     count = await session.scalar(select(func.count()).select_from(Camera).where(
@@ -171,6 +173,7 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
     except Exception as exc:
         # Never turn an unavailable model into a positive detection or a silent
         # negative. The browser must show the failure and stop this custom job.
+        logger.exception("AWS visual check failed for camera=%s", camera.id)
         raise HTTPException(503, "AWS could not analyze these frames. Detection stopped; retry shortly.") from exc
     rule = await session.scalar(select(Rule).where(Rule.id == rule.id).with_for_update().execution_options(populate_existing=True))
     spec = dict(rule.spec or {})

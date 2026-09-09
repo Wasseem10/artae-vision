@@ -40,17 +40,17 @@ const agents: Record<AgentKey, { name: string; description: string; condition: s
 const faqGroups = [
   { title: "the product", items: [
     ["What is Artae?", "Artae gives live cameras and recorded footage plain-language jobs. Each visual agent watches for one condition, keeps reviewable evidence, and performs an approved action."],
-    ["What can Artae actually detect today?", "The dependable live demo supports fall detection through local YOLO pose, plus people, common vehicles, object counts, and zone entry or exit through local YOLO tracking. PPE, license plates, and broader semantic requests remain experimental and are not presented as dependable live jobs."],
+    ["What can Artae actually detect today?", "The browser workspace runs on-device person detection and experimental pose-based fall detection using MediaPipe, not YOLO. Signed-in users can also describe a visible condition for AWS to check in sampled frames. AI results can be wrong and require review; this is not an emergency monitoring service."],
     ["Can I use existing cameras?", "Yes. Artae is designed for computer webcams, uploaded recordings, and supported IP camera feeds."],
     ["Does footage save to my account?", "When cloud recording is enabled, clips and their metadata are stored against the signed-in account so they can be viewed on another device."],
-    ["Can I exclude sensitive cameras or hours?", "Yes. Recording and agent schedules can be limited by camera, workspace policy, and operating hours."],
+    ["Does monitoring continue when I close my browser?", "No. Browser monitoring requires an open, visible tab and a connected video source. Use Stop agent to end a run. Logs and successfully uploaded footage remain in your account afterward."],
     ["What should I expect from storage use?", "Storage depends on resolution, frame rate, retention, and whether you keep continuous footage or only event clips."],
   ]},
   { title: "getting useful work back", items: [
     ["What should I do first after signing in?", "Connect one camera, describe one important event, choose an alert action, and test the agent before expanding to more cameras."],
-    ["How does the owner receive alerts?", "A confirmed event can create an in-app alert, send a Telegram message, or call a connected webhook."],
+    ["How does the owner receive alerts?", "The browser workspace shows a persistent in-app alert next to the video, with an optional sound. You can review its footage, acknowledge it, or mark a false alarm. Phone, SMS and WhatsApp delivery are not enabled in this browser workflow."],
     ["Can Artae review uploaded video?", "Yes. Uploaded recordings use the same rule, evidence, and log workflow as a live camera."],
-    ["Can an agent perform a real action?", "Yes. Approved actions can call external webhooks and integrations after the visual condition is confirmed."],
+    ["Can an agent perform a real action?", "The connected AWS Strands agent can request an evidence window, prepare an in-app notification, and queue a human review. Artae saves the alert and links uploaded recording segments. External delivery and physical controls require a separate configured integration."],
     ["Is Artae only for safety monitoring?", "No. Teams can create agents for deliveries, access, queues, vehicles, occupancy, quality checks, and many other operational events."],
   ]},
   { title: "for teams", items: [
@@ -171,7 +171,7 @@ export function MarketingPage() {
       </section>
 
       <section className={styles.features} id="features">
-        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>What Artae does</small><p>Live capabilities + workflow concepts</p></div><div><h2>Turn a camera into a focused visual agent.</h2><p>The live demo currently handles falls, people, common vehicles, counts, and zone events. The broader examples below show the product direction.</p></div></header>
+        <header className={`${styles.sectionIntro} ${styles.featuresIntro}`}><span className={styles.sectionNumber}>03</span><div><small>What Artae does</small><p>Live capabilities + workflow concepts</p></div><div><h2>Turn a camera into a focused visual agent.</h2><p>Try person detection, experimental fall detection, or account-connected AWS visual checks. Save your agents, review alerts, and replay uploaded footage. The broader examples below are workflow concepts.</p></div></header>
 
         <div className={styles.productFlow} aria-label="How Artae works">
           <div><span>01</span><FiVideo /><strong>Connect the video</strong><p>Use a live camera, an IP feed, or upload recorded footage.</p></div>
@@ -182,7 +182,7 @@ export function MarketingPage() {
         <article className={styles.featureStory}>
           <div className={styles.jobVisual}>
             <Image src="/assets/camera-warehouse-aisle.png" alt="Factory camera watching a production line for a growing bottleneck" fill sizes="(max-width: 760px) 100vw, 58vw" />
-            <div className={styles.jobCameraBar}><span><i /> ARTAE VISION · LIVE</span><b>LINE 4</b></div>
+            <div className={styles.jobCameraBar}><span><i /> WORKFLOW ILLUSTRATION · NOT LIVE</span><b>LINE 4</b></div>
             <div className={styles.bottleneckZone}><span>QUEUE GROWING</span></div>
             <div className={styles.queueCount}><FiTrendingDown /><span><b>12 items waiting</b>4m 12s above target</span></div>
             <div className={styles.jobSweep} />

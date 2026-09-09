@@ -9,18 +9,18 @@
 - Actual Nova 2 Lite US-profile playground invocation succeeded with synthetic
   incident text: 151 input tokens, 332 output tokens, 3,634 ms reported latency.
   This proves account model access, not website integration or vision accuracy.
-- No plan upgrade or persistent credential was created. Production Vercel-to-AWS
-  OIDC role creation requires the owner's confirmation. Backend exchange code
-  is prepared, but Strands remains disabled until that connection is verified.
-- Next acceptance gate: a real Strands
-  tool-use run whose evidence and alert outcomes are verified end to end.
+- With owner approval, created a production-project-only Vercel OIDC role with
+  Nova 2 Lite inference permissions. No plan upgrade or persistent key was created.
+- Production run September 9 at 13:05:39: real browser person detection, completed
+  Strands/Nova coordination, saved in-app alert, and uploaded recording segments.
+  Evidence requests now link actual account recording IDs as uploads complete.
 - Strands is required by the [official rules](https://agentsforhumans.devpost.com/rules).
   Bedrock is our selected provider; AgentCore deployment is optional.
 - See [AWS's quota request process](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-runtime.html).
 
 The no-install `/demo` already performs browser MediaPipe inference and saves
-account alerts/recordings. It is not yet proof of the AWS agentic workflow
-described below. Use licensed recorded fall samples, not a person falling live.
+account alerts/recordings. Account-connected Strands is now verified separately
+from guest inference. Use licensed recorded fall samples, not a person falling live.
 
 ## Submission identity
 
@@ -40,7 +40,7 @@ uses a Strands agent to preserve the evidence and notify the person who can help
 
 ## What makes the agent real
 
-The model does not merely chat about an incident. After YOLO confirms an event,
+The model does not merely chat about an incident. After browser pose inference reports an observation,
 the Strands Incident Coordinator receives grounded event data and invokes Artae
 tools:
 
@@ -48,8 +48,8 @@ tools:
 2. `notify_responder` prepares a factual, prioritized notification.
 3. `request_human_review` routes genuine ambiguity to a person.
 
-The existing database, evidence, alert, WebSocket, and delivery systems execute
-and surface those decisions. Each event records the framework, Bedrock model,
+The browser database, recording, in-app alert, and human-review paths execute
+and surface those decisions. Phone/SMS/WhatsApp are not enabled. Each event records the framework, Bedrock model,
 tool calls, token counts, completion state, and safe fallback state.
 
 ## Eligibility record
@@ -69,9 +69,9 @@ tool calls, token counts, completion state, and safe fallback state.
 - [x] README
 - [x] GitHub-rendered architecture diagram
 - [x] MIT license
-- [ ] Enable Amazon Bedrock credentials and run the live Strands path
+- [x] Enable Amazon Bedrock credentials and run the live Strands path
 - [ ] Capture a repeatable end-to-end fall-detection demonstration
-- [x] Add a no-login judging path (`/demo`; live Strands integration still pending)
+- [x] Add a no-login judging path (`/demo`; AWS requires an account)
 - [ ] Make the submission repository public
 - [ ] Put the MIT license in the GitHub About panel
 - [ ] Record and publish a maximum five-minute YouTube or Vimeo video
@@ -87,7 +87,7 @@ every feed. Artae turns passive video into one autonomous camera job.
 **0:30–1:10 — Create the job.** Sign in, choose the camera, select the prebuilt
 Fall Detection agent, choose in-app alert, and start it.
 
-**1:10–2:10 — Prove the vision loop.** Show the live feed, YOLO pose overlay,
+**1:10–2:10 — Prove the vision loop.** Show the live feed, MediaPipe pose overlay,
 processed-frame counter, and a controlled staged fall. Never perform an unsafe
 fall for the recording.
 
@@ -99,7 +99,7 @@ clip, and alert remain. Refresh or sign in on another device and show the same
 account-owned history.
 
 **4:00–4:40 — Explain architecture.** Show the architecture diagram and explain
-why YOLO handles real-time sensing while Strands handles reasoning and action.
+why on-device pose handles fast sensing while Strands handles incident coordination.
 
 **4:40–5:00 — Impact.** Existing cameras become quiet safety assistants that ask
 for attention only when something meaningful happens.

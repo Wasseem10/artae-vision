@@ -608,8 +608,14 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
                 }
               } catch (e) {
                 stop();
+                setVisualStatus("Visual analysis stopped because the last check failed.");
                 setProblem(e instanceof Error ? e.message : "AWS visual analysis failed; this job has stopped.");
-              } finally { visualPending = false; }
+              } finally {
+                // The server's cooldown starts when the result commits, not
+                // when capture began. Never immediately enqueue another check.
+                lastVisualCheck = now();
+                visualPending = false;
+              }
             });
           }
         }

@@ -9,14 +9,21 @@ cannot be silently reopened. A human review does not change the detector's
 `independently_verified: false` flag. Model summaries appear only when returned
 by the server; fallback status is displayed separately from success.
 
-Bedrock account access was verified on September 9 with a real Nova 2 Lite
-console response. This is not yet a deployed Strands acceptance test. The
-backend supports a configured `VIDEO_INTEL_API_STRANDS_ROLE_ARN` and exchanges
+Bedrock account access and a production Strands incident run were verified on
+September 9. The 13:05:39 production person-detection run returned a real AWS
+summary and saved the account alert and recording segments. The backend uses
+`VIDEO_INTEL_API_STRANDS_ROLE_ARN` and exchanges
 the Vercel request's OIDC header through STS for 15-minute credentials. The role
 must restrict issuer, audience, production project subject and Nova model
 resources. Missing/invalid identity fails closed into the disclosed fallback.
-Do not enable Strands in production before creating and testing that restricted
-role. See [Vercel's OIDC setup](https://vercel.com/docs/oidc/aws).
+The restricted role is created and Strands is enabled in production. It grants
+only Nova 2 Lite US-profile inference to the production API project. No persistent
+AWS access key was created. See [Vercel's OIDC setup](https://vercel.com/docs/oidc/aws).
+
+`/app` now opens the browser workspace after login; the installed-camera UI is
+preserved separately at `/app/native`. Named jobs and past runs load from the
+account automatically. A saved job is reusable configuration, not a running
+background process. Each run has independent footage and incident history.
 
 `/demo` is real inference, not a timed animation. A Web Worker runs pinned
 MediaPipe Pose Landmarker Lite (Tasks Vision 0.10.32). The UI draws the measured
@@ -27,7 +34,9 @@ probability**. Missing/obscured bodies and camera angles can cause misses.
 
 Start/Stop controls own the worker, video tracks, sampling timer, and recorder.
 The canvas is recorded in independent approximately 10-second segments, with a
-two-minute session cap. Logs and recording blobs are stored in IndexedDB, scoped
+two-minute guest cap. Account users can select 2, 15, or 60 minutes; all runs stop
+at 20 alerts. The 60-minute option is a configured limit, not a completed endurance
+test. Logs and recording blobs are stored in IndexedDB, scoped
 to guest or the current account. Stop retains history. Browser storage can be
 cleared or evicted; download important clips.
 
@@ -88,11 +97,10 @@ SHA-256 checked by `apps/web/scripts/prepare-vision.mjs` before dev/build.
 
 ## Not complete
 
-- Live AWS Strands/Bedrock integration: Nova 2 Lite quota is zero in this AWS
-  account. A console request returned `ThrottlingException`. No successful model
-  run has been observed; do not claim hackathon AWS compliance yet.
+- Complete hackathon submission assets, public-repository approval, and judging
+  account access still need verification independently of the successful AWS run.
 - Phone/SMS/WhatsApp delivery: not enabled in this route (Twilio work remains on hold).
-- Continuous unattended monitoring, multi-person tracking, arbitrary prompts,
+- Continuous unattended monitoring, multi-person tracking, unrestricted prompts,
   validated fall accuracy, production support and emergency response.
 - Phone/browser compatibility and separate-device sign-in testing remain;
   successful desktop cloud replay alone is not universal-device certification.
