@@ -6,6 +6,7 @@ import hashlib
 import hmac
 from datetime import datetime, timedelta
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Annotated
 
 import anyio
@@ -221,10 +222,10 @@ async def upload_recording_content(
     media_type = request.headers.get("content-type", "video/mp4").split(";", maxsplit=1)[0]
     if not media_type.startswith("video/"):
         raise HTTPException(status_code=415, detail="Recording must use a video media type")
-    root = settings.recording_archive_directory.expanduser().resolve()
-    staging = root / ".staging"
-    staging.mkdir(parents=True, exist_ok=True)
-    partial_path = staging / f"{segment.id}.part"
+    # Cloud uploads must stage in the OS temporary directory: serverless app
+    # bundles are read-only. Unique files also isolate concurrent retries.
+    with NamedTemporaryFile(prefix="artae-recording-", suffix=".part", delete=False) as staged:
+        partial_path = Path(staged.name)
     digest = hashlib.sha256()
     size_bytes = 0
     try:

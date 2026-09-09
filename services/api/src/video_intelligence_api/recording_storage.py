@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shutil import move
 from typing import Protocol
 from urllib.parse import urlsplit
 
@@ -52,7 +53,7 @@ class LocalRecordingStorage:
         directory = self.root / organization_id / camera_id
         directory.mkdir(parents=True, exist_ok=True)
         destination = directory / f"{recording_id}.mp4"
-        source.replace(destination)
+        move(str(source), str(destination))
         return str(destination)
 
     def local_path(self, storage_uri: str) -> Path | None:

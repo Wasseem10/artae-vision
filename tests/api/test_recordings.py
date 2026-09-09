@@ -5,6 +5,35 @@ from fastapi.testclient import TestClient
 AGENT_KEY = "test-agent-key-123456789"
 
 
+def test_cloud_upload_does_not_stage_inside_application_archive(api_client, monkeypatch, tmp_path):
+    from video_intelligence_api.routes import recordings
+
+    # A file cannot contain a .staging directory, emulating a read-only app path.
+    archive = tmp_path / "read-only-app"
+    archive.write_text("not a directory")
+    api_client.app.state.settings.recording_archive_directory = archive
+    staged_paths = []
+
+    class CloudStorage:
+        def put(self, source, **kwargs):
+            assert source.read_bytes() == b"cloud-video"
+            assert not source.is_relative_to(archive)
+            staged_paths.append(source)
+            return "s3://test/recording.mp4"
+
+    monkeypatch.setattr(recordings, "recording_storage", lambda settings: CloudStorage())
+    camera = create_camera(api_client)
+    segment = report_segment(api_client, camera["id"])
+    response = api_client.put(
+        f"/api/v1/agent/recordings/{segment['id']}/content",
+        content=b"cloud-video",
+        headers={"X-Agent-Key": AGENT_KEY, "Content-Type": "video/mp4"},
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert staged_paths and all(not path.exists() for path in staged_paths)
+
+
 def create_camera(client: TestClient) -> dict:
     return client.post(
         "/api/v1/cameras",
