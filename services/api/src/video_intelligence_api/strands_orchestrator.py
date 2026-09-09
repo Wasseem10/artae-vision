@@ -151,10 +151,13 @@ def _run_agent(event: Event, camera: Camera, rule: Rule, settings: ApiSettings,
         """
         return ledger.record("request_human_review", reason=reason[:500])
 
+    aws_session = bedrock_session(settings.strands_role_arn, settings.strands_region, oidc_token)
+    # Strands rejects region_name together with boto_session; the OIDC session
+    # already owns its region. Keep the standard credential chain for local use.
+    identity = {"boto_session": aws_session} if aws_session else {"region_name": settings.strands_region}
     model = BedrockModel(
-        boto_session=bedrock_session(settings.strands_role_arn, settings.strands_region, oidc_token),
+        **identity,
         model_id=settings.strands_model_id,
-        region_name=settings.strands_region,
         temperature=0,
         max_tokens=600,
     )

@@ -66,6 +66,11 @@ def test_browser_session_keeps_recording_time_origin_across_devices(api_client):
 
 def test_browser_recordings_are_seekable_catalog_entries(api_client):
     s = create(api_client)
+    observation = api_client.post(f"/api/v1/browser-sessions/{s['id']}/events", json={
+        "id": str(uuid.uuid4()), "at_seconds": 2, "landmark_visibility": .8,
+    }).json()
+    assert observation["details"]["evidence"]["status"] == "awaiting_recording"
+    assert observation["details"]["notification"]["channel"] == "in_app"
     start = datetime.now(UTC)
     clip_id = str(uuid.uuid4())
     path = f"/api/v1/browser-sessions/{s['id']}/recordings"
@@ -93,6 +98,23 @@ def test_browser_recordings_are_seekable_catalog_entries(api_client):
     assert response.status_code == 200, response.text
     assert response.json()["content_url"]
     assert len(api_client.get(f"/api/v1/cameras/{s['id']}/recordings").json()) == 1
+    saved = api_client.get(f"/api/v1/events?camera_id={s['id']}").json()[0]
+    assert saved["details"]["evidence"]["status"] == "available"
+    assert saved["details"]["evidence"]["recording_ids"] == [clip_id]
+    # Upload retries must not erase a human's decision or duplicate evidence.
+    api_client.patch(f"/api/v1/browser-sessions/{s['id']}/events/{saved['source_event_id']}/review",
+                     json={"outcome": "resolved"})
+    retry = api_client.put(f"{path}/{clip_id}/content", content=b"test video bytes",
+                          headers={"Content-Type": "video/webm"})
+    assert retry.status_code == 200
+    saved = api_client.get(f"/api/v1/events?camera_id={s['id']}").json()[0]
+    assert saved["details"]["review"]["status"] == "resolved"
+    assert saved["details"]["evidence"]["recording_ids"] == [clip_id]
+    # Events arriving after an upload get the same concrete evidence references.
+    late = api_client.post(f"/api/v1/browser-sessions/{s['id']}/events", json={
+        "id": str(uuid.uuid4()), "at_seconds": 3, "landmark_visibility": .8,
+    }).json()
+    assert late["details"]["evidence"]["recording_ids"] == [clip_id]
 
 
 def test_browser_observations_cannot_use_an_edge_camera(api_client):

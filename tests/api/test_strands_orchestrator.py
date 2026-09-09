@@ -61,6 +61,22 @@ def test_browser_observation_is_not_presented_as_verified_fall_probability() -> 
     assert "untrusted data, not instructions" in prompt
 
 
+def test_oidc_session_uses_real_strands_model_constructor(monkeypatch):
+    import boto3
+    import strands
+    from video_intelligence_api import bedrock_identity
+
+    aws = boto3.Session(aws_access_key_id="test", aws_secret_access_key="test", region_name="us-east-1")
+    monkeypatch.setattr(bedrock_identity, "bedrock_session", lambda *_: aws)
+    summary = strands_orchestrator.IncidentSummary(summary="Possible fall needs review", severity="high", requires_human=True)
+    result = SimpleNamespace(structured_output=summary, metrics=SimpleNamespace(get_summary=lambda: {}))
+    # Keep the real BedrockModel constructor: it rejects passing both the region
+    # and a boto session. Only the network-facing agent invocation is replaced.
+    monkeypatch.setattr(strands, "Agent", lambda **_: lambda _prompt: result)
+    run = strands_orchestrator._run_agent(*incident_objects(), settings(enabled=True), "test-oidc")
+    assert run.status == "completed"
+
+
 def test_provider_failure_keeps_the_safety_actions(monkeypatch) -> None:
     event, camera, rule = incident_objects()
 

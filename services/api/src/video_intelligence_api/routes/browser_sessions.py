@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from video_intelligence_api.auth import ActorDependency, EditorDependency
+from video_intelligence_api.browser_incidents import incident_actions, reconcile_browser_evidence
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.models import (
     Alert,
@@ -224,13 +225,14 @@ async def record_observation(
         "review": {"status": "open", "outcome": None},
         # All browser fall candidates require a person, regardless of the model's opinion.
         "requires_human": fall or bool(run and run.requires_human),
-        "notification": {"channel": "in_app", "status": "saved"},
+        **incident_actions(event, run),
     }
     try:
         session.add(event)
         await session.flush()
         # In-app only; never execute client-supplied destinations.
         session.add(Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now))
+        await reconcile_browser_evidence(session, camera, rule)
         await session.commit()
     except IntegrityError:
         await session.rollback()
@@ -323,10 +325,13 @@ async def upload_browser_recording(
 ):
     from video_intelligence_api.models import RecordingSegment
 
-    await owned_session(camera_id, session, actor)
+    camera, rule = await owned_session(camera_id, session, actor)
     segment = await session.get(RecordingSegment, recording_id)
     if segment is None or segment.camera_id != camera_id:
         raise HTTPException(404, "Recording not found")
-    return await upload_recording_content(
+    result = await upload_recording_content(
         recording_id, request, session, settings, EdgePrincipal(None, actor.organization_id)
     )
+    await reconcile_browser_evidence(session, camera, rule)
+    await session.commit()
+    return result
