@@ -12,13 +12,11 @@ import {
   analyzeCloudFrames,
   cloudEventFields,
   formatTime,
-  listCloudSessions,
-  listSavedBrowserJobs,
+  loadBrowserWorkspace,
   saveBrowserJob,
   loadCloudSession,
   loadLocalSession,
   mergeSession,
-  readLocal,
   reviewCloudEvent,
   saveCloudClip,
   saveCloudEvent,
@@ -120,9 +118,9 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           throw new Error("Save this alert to your account before reviewing it.");
         Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome)));
       }
-      // Do not show a completed review before the IndexedDB transaction commits;
-      // an immediate reload can otherwise lose the user's last decision.
-      await saveLocal(s);
+      // Guest reviews require a committed device copy before success. Account
+      // reviews were already committed remotely; local storage is optional.
+      if (s.scope === "guest") await saveLocal(s);
       persist(s);
     } catch (e) {
       if (s.scope === "guest") event.review = previousReview;
@@ -146,6 +144,25 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           setSelectedAgent(undefined);
           setAgentName("");
           setJobs([]);
+          // Clear the previous owner's data before asynchronous account loading.
+          setHistory([]);
+          setSession(null);
+          setReplay(null);
+          setLoadedScope(null);
+          current.current = null;
+          const canvas = canvasRef.current;
+          canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+          const playback = playbackRef.current;
+          if (playback) {
+            playback.pause();
+            playback.removeAttribute("src");
+            playback.load();
+          }
+          setMetrics({ frames: 0, people: 0, seconds: 0, state: "Waiting for video" });
+          setInferenceMs(0);
+          setVisualStatus("");
+          setVisualFrames(0);
+          setPhase("Ready");
           setSessionMinutes(2);
           setCloudConsent(false);
           setPrompt("");
@@ -166,24 +183,16 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     if (!authReady) return;
-    void readLocal(scope)
-      .then(async (rows) => {
+    void loadBrowserWorkspace(scope)
+      .then((loaded) => {
         if (!cancelled) {
-          setHistory(rows);
+          setHistory(loaded.history);
+          setJobs(loaded.jobs);
+          setSaveProblem(loaded.warning);
           setSession(null);
           setReplay(null);
           current.current = null;
         }
-        if (scope !== "guest") {
-          const [remote, savedJobs] = await Promise.all([listCloudSessions(scope), listSavedBrowserJobs()]);
-          if (!cancelled) {
-            setHistory([
-              ...remote.map((r) => rows.find((local) => local.id === r.id) ?? r),
-              ...rows.filter((local) => !remote.some((r) => r.id === local.id)),
-            ]);
-            setJobs(savedJobs);
-          }
-        } else if (!cancelled) setJobs([]);
       })
       .catch(() => {
         if (!cancelled)
@@ -215,9 +224,11 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
       setHistory((rows) => [sessionMetadata(s), ...rows.filter((r) => r.id !== s.id)]);
     }
     void saveLocal(s).catch(() => {
-      if (mounted.current)
+      if (mounted.current && accountScope.current === s.scope)
         setSaveProblem(
-          "Local history could not be saved. Storage may be full. Download your recording before leaving.",
+          s.cloud
+            ? "Device storage is unavailable. Uploaded account footage is kept; check that remaining uploads finish before leaving."
+            : "Local history could not be saved. Storage may be full. Download your recording before leaving.",
         );
     });
   }
@@ -705,11 +716,12 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   }
   async function accountHistory() {
     try {
-      const rows = await listCloudSessions(scope);
-      setHistory((local) => [
-        ...rows.map((r) => local.find((s) => s.id === r.id) ?? r),
-        ...local.filter((s) => !rows.some((r) => r.id === s.id)),
-      ]);
+      const owner = scope;
+      const loaded = await loadBrowserWorkspace(owner);
+      if (accountScope.current !== owner) return;
+      setHistory(loaded.history);
+      setJobs(loaded.jobs);
+      setSaveProblem(loaded.warning);
     } catch (e) {
       setSaveProblem(
         e instanceof Error ? e.message : "Could not load account history.",

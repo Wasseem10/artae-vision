@@ -319,3 +319,27 @@ export async function loadCloudSession(
       .sort((a, b) => a.start - b.start),
   };
 }
+
+export async function loadBrowserWorkspace(scope: string) {
+  // Device storage and account storage have independent failure modes. A blocked
+  // IndexedDB database must not prevent a phone from showing its account data.
+  const [localResult, remoteResult, jobsResult] = await Promise.allSettled([
+    readLocal(scope),
+    scope === "guest" ? Promise.resolve([] as BrowserSession[]) : listCloudSessions(scope),
+    scope === "guest" ? Promise.resolve([] as SavedBrowserJob[]) : listSavedBrowserJobs(),
+  ]);
+  const local = localResult.status === "fulfilled" ? localResult.value : [];
+  const remote = remoteResult.status === "fulfilled" ? remoteResult.value : [];
+  const warnings = [];
+  if (localResult.status === "rejected") warnings.push("Device history is unavailable.");
+  if (remoteResult.status === "rejected") warnings.push("Account footage history could not load.");
+  if (jobsResult.status === "rejected") warnings.push("Saved agents could not load.");
+  return {
+    history: [
+      ...remote.map(r => ({ ...(local.find(l => l.id === r.id) ?? r), cloud: true })),
+      ...local.filter(l => !remote.some(r => r.id === l.id)),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    jobs: jobsResult.status === "fulfilled" ? jobsResult.value : [],
+    warning: warnings.length ? `${warnings.join(" ")} Any available history is shown; retry loading your history.` : null,
+  };
+}
