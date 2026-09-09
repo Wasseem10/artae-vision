@@ -5,6 +5,8 @@
   "type": "module",
   "packageManager": "pnpm@11.19.0",
   "scripts": {
+    "predev": "node scripts/prepare-vision.mjs",
+    "prebuild": "node scripts/prepare-vision.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -14,6 +16,7 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@mediapipe/tasks-vision": "0.10.32",
     "@supabase/supabase-js": "2.112.4",
     "next": "16.2.11",
     "react": "19.2.8",

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { InstantDemo } from "@/components/instant-demo";
+import { BrowserMonitor } from "@/components/browser-monitor";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
-  description: "Run a guided Artae camera-agent example without installing the camera service.",
+  description: "Run real on-device person and experimental pose-based fall detection without installing a camera service.",
 };
 
 export default function DemoPage() {
-  return <InstantDemo />;
+  return <BrowserMonitor />;
 }

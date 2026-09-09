@@ -36,3 +36,10 @@ coverage/
 # Local design research and Codex screenshots
 .codex-*.png
 .design-reference/
+
+# Reproducible third-party browser runtime (generated before dev/build)
+apps/web/public/vision/wasm/
+apps/web/public/vision/vision.js
+apps/web/public/vision/vision.cjs
+apps/web/public/vision/*.task
+browser-monitor-*.png

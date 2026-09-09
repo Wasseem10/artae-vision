@@ -28,6 +28,7 @@ from video_intelligence_api.routes import (
     agents,
     alerts,
     audit_logs,
+    browser_sessions,
     calibration,
     camera_commissioning,
     camera_discovery,
@@ -136,6 +137,7 @@ def create_app(
 
     for router in (
         health.router,
+        browser_sessions.router,
         identity.router,
         devices.router,
         fleet.router,

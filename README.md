@@ -1,9 +1,12 @@
 # AI Video Intelligence Platform
 
-> **Agents for Humans 2026:** Artae uses the Strands Agents SDK and Amazon
-> Bedrock to turn confirmed visual events into evidence, responder notifications,
-> and human-review requests. See the [submission plan](docs/hackathon-submission.md)
-> and [architecture diagrams](docs/hackathon-architecture.md).
+> **Current status:** The no-install `/demo` runs actual MediaPipe body-pose
+> inference in a browser worker, with person detection, experimental fall
+> candidates, local recording, replay, and persistent logs. Authenticated archive
+> endpoints reuse the account storage backend. The Strands/Bedrock coordinator
+> is implemented but its live AWS integration is **not yet verified**: the account
+> currently has zero Nova 2 Lite quota. Do not describe this as a validated
+> elder-care or emergency-response product. See [tested scope](docs/browser-demo.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
@@ -11,10 +14,22 @@ combine what it sees with authorized business-system context, take guarded actio
 and search the resulting evidence. The revised completion phases are in
 [`docs/product-roadmap.md`](docs/product-roadmap.md).
 
-## Hackathon demo path
+## No-install demo
 
-The submission deliberately proves one dependable workflow instead of claiming
-that every visual prompt is equally reliable:
+Open `/demo`, choose **A person in view**, leave **Use a sample video** selected,
+and press **Start agent**. For a staged fall, select **A possible fall** and one
+of the named samples. Use **Stop agent**, **Review footage**, and **Past sessions**
+to inspect the results. No account or native camera service is required for this
+local mode. Sign in **before** starting to request account-backed saving.
+
+This path does not accept arbitrary visual prompts, send phone calls, or run
+while the page is closed. Sessions stop after two minutes. Browser fall detection
+is a one-person temporal heuristic, not a medically validated classifier.
+
+## Planned AWS hackathon path
+
+The intended AWS demonstration still needs a successful live model call and
+end-to-end delivery validation. The native-worker path is:
 
 1. A camera or recorded test clip runs through the YOLO pose detector.
 2. The fall state machine confirms a staged fall across multiple frames.

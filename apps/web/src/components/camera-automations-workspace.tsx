@@ -434,6 +434,7 @@ export function CameraAutomationsWorkspace({
       <aside className="visionSidebar">
         <button className="visionBrand" onClick={startNewConversation} type="button"><strong>artae<span>.</span></strong><small>VISION</small></button>
         <button className="visionNewChat" onClick={startNewConversation} type="button"><Icon name="plus" /> New conversation</button>
+        <Link className="visionNewChat" href="/demo"><Icon name="camera" /> No-install camera agent</Link>
         <nav aria-label="Vision workspace">
           {navigation.map((item) => <button className={view === item.id ? "isActive" : ""} key={item.id} onClick={() => item.id === "conversation" ? startNewConversation() : setView(item.id)} type="button"><Icon name={item.icon} /> {item.label}{item.id === "alerts" && currentAlerts.length > 0 && <i>{currentAlerts.length}</i>}</button>)}
         </nav>

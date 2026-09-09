@@ -107,7 +107,7 @@ export function MarketingPage() {
         <div className={styles.heroEyebrow}><i /> AI video agents for safety and operations</div>
         <h1>Tell your cameras what to watch for.<br /><span>Artae alerts you and takes action.</span></h1>
         <p>Connect a live camera or upload video, then describe the event in plain language. Artae watches for it, saves the evidence, and sends an alert or triggers the action you choose.</p>
-        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/login"><FiVideo /> Give a camera a job</Link><Link className={styles.heroSecondary} href="/demo"><FiEye /> Run the no-install demo <b>→</b></Link></div>
+        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/demo"><FiVideo /> Start a camera agent</Link><Link className={styles.heroSecondary} href="/login?next=demo"><FiEye /> Sign in & save your footage <b>→</b></Link></div>
         <div className={styles.heroSteps} aria-label="How Artae works">
           <span><b>01</b> Connect video</span><FiArrowRight /><span><b>02</b> Describe the event</span><FiArrowRight /><span><b>03</b> Get alerts and actions</span>
         </div>
@@ -221,7 +221,7 @@ export function MarketingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <section className={styles.footerCta}><p>See it before you install it</p><h2>Run a camera agent from start to alert.</h2><span>The guided sample makes the product flow testable in any modern browser. Live cameras use the local Artae YOLO service.</span><div><Link className={styles.heroPrimary} href="/demo">Try the demo</Link><Link href="/login">Open workspace</Link></div></section>
+        <section className={styles.footerCta}><p>No installation needed</p><h2>Run a camera agent from start to alert.</h2><span>Try person detection or experimental fall detection with a sample, an uploaded video, or your webcam. See the body-pose overlay, replay footage, and review the event log.</span><div><Link className={styles.heroPrimary} href="/demo">Try real detection</Link><Link href="/login?next=demo">Sign in to save</Link></div></section>
         <div className={styles.footerGrid}><div className={styles.footerBrand}><Link className={styles.brand} href="#top"><span className={styles.brandMark}><FiActivity /></span><strong>artae</strong></Link><p>Visual intelligence powered by everything your cameras have seen.</p><small>Account-saved · live · recorded</small></div>{[
           ["Product", ["Overview", "Agents", "Footage", "Alerts"]], ["Solutions", ["Workplace safety", "Loading docks", "Vehicle access", "Video review"]], ["Company", ["About", "Principles", "Contact", "Sign in"]], ["Trust", ["Security", "Privacy", "Retention", "Evidence review"]]
         ].map(([title, links]) => <nav key={title as string}><h3>{title}</h3>{(links as string[]).map((link) => <a href={link === "Sign in" ? "/login" : "#top"} key={link}>{link}</a>)}</nav>)}</div>

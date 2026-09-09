@@ -117,7 +117,7 @@ function requireFreshLogin(): void {
   window.dispatchEvent(new Event("artae:auth-required"));
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const execute = async (accessToken?: string): Promise<Response> => fetch(`${API_URL}/api/v1${path}`, {
     ...init,
     headers: {

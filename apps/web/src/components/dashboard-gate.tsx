@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Dashboard } from "@/components/dashboard";
 import { isLocalDemoHost } from "@/lib/demo-auth";
+import { LOGIN_RETURN_KEY } from "@/lib/login-destination";
 import { getSupabaseBrowserClient, isSupabaseConfigured, syncApiSession } from "@/lib/supabase";
 
 export function DashboardGate() {
@@ -19,11 +20,7 @@ export function DashboardGate() {
 
     if (!isSupabaseConfigured()) {
       const timer = window.setTimeout(() => {
-        if (!sessionStorage.getItem("artae_demo_session")) {
-          router.replace("/login");
-          return;
-        }
-        setReady(true);
+        router.replace("/login");
       }, 0);
       return () => window.clearTimeout(timer);
     }
@@ -46,6 +43,12 @@ export function DashboardGate() {
         router.replace("/login");
         return;
       }
+      const destination = sessionStorage.getItem(LOGIN_RETURN_KEY);
+      sessionStorage.removeItem(LOGIN_RETURN_KEY);
+      if (destination === "/demo") {
+        router.replace("/demo");
+        return;
+      }
       setReady(true);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -63,7 +66,7 @@ export function DashboardGate() {
   }, [router]);
 
   if (!ready) {
-    return <main aria-label="Loading workspace" style={{ minHeight: "100vh", background: "#101212" }} />;
+    return <main aria-label="Loading workspace" style={{ minHeight: "100vh", background: "#fff", color: "#24272a", display: "grid", placeItems: "center" }}><p role="status">Opening your workspace…</p></main>;
   }
 
   return <Dashboard />;

@@ -7,6 +7,7 @@ import { FiActivity, FiArrowRight, FiCheck } from "react-icons/fi";
 
 import styles from "./login-page.module.css";
 import { isLocalDemoHost, isLocalDemoLogin, LOCAL_DEMO_EMAIL, LOCAL_DEMO_PASSWORD } from "@/lib/demo-auth";
+import { loginDestination, LOGIN_RETURN_KEY } from "@/lib/login-destination";
 import { getSupabaseBrowserClient, isGoogleAuthAvailable, isSupabaseConfigured, syncApiSession } from "@/lib/supabase";
 
 export function LoginPage() {
@@ -41,6 +42,7 @@ export function LoginPage() {
     try {
       if (!isSupabaseConfigured()) throw new Error("Supabase authentication is not configured.");
       if (!googleAvailable) throw new Error("Google sign-in still needs to be enabled in Supabase.");
+      sessionStorage.setItem(LOGIN_RETURN_KEY, loginDestination(window.location.search));
       const { error: oauthError } = await getSupabaseBrowserClient().auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo: `${window.location.origin}/app` },
@@ -69,14 +71,12 @@ export function LoginPage() {
       if (isLocalDemoLogin(email, password, window.location.hostname)) {
         sessionStorage.removeItem("access_token");
         sessionStorage.setItem("artae_demo_session", JSON.stringify({ email: LOCAL_DEMO_EMAIL, signedInAt: new Date().toISOString() }));
-        router.replace("/app");
+        router.replace(loginDestination(window.location.search));
         return;
       }
 
       if (!isSupabaseConfigured()) {
-        sessionStorage.setItem("artae_demo_session", JSON.stringify({ email, signedInAt: new Date().toISOString() }));
-        router.push("/app");
-        return;
+        throw new Error("Account sign-in is not configured. You can still try the camera demo without an account; guest recordings stay on this device.");
       }
 
       const supabase = getSupabaseBrowserClient();
@@ -94,7 +94,8 @@ export function LoginPage() {
         if (loginError) throw loginError;
         syncApiSession(data.session);
       }
-      router.replace("/app");
+      sessionStorage.removeItem(LOGIN_RETURN_KEY);
+      router.replace(loginDestination(window.location.search));
     } catch (failure) {
       const detail = failure instanceof Error ? failure.message : "Authentication failed. Please try again.";
       setError(
@@ -161,7 +162,8 @@ export function LoginPage() {
             <button disabled={working} type="submit">{working ? "Please wait…" : mode === "login" ? "Continue to workspace" : "Create account"} <span><FiArrowRight /></span></button>
           </form>
           {localDemoAvailable ? <p className={styles.previewNote}>Local demo account: <strong>{LOCAL_DEMO_EMAIL}</strong> / <strong>{LOCAL_DEMO_PASSWORD}</strong></p> : null}
-          {!isSupabaseConfigured() ? <p className={styles.previewNote}>Local preview mode is active. Configure Supabase to enable persistent production accounts.</p> : null}
+          <p className={styles.previewNote}><Link href="/demo">Try real detection without an account →</Link></p>
+          {!isSupabaseConfigured() ? <p className={styles.previewNote}>Account sign-in is unavailable until Supabase is configured. Guest recordings are not cloud backups.</p> : null}
         </div>
         <p className={styles.legal}>By continuing, you agree to the Terms and Privacy Policy.</p>
       </section>
