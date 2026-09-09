@@ -142,7 +142,13 @@ async def create_session(
         original_prompt=f"Show an in-app alert: {title} (browser pose analysis).",
         spec={"browser_started_at": payload.started_at.isoformat() if payload.started_at else None},
     )
-    session.add_all([camera, zone, rule])
+    # These models use FK IDs, not ORM relationships. Flush parents explicitly;
+    # SQLite without FK enforcement previously hid the PostgreSQL ordering bug.
+    session.add(camera)
+    await session.flush()
+    session.add(zone)
+    await session.flush()
+    session.add(rule)
     await session.commit()
     await session.refresh(camera)
     return session_read(camera, rule)
@@ -205,10 +211,11 @@ async def record_observation(
     run = await coordinate_incident(event, camera, rule, request.app.state.settings)
     if run:
         event.details = {**event.details, "strands_agent": run.model_dump(mode="json")}
-    session.add(event)
-    # Intentionally in-app only. Never execute arbitrary client-supplied destinations.
-    session.add(Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now))
     try:
+        session.add(event)
+        await session.flush()
+        # In-app only; never execute client-supplied destinations.
+        session.add(Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now))
         await session.commit()
     except IntegrityError:
         await session.rollback()

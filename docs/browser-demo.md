@@ -9,7 +9,7 @@ a possible-fall event. A fall requires upright posture, downward motion, and a
 sustained horizontal posture. The displayed visibility score is **not a fall
 probability**. Missing/obscured bodies and camera angles can cause misses.
 
-Start/Stop controls own the worker, video tracks, animation loop, and recorder.
+Start/Stop controls own the worker, video tracks, sampling timer, and recorder.
 The canvas is recorded in independent approximately 10-second segments, with a
 two-minute session cap. Logs and recording blobs are stored in IndexedDB, scoped
 to guest or the current account. Stop retains history. Browser storage can be
@@ -41,6 +41,18 @@ Real model execution in isolated desktop Chrome, with no mocked detections:
 Stop and page-reload tests retained the events and playable recording segments.
 These few clips are development smoke tests, **not an accuracy benchmark or
 evidence of medical reliability**. Do not stage a real fall to test the app.
+
+A normal Chrome session exposed compositor throttling of requestAnimationFrame:
+only 14 frames were analyzed in 12 seconds, missing the fall. Frame acquisition
+now uses a bounded timer independent of rendering. The same live-browser test
+then analyzed 81 frames and reported one possible fall at six seconds. Model
+processing time is visible in the UI. Keep the tab visible while monitoring.
+
+API tests now enforce SQLite foreign keys, reproducing and preventing a live
+PostgreSQL failure caused by inserting a rule before its camera and zone. Explicit
+flush ordering also ensures an observation exists before its alert is inserted.
+Replay account copy reads fresh cloud metadata and streams the remote footage,
+without relying on or deleting locally recorded blobs.
 
 Run `pnpm test`, `pnpm typecheck`, `pnpm lint`, and `pnpm build` in `apps/web`.
 Run `pytest tests/api` in the configured Python environment. The browser harness

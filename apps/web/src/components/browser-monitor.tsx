@@ -63,6 +63,7 @@ export function BrowserMonitor() {
   const [saving, setSaving] = useState(0),
     [sound, setSound] = useState(true);
   const [fallSample, setFallSample] = useState("fall-lateral");
+  const [inferenceMs, setInferenceMs] = useState(0);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured());
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
 
@@ -206,7 +207,7 @@ export function BrowserMonitor() {
       media: MediaStream | null = null,
       recordingStream: MediaStream | null = null,
       recorder: MediaRecorder | null = null;
-    let animation = 0,
+    let animation: ReturnType<typeof setInterval> | undefined,
       timer: ReturnType<typeof setTimeout> | undefined,
       loadTimer: ReturnType<typeof setTimeout> | undefined;
     let sourceUrl: string | null = null,
@@ -229,7 +230,7 @@ export function BrowserMonitor() {
       stopped = true;
       active.current = false;
       cancelLoading?.();
-      cancelAnimationFrame(animation);
+      clearInterval(animation);
       clearTimeout(timer);
       clearTimeout(loadTimer);
       worker?.terminate();
@@ -413,6 +414,7 @@ export function BrowserMonitor() {
           return;
         }
         if (data.type !== "result") return;
+        setInferenceMs(Math.round(data.inferenceMs ?? 0));
         points = data.landmarks;
         frames++;
         const f = poseFeatures(points, canvas.width, canvas.height);
@@ -519,9 +521,12 @@ export function BrowserMonitor() {
               }
             });
         }
-        animation = requestAnimationFrame(draw);
       };
       draw();
+      // Sampling must not depend on browser paint callbacks. Chrome may reduce
+      // requestAnimationFrame cadence for embedded/occluded previews to ~1 FPS.
+      // Inference remains bounded to ~8 FPS; the recorder gets 20 FPS updates.
+      animation = setInterval(draw, 50);
     } catch (e) {
       if (!stopped)
         setProblem(
@@ -565,21 +570,26 @@ export function BrowserMonitor() {
       );
     }
   }
-  async function openSession(s: BrowserSession) {
+  async function openSession(s: BrowserSession, cloudOnly = false) {
     if (running || saving) return;
+    setSaveProblem(null);
     let loaded = s;
     if (s.cloud)
       try {
-        loaded = mergeSession(s, await loadCloudSession(s));
+        const remote = await loadCloudSession(s);
+        loaded = cloudOnly ? remote : mergeSession(s, remote);
       } catch {
         setSaveProblem(
-          "Account history is unavailable right now. Showing any recordings saved on this device.",
+          cloudOnly
+            ? "Could not open the account copy. Your local recording has not been removed."
+            : "Account history is unavailable right now. Showing any recordings saved on this device.",
         );
+        if (cloudOnly) return;
       }
     current.current = loaded;
     setSession(loaded);
     setReplay(null);
-    setPhase("Saved session");
+    setPhase(cloudOnly ? "Account copy · streamed from cloud storage" : "Saved session");
     if (loaded.clips[0]) playClip(loaded.clips[0]);
   }
   return (
@@ -716,6 +726,7 @@ export function BrowserMonitor() {
               </span>
               <span>{metrics.state}</span>
             </div>
+            <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
               <p>
@@ -846,6 +857,14 @@ export function BrowserMonitor() {
               onClick={() => void retrySave()}
             >
               Retry account save
+            </button>
+          )}
+          {scope !== "guest" && session?.cloud && (
+            <button
+              disabled={saving > 0 || running}
+              onClick={() => void openSession(session, true)}
+            >
+              Replay account copy
             </button>
           )}
         </div>

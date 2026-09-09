@@ -16,8 +16,9 @@ self.onmessage = async ({ data }) => {
       self.postMessage({ type: 'ready' });
     } else if (data.type === 'frame') {
       if (!model) throw new Error('Pose model is not ready');
+      const began = performance.now();
       const result = model.detectForVideo(data.bitmap, data.timestamp);
-      self.postMessage({ type: 'result', landmarks: result.landmarks[0] || [], timestamp: data.timestamp });
+      self.postMessage({ type: 'result', landmarks: result.landmarks[0] || [], timestamp: data.timestamp, inferenceMs:performance.now()-began });
     }
   } catch (error) {
     self.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });

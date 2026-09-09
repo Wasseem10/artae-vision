@@ -1,8 +1,23 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from sqlalchemy import event as sqlalchemy_event
+from sqlalchemy.engine import Engine
 from video_intelligence_api.auth import Actor, get_current_actor
 from video_intelligence_api.models import OrganizationRole
+
+
+@pytest.fixture(autouse=True)
+def enforce_sqlite_foreign_keys():
+    def enable(connection, _record):
+        cursor = connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    sqlalchemy_event.listen(Engine, "connect", enable)
+    yield
+    sqlalchemy_event.remove(Engine, "connect", enable)
 
 
 def create(client, job="presence"):
