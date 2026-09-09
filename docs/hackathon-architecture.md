@@ -1,70 +1,60 @@
 # Agents for Humans architecture
 
-Artae is submitted as a **Professional Agent** for safety and operations teams.
-It removes the repetitive work of watching camera walls and surfaces only a
-confirmed incident or a decision that needs a person.
+Artae's proposed Professional Agent entry helps users review visual events.
+The verified public browser path below does not require a native camera service.
+The older installed YOLO/RTSP path is separate and is not a prerequisite for judges.
 
 ```mermaid
 flowchart LR
-    Camera[Webcam, RTSP camera, or uploaded video] --> Edge[Artae edge worker]
-    Edge --> YOLO[YOLO object and pose models]
-    YOLO --> Rules[Temporal rules and confidence gates]
-    Rules -->|confirmed event| API[FastAPI control plane]
-
-    API --> Strands[Strands Incident Coordinator]
-    Strands --> Evidence[Preserve evidence tool]
-    Strands --> Notify[Notify responder tool]
-    Strands --> Review[Request human review tool]
-
-    Evidence --> Storage[(Supabase or S3 footage)]
-    Notify --> Alerts[(Alert and action queue)]
-    Review --> Console[Operator console]
-    Alerts --> Worker[Delivery worker]
-    Worker --> Responder[Assigned responder]
-
-    API --> Database[(PostgreSQL)]
-    API --> Console
+    Video[Webcam, upload, or licensed sample] --> Browser[Browser video and recording]
+    Browser --> Pose[MediaPipe pose worker]
+    Pose --> Rules[Person / experimental fall rules]
+    Browser -->|consented sampled frames| Vision[Nova 2 Lite visual check]
+    Rules --> API[Account-scoped FastAPI on Vercel]
+    Vision --> API
+    API --> Agent[Strands Incident Coordinator on Bedrock]
+    Agent --> Plan[Evidence, in-app notification, review tool requests]
+    Plan --> Execute[Deterministic bounded execution]
+    Execute --> DB[(Account events, alerts, review state)]
+    Browser -->|recorded segments| Storage[(Private account footage)]
+    Storage --> Evidence[Overlapping clip references]
+    Execute --> Evidence
+    DB --> UI[Persistent event log]
+    Evidence --> UI
+    UI --> Human[Replay, acknowledge, reviewed, false alarm]
 ```
 
 ## Responsibility boundaries
 
-- **YOLO and temporal rules** process frames continuously. A network model is
-  never placed in the real-time frame loop.
-- **Strands Agents SDK** receives a compact, confirmed incident and selects the
-  appropriate operational tools. Those tool choices control creation of the
-  evidence job and responder alert. The tool calls and aggregate usage are stored
-  with the event, without storing private chain-of-thought.
-- **Safety policy** guarantees that a provider outage or omitted tool call can
-  never suppress a confirmed safety alert.
-- **The delivery worker** owns retries and delivery status. The model may prepare
-  a notification, but it may never claim that a notification was delivered.
-- **Humans remain in control** of ambiguous semantic detections and guarded
-  external actions.
+- **MediaPipe and temporal rules** run locally on actual frames. Fall detection
+  is experimental, tracks one body, and is not proof of injury or a medical alarm.
+- **Nova 2 Lite visual checks** receive at most four sampled frames per request
+  for signed-in, consenting users. Results distinguish match, no match,
+  uncertainty, and unsupported requests. Missing a brief action remains possible.
+- **Strands Agents SDK** receives an incident and selects bounded operational
+  tools. Tool requests and usage are stored, not private chain-of-thought.
+- **Deterministic execution** saves the in-app alert, links ready overlapping
+  account recordings, and maintains the human-review queue. A request to preserve
+  evidence is not represented as available footage until a recording is ready.
+- **Failures are explicit.** Local candidates can retain a fallback review alert
+  when the coordinator fails. A failed custom visual check is not a no-match.
+- **Account isolation** applies to jobs, sessions, incidents, and private footage.
+  Guest recordings remain local to their browser. Account footage uploads must
+  succeed before another device can replay it.
 
-## Strands tool loop
+## Deployment and limits
 
-```mermaid
-sequenceDiagram
-    participant Vision as YOLO + fall state machine
-    participant API as Artae API
-    participant Agent as Strands agent on Bedrock
-    participant Tools as Artae tools
-    participant Human as Responder
+Frontend and FastAPI are deployed to Vercel. Vercel production OIDC assumes an
+AWS role restricted to this API project and the Nova 2 Lite inference profile;
+there are no permanent AWS access keys in the browser. Supabase supplies account
+authentication and the existing private database/storage backend.
 
-    Vision->>API: Confirmed event + confidence + clip reference
-    API->>Agent: Grounded incident context
-    Agent->>Tools: preserve_evidence(...)
-    Agent->>Tools: notify_responder(...)
-    opt Ambiguous context
-        Agent->>Tools: request_human_review(...)
-    end
-    Tools-->>API: Auditable action plan
-    API->>Human: Persistent alert and evidence
-```
+The browser must stay open. Guest sessions last at most two minutes; signed-in
+sessions offer 2, 15, or 60 minutes and stop at 20 alerts. Recording is segmented
+for replay. An hour-long endurance run and broad mobile compatibility are not
+yet validated. No SMS, WhatsApp, or telephone delivery is enabled in this flow.
 
-## Deployment boundary
-
-The web console may remain on Vercel. The control plane and Strands coordinator
-can run in Docker for the local demonstration and are designed to move to Amazon
-Bedrock AgentCore Runtime. AgentCore is an optional hackathon enhancement; the
-required Strands implementation is already part of the API process.
+Live positive and negative AWS checks, Strands coordination, saved jobs, footage,
+and review persistence were exercised on September 9, 2026. See
+[test evidence and limitations](browser-demo.md). This is not unattended
+elder-care monitoring or a substitute for an emergency response system.

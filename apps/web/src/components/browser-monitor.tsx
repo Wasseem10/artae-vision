@@ -16,12 +16,14 @@ import {
   listSavedBrowserJobs,
   saveBrowserJob,
   loadCloudSession,
+  loadLocalSession,
   mergeSession,
   readLocal,
   reviewCloudEvent,
   saveCloudClip,
   saveCloudEvent,
   saveLocal,
+  sessionMetadata,
   type BrowserClip,
   type BrowserSession,
   type BrowserEvent,
@@ -210,7 +212,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   function persist(s: BrowserSession) {
     if (mounted.current && accountScope.current === s.scope) {
       setSession({ ...s, events: [...s.events], clips: [...s.clips] });
-      setHistory((rows) => [s, ...rows.filter((r) => r.id !== s.id)]);
+      setHistory((rows) => [sessionMetadata(s), ...rows.filter((r) => r.id !== s.id)]);
     }
     void saveLocal(s).catch(() => {
       if (mounted.current)
@@ -718,10 +720,14 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     if (running || saving || reviewing) return;
     setSaveProblem(null);
     let loaded = s;
+    if (!cloudOnly) {
+      try { loaded = await loadLocalSession(s); }
+      catch { setSaveProblem("Local footage could not load. Trying the account copy if available."); }
+    }
     if (s.cloud)
       try {
         const remote = await loadCloudSession(s);
-        loaded = cloudOnly ? remote : mergeSession(s, remote);
+        loaded = cloudOnly ? remote : mergeSession(loaded, remote);
       } catch {
         setSaveProblem(
           cloudOnly

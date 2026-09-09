@@ -3,9 +3,10 @@
 > **Current status:** The no-install `/demo` runs actual MediaPipe body-pose
 > inference in a browser worker, with person detection, experimental fall
 > candidates, local recording, replay, and persistent logs. Authenticated archive
-> endpoints reuse the account storage backend. The Strands/Bedrock coordinator
-> is implemented but its live AWS integration is **not yet verified**: the account
-> currently has zero Nova 2 Lite quota. Do not describe this as a validated
+> endpoints reuse the account storage backend. Signed-in users can save named jobs,
+> run bounded AWS visual-condition checks, and replay account recordings. Live
+> Nova 2 Lite and Strands calls, positive and negative visual checks, saved alerts,
+> and linked evidence were verified on September 9, 2026. Do not describe this as a validated
 > elder-care or emergency-response product. See [tested scope](docs/browser-demo.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
@@ -22,22 +23,30 @@ of the named samples. Use **Stop agent**, **Review footage**, and **Past session
 to inspect the results. No account or native camera service is required for this
 local mode. Sign in **before** starting to request account-backed saving.
 
-This path does not accept arbitrary visual prompts, send phone calls, or run
-while the page is closed. Sessions stop after two minutes. Browser fall detection
+Signed-in users can select **Describe a visual condition**, enter an observable
+condition, and consent to sampled frames being sent to AWS. The model reports a
+match, no match, uncertainty, or an unsupported request; it is not a guarantee of
+detecting every event. `/app` uses this same browser-first workspace; the native
+camera-service interface remains at `/app/native`.
+
+This path does not send phone calls or run while the page is closed. Guest sessions
+stop after two minutes; account sessions offer 2, 15, or 60 minutes, with a 20-alert
+limit and a visible Stop button. Browser fall detection
 is a one-person temporal heuristic, not a medically validated classifier.
 
-## Planned AWS hackathon path
+## Working AWS browser path
 
-The intended AWS demonstration still needs a successful live model call and
-end-to-end delivery validation. The native-worker path is:
+The production browser path uses a restricted Vercel OIDC role, not permanent AWS
+keys. The following path has been exercised against the deployed services:
 
-1. A camera or recorded test clip runs through the YOLO pose detector.
-2. The fall state machine confirms a staged fall across multiple frames.
+1. A webcam, uploaded video, or licensed sample runs through browser MediaPipe pose inference.
+2. Person/fall jobs use temporal pose rules; custom jobs send up to four sampled frames to Nova 2 Lite.
 3. The API sends the grounded event to the **Strands Incident Coordinator**.
 4. The coordinator invokes `preserve_evidence` and `notify_responder`, adding
    `request_human_review` when the supplied facts are ambiguous.
-5. Artae stores the event and evidence job, creates the alert, and shows the
-   auditable Strands trace in the operator console.
+5. Artae saves an in-app alert, links overlapping uploaded recording segments,
+   and displays the coordinator trace and human-review controls. Review status
+   and footage persist after stopping and reloading.
 
 Strands is disabled by default so ordinary development never spends AWS credits.
 After configuring an AWS credential supported by the AWS SDK, set:
@@ -48,9 +57,11 @@ VIDEO_INTEL_API_STRANDS_MODEL_ID=us.amazon.nova-2-lite-v1:0
 VIDEO_INTEL_API_STRANDS_REGION=us-east-1
 ```
 
-Then run the normal API and camera stack below. A Bedrock outage does not suppress
-a confirmed safety event: the local safety policy still preserves evidence and
-queues a responder alert, and records that the run used the availability fallback.
+Then run the normal API and browser workspace. A coordinator outage does not suppress
+a locally detected candidate: the API records its fallback and creates the in-app
+review item. A custom vision-call failure is shown as an error, never a fabricated
+detection or an implicit no-match. No SMS, phone, or WhatsApp delivery is enabled
+in this browser flow.
 See the [submission checklist](docs/hackathon-submission.md),
 [architecture](docs/hackathon-architecture.md), and
 [third-party disclosure](docs/hackathon-disclosures.md).

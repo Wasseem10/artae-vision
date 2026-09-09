@@ -69,6 +69,9 @@ export type BrowserSession = {
   cloud?: boolean;
   agentId?: string;
 };
+export const sessionMetadata = (s: BrowserSession): BrowserSession => ({
+  ...s, clips: s.clips.map((clip) => ({ ...clip, blob: undefined })),
+});
 export type SavedBrowserJob = { id: string; name: string; job: MonitoringJob; prompt?: string };
 export const listSavedBrowserJobs = () => request<SavedBrowserJob[]>("/browser-sessions/jobs");
 export const saveBrowserJob = (job: SavedBrowserJob) => request<SavedBrowserJob>("/browser-sessions/jobs", {
@@ -103,21 +106,40 @@ export const formatTime = (t: number) =>
     .padStart(2, "0")}`;
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const open = indexedDB.open("artae-browser-sessions", 1);
-    open.onupgradeneeded = () =>
-      open.result.createObjectStore("sessions", { keyPath: "key" });
+    const open = indexedDB.open("artae-browser-sessions", 2);
+    open.onupgradeneeded = () => {
+      const db = open.result;
+      const sessions = db.objectStoreNames.contains("sessions")
+        ? open.transaction!.objectStore("sessions")
+        : db.createObjectStore("sessions", { keyPath: "key" });
+      if (!sessions.indexNames.contains("scope")) sessions.createIndex("scope", "scope");
+      if (!db.objectStoreNames.contains("clips")) db.createObjectStore("clips", { keyPath: "key" });
+    };
+    open.onblocked = () => reject(new Error("Close older Artae tabs to upgrade recording storage, then reload."));
     open.onerror = () => reject(open.error);
-    open.onsuccess = () => resolve(open.result);
+    open.onsuccess = () => {
+      open.result.onversionchange = () => open.result.close();
+      resolve(open.result);
+    };
   });
 }
 export async function saveLocal(value: BrowserSession) {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction("sessions", "readwrite");
+    const tx = db.transaction(["sessions", "clips"], "readwrite");
     tx.objectStore("sessions").put({
-      ...value,
+      ...sessionMetadata(value),
       key: `${value.scope}/${value.id}`,
     });
+    // Metadata changes must not clone/rewrite an hour of video every ten seconds.
+    // The v1 inline blobs migrate lazily during a run's next successful save.
+    const clips = tx.objectStore("clips");
+    for (const clip of value.clips) {
+      if (!clip.blob) continue;
+      const key = `${value.scope}/${value.id}/${clip.id}`;
+      const existing = clips.getKey(key);
+      existing.onsuccess = () => { if (existing.result === undefined) clips.put({ key, blob: clip.blob }); };
+    }
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error);
@@ -126,15 +148,34 @@ export async function saveLocal(value: BrowserSession) {
 export async function readLocal(scope: string): Promise<BrowserSession[]> {
   const db = await database();
   return new Promise<BrowserSession[]>((resolve, reject) => {
-    const read = db.transaction("sessions").objectStore("sessions").getAll();
+    const read = db.transaction("sessions").objectStore("sessions").index("scope").getAll(scope);
     read.onsuccess = () =>
       resolve(
         (read.result as BrowserSession[])
           .filter((s) => s.scope === scope)
+          .map(sessionMetadata)
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
       );
     read.onerror = () => reject(read.error);
   }).finally(() => db.close());
+}
+export async function loadLocalSession(s: BrowserSession): Promise<BrowserSession> {
+  const db = await database();
+  try {
+    const value = await new Promise<BrowserSession | undefined>((resolve, reject) => {
+      const get = db.transaction("sessions").objectStore("sessions").get(`${s.scope}/${s.id}`);
+      get.onsuccess = () => resolve(get.result);
+      get.onerror = () => reject(get.error);
+    });
+    if (!value) return s;
+    const tx = db.transaction("clips");
+    const clips = await Promise.all(value.clips.map((clip) => new Promise<BrowserClip>((resolve, reject) => {
+      const get = tx.objectStore("clips").get(`${s.scope}/${s.id}/${clip.id}`);
+      get.onsuccess = () => resolve({ ...clip, blob: get.result?.blob ?? clip.blob });
+      get.onerror = () => reject(get.error);
+    })));
+    return { ...value, clips };
+  } finally { db.close(); }
 }
 export async function createCloudSession(s: BrowserSession) {
   await request("/browser-sessions", {

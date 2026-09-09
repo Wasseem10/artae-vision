@@ -2,6 +2,33 @@
 
 ## What runs
 
+### Live AWS visual jobs (September 9)
+
+Signed-in users can save a plain-language visual condition. After explicit frame-sharing
+consent, the browser samples four 640-pixel JPEG frames and sends them to Nova 2 Lite
+through the authenticated API. The server validates the images, reserves a rate-limited
+check, and accepts only structured match/no-match/uncertain/unsupported results. Image
+bytes are not stored in event payloads. A match creates an account incident, invokes
+Strands, and links uploaded evidence; repeated matches have a 30-second alert cooldown.
+No-match and provider failure never fabricate alerts. Failures visibly stop that job.
+
+Production checks on September 9:
+- 13:19:33: "A red car is visible inside the room" against the licensed office
+  sample: eight frames checked, no match, zero alerts, recording uploaded.
+- 13:20:56: saved job "Office presence · AWS verification", condition "A person
+  is visible in the room": four frames checked, one matched account incident,
+  completed Strands coordination, two uploaded recording segments, no API error.
+- Saved named jobs and past sessions reappeared automatically after page reload.
+
+The source video is analyzed, not a scripted detection timeline. These are smoke
+tests, not general accuracy certification. Cloud sampling can miss fast actions.
+The operator must keep the tab open; this does not monitor a closed laptop.
+
+Local storage v2 stores each clip once, separately from changing metadata. History
+loads metadata first and retrieves video when opening a run. A regression test
+verified migration of a real 904,685-byte v1 clip, saved review, and replay after
+reload without losing the original footage.
+
 Incident cards support Acknowledge, Mark reviewed, and False alarm. Guest reviews
 persist on the device; account reviews update the existing alert and event in
 one tenant-scoped transaction, using the authenticated actor. Closed incidents

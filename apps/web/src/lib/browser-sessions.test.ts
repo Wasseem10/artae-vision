@@ -1,8 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({API_URL:"https://api.example.test", request:vi.fn()}));
-import { cloudEventFields, mergeSession, type BrowserSession } from "./browser-sessions";
+import { cloudEventFields, mergeSession, sessionMetadata, type BrowserSession } from "./browser-sessions";
 
 describe("merging account and local history", () => {
+  it("keeps history metadata without retaining video blobs or mutating the recording", () => {
+    const blob = new Blob(["video"], { type: "video/webm" });
+    const session: BrowserSession = { id: "1", scope: "account", name: "Office", job: "presence",
+      createdAt: "2026-09-09T12:00:00Z", events: [],
+      clips: [{ id: "clip", start: 0, duration: 10, width: 640, height: 480, blob, saved: true }] };
+    const metadata = sessionMetadata(session);
+    expect(metadata.clips[0].blob).toBeUndefined();
+    expect(metadata.clips[0].saved).toBe(true);
+    expect(session.clips[0].blob).toBe(blob);
+    expect(metadata.scope).toBe("account");
+  });
   it("restores human review and model summaries without claiming independent detection", () => {
     const fields = cloudEventFields({details:{review:{status:"resolved",outcome:"false_alarm"},strands_agent:{status:"fallback",summary:"Model unavailable"}}});
     expect(fields.review?.outcome).toBe("false_alarm");
