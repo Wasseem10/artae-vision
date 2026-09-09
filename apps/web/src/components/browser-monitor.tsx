@@ -13,6 +13,8 @@ import {
   cloudEventFields,
   formatTime,
   listCloudSessions,
+  listSavedBrowserJobs,
+  saveBrowserJob,
   loadCloudSession,
   mergeSession,
   readLocal,
@@ -24,6 +26,7 @@ import {
   type BrowserSession,
   type BrowserEvent,
   type ReviewOutcome,
+  type SavedBrowserJob,
 } from "@/lib/browser-sessions";
 import {
   getSupabaseBrowserClient,
@@ -32,7 +35,7 @@ import {
 } from "@/lib/supabase";
 import styles from "./instant-demo.module.css";
 
-export function BrowserMonitor() {
+export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null),
     canvasRef = useRef<HTMLCanvasElement>(null),
     playbackRef = useRef<HTMLVideoElement>(null);
@@ -44,7 +47,7 @@ export function BrowserMonitor() {
     cloudQueue = useRef(Promise.resolve()),
     audio = useRef<AudioContext | null>(null);
   const [scope, setScope] = useState("guest"),
-    [source, setSource] = useState<"sample" | "file" | "webcam">("sample"),
+    [source, setSource] = useState<"sample" | "file" | "webcam">(workspace ? "webcam" : "sample"),
     [file, setFile] = useState<File | null>(null);
   const [job, setJob] = useState<BrowserJob>("presence"),
     [phase, setPhase] = useState("Ready"),
@@ -71,6 +74,26 @@ export function BrowserMonitor() {
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured());
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
+  const [jobs, setJobs] = useState<SavedBrowserJob[]>([]);
+  const [agentName, setAgentName] = useState("");
+  const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
+  const [savingJob, setSavingJob] = useState(false);
+  const [sessionMinutes, setSessionMinutes] = useState(2);
+
+  async function saveAgent() {
+    if (scope === "guest" || !agentName.trim() || savingJob || running) return;
+    const owner = scope;
+    setSavingJob(true);
+    try {
+      const saved = await saveBrowserJob({ id: crypto.randomUUID(), name: agentName.trim(), job });
+      if (accountScope.current !== owner) return;
+      setJobs((rows) => [saved, ...rows]);
+      setSelectedAgent(saved.id);
+      setPhase("Agent saved to your account · ready to start");
+    } catch (e) {
+      setSaveProblem(e instanceof Error ? e.message : "Could not save agent.");
+    } finally { setSavingJob(false); }
+  }
 
   async function reviewIncident(event: BrowserEvent, outcome: ReviewOutcome) {
     const s = current.current;
@@ -113,6 +136,10 @@ export function BrowserMonitor() {
         if (next !== accountScope.current) {
           stopRef.current();
           accountScope.current = next;
+          setSelectedAgent(undefined);
+          setAgentName("");
+          setJobs([]);
+          setSessionMinutes(2);
           if (mounted.current) setScope(next);
         }
         syncApiSession(s);
@@ -129,25 +156,36 @@ export function BrowserMonitor() {
   }, []);
   useEffect(() => {
     let cancelled = false;
+    if (!authReady) return;
     void readLocal(scope)
-      .then((rows) => {
+      .then(async (rows) => {
         if (!cancelled) {
           setHistory(rows);
           setSession(null);
           setReplay(null);
           current.current = null;
         }
+        if (scope !== "guest") {
+          const [remote, savedJobs] = await Promise.all([listCloudSessions(scope), listSavedBrowserJobs()]);
+          if (!cancelled) {
+            setHistory([
+              ...remote.map((r) => rows.find((local) => local.id === r.id) ?? r),
+              ...rows.filter((local) => !remote.some((r) => r.id === local.id)),
+            ]);
+            setJobs(savedJobs);
+          }
+        } else if (!cancelled) setJobs([]);
       })
       .catch(() => {
         if (!cancelled)
           setSaveProblem(
-            "Local history storage is blocked. Download recordings before leaving.",
+            "History could not fully load. Any available local history is kept; retry Load account history.",
           );
       }).finally(() => { if (!cancelled) setLoadedScope(scope); });
     return () => {
       cancelled = true;
     };
-  }, [scope]);
+  }, [scope, authReady]);
   useEffect(
     () => () => {
       if (replay?.owned) URL.revokeObjectURL(replay.url);
@@ -240,10 +278,12 @@ export function BrowserMonitor() {
               ? `Sample: ${fallSample}`
               : "Sample: person in view",
       job,
+      agentId: selectedAgent,
       createdAt: new Date().toISOString(),
       events: [],
       clips: [],
     };
+    if (selectedAgent && agentName.trim()) s.name = `${agentName.trim()} · ${s.name}`;
     current.current = s;
     persist(s);
     let worker: Worker | null = null,
@@ -481,6 +521,10 @@ export function BrowserMonitor() {
             s.cloud = true;
             persist(s);
           });
+          if (s.events.length >= 20) {
+            stop();
+            setPhase("Stopped at the 20-alert session limit · logs and footage kept");
+          }
         }
         setMetrics({
           frames,
@@ -509,7 +553,7 @@ export function BrowserMonitor() {
       const draw = () => {
         if (stopped) return;
         lastAt = now();
-        if (lastAt >= 120) {
+        if (lastAt >= (scope === "guest" ? 120 : sessionMinutes * 60)) {
           stop();
           return;
         }
@@ -638,10 +682,10 @@ export function BrowserMonitor() {
           artae.
         </Link>
         <div>
-          <Link href="/app">Workspace</Link>
-          <Link href="/login?next=demo">
-            {scope === "guest" ? "Sign in to save to your account" : "Account"}
-          </Link>
+          <Link href="#saved-agents">My agents</Link>
+          <Link href="#history">Past footage</Link>
+          {scope === "guest" ? <Link href="/login?next=demo">Sign in to save</Link> :
+            <button disabled={running || saving > 0 || savingJob} onClick={() => void getSupabaseBrowserClient().auth.signOut()}>Sign out</button>}
         </div>
       </header>
       <section className={styles.intro}>
@@ -656,14 +700,20 @@ export function BrowserMonitor() {
           with person detection to check your setup.
         </p>
       </section>
-      <section className={styles.workspace}>
+      <section id="monitor-setup" className={styles.workspace}>
+        {scope !== "guest" && <div className={styles.savedJobSetup}>
+          <label>Agent name <input maxLength={80} value={agentName} placeholder="e.g. Hallway safety" disabled={running || savingJob} onChange={(e) => { setAgentName(e.target.value); setSelectedAgent(undefined); }} /></label>
+          <button disabled={running || savingJob || !agentName.trim() || !!selectedAgent} onClick={() => void saveAgent()}>
+            {savingJob ? "Saving agent…" : selectedAgent ? "Agent saved" : "Save this agent"}
+          </button>
+        </div>}
         <div className={styles.setup}>
           <label>
             1. What should it watch for?
             <select
               value={job}
               disabled={running || saving > 0}
-              onChange={(e) => setJob(e.target.value as BrowserJob)}
+              onChange={(e) => { setJob(e.target.value as BrowserJob); setSelectedAgent(undefined); }}
             >
               <option value="presence">A person in view</option>
               <option value="fall">A possible fall · experimental</option>
@@ -715,12 +765,20 @@ export function BrowserMonitor() {
               </select>
             </label>
           )}
+          {scope !== "guest" && <label>
+            Session duration
+            <select value={sessionMinutes} disabled={running || saving > 0} onChange={(e) => setSessionMinutes(Number(e.target.value))}>
+              <option value={2}>2 minutes</option>
+              <option value={15}>15 minutes</option>
+              <option value={60}>60 minutes</option>
+            </select>
+          </label>}
         </div>
         <p className={styles.note}>
           {job === "fall"
             ? "Keep one person’s full body visible. A possible fall requires upright posture, descent, then a sustained horizontal posture. Use a recorded clip; do not fall to test this. This is experimental, not an emergency monitoring system."
             : "A visible body pose sustained for one second creates an alert. One person is tracked at a time; small or obscured people may not be detected."}{" "}
-          Sessions stop after 2 minutes. No audio is recorded.
+          This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, or when you press Stop. No audio is recorded. The browser must stay open; closing your laptop stops monitoring.
         </p>
         <div className={styles.ruleBar}>
           <strong role="status">{phase}</strong>
@@ -838,6 +896,15 @@ export function BrowserMonitor() {
                         </small>
                       )}
                       {event.summary && <p className={styles.incidentSummary}>{event.summary}</p>}
+                      {event.notification?.message && <p className={styles.incidentSummary}>In-app notification: {event.notification.message}</p>}
+                      {event.actions?.length ? <details className={styles.actionTrace}>
+                        <summary>Agent actions</summary>
+                        <ul>{Array.from(new Set(event.actions)).map((action) => <li key={action}>
+                          {action === "preserve_evidence" ? "Evidence requested" : action === "notify_responder" ? "In-app alert saved" : action === "request_human_review" ? "Added to review queue" : action.replaceAll("_", " ")}
+                        </li>)}</ul>
+                        <p>{session.clips.some((clip) => clip.saved && clip.start <= event.at && clip.start + clip.duration >= event.at)
+                          ? "Account footage available for this event." : "Waiting for this event’s recording upload."}</p>
+                      </details> : null}
                       <span>
                         {event.review?.status === "resolved"
                           ? event.review.outcome === "false_alarm" ? "Closed · marked as false alarm" : "Closed · reviewed"
@@ -946,7 +1013,17 @@ export function BrowserMonitor() {
         , <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
         Excerpts trimmed, resized and re-encoded. No endorsement implied.
       </p>
-      <section className={styles.history}>
+      <section id="saved-agents" className={styles.history}>
+        <header><h2>My agents</h2></header>
+        <p>{scope === "guest" ? "Sign in to keep named agents in your account." : "Choose a saved job, connect your video, then press Start agent. Saved does not mean it is running."}</p>
+        <div>{jobs.map((saved) => <button key={saved.id} disabled={running || saving > 0 || savingJob} onClick={() => {
+          setJob(saved.job); setAgentName(saved.name); setSelectedAgent(saved.id);
+          setPhase(`${saved.name} selected · press Start agent`);
+          document.getElementById("monitor-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}><strong>{saved.name}</strong><span>{saved.job === "fall" ? "Possible fall · experimental" : "Person in view"} · In-app alert</span></button>)}</div>
+        {scope !== "guest" && !jobs.length && <p>Name your first agent above to save it for next time.</p>}
+      </section>
+      <section id="history" className={styles.history}>
         <header>
           <h2>Past sessions</h2>
           {scope !== "guest" && (
@@ -979,6 +1056,7 @@ export function BrowserMonitor() {
           ))}
         </div>
       </section>
+      <footer className={styles.attribution}><Link href="/app/native">Installed camera workspace (requires the camera service)</Link> · Browser monitoring is not an emergency response service.</footer>
     </main>
   );
 }

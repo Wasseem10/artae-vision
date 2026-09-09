@@ -12,6 +12,9 @@ export type BrowserEvent = {
   coordinator?: string;
   summary?: string;
   review?: IncidentReview;
+  actions?: string[];
+  evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
+  notification?: { channel: string; status: string; message: string; priority: string };
 };
 export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
 export type IncidentReview = {
@@ -21,8 +24,10 @@ export type IncidentReview = {
 };
 export type CloudEventResult = {
   details: {
-    strands_agent?: { status: string; summary: string };
+    strands_agent?: { status: string; summary: string; tools_invoked?: string[] };
     review?: IncidentReview;
+    evidence?: BrowserEvent["evidence"];
+    notification?: BrowserEvent["notification"];
   };
 };
 export function cloudEventFields(result: CloudEventResult) {
@@ -31,6 +36,9 @@ export function cloudEventFields(result: CloudEventResult) {
     coordinator: result.details.strands_agent?.status,
     summary: result.details.strands_agent?.summary,
     review: result.details.review,
+    actions: result.details.strands_agent?.tools_invoked,
+    evidence: result.details.evidence,
+    notification: result.details.notification,
   };
 }
 export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
@@ -57,7 +65,13 @@ export type BrowserSession = {
   events: BrowserEvent[];
   clips: BrowserClip[];
   cloud?: boolean;
+  agentId?: string;
 };
+export type SavedBrowserJob = { id: string; name: string; job: BrowserJob };
+export const listSavedBrowserJobs = () => request<SavedBrowserJob[]>("/browser-sessions/jobs");
+export const saveBrowserJob = (job: SavedBrowserJob) => request<SavedBrowserJob>("/browser-sessions/jobs", {
+  method: "POST", body: JSON.stringify(job),
+});
 export function mergeSession(
   local: BrowserSession,
   cloud: BrowserSession,
@@ -128,6 +142,7 @@ export async function createCloudSession(s: BrowserSession) {
       name: s.name.slice(0, 80),
       job: s.job,
       started_at: s.createdAt,
+      agent_id: s.agentId,
     }),
   });
 }
@@ -178,7 +193,7 @@ export async function listCloudSessions(
 ): Promise<BrowserSession[]> {
   const rows =
     await request<
-      { id: string; name: string; job: BrowserJob; created_at: string }[]
+      { id: string; name: string; job: BrowserJob; created_at: string; agent_id?: string }[]
     >("/browser-sessions");
   return rows.map((r) => ({
     id: r.id,
@@ -187,6 +202,7 @@ export async function listCloudSessions(
     createdAt: r.created_at,
     scope,
     cloud: true,
+    agentId: r.agent_id,
     events: [],
     clips: [],
   }));
@@ -213,7 +229,7 @@ export async function loadCloudSession(
         width: number;
         height: number;
       }[]
-    >(`/cameras/${s.id}/recordings`),
+    >(`/cameras/${s.id}/recordings?limit=500`),
   ]);
   return {
     ...s,

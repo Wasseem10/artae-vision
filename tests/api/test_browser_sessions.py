@@ -33,6 +33,47 @@ def create(client, job="presence"):
     return response.json()
 
 
+def test_named_agent_persists_and_can_start_independent_runs(api_client):
+    payload = {"id": str(uuid.uuid4()), "name": "Hallway safety", "job": "fall"}
+    path = "/api/v1/browser-sessions/jobs"
+    saved = api_client.post(path, json=payload)
+    assert saved.status_code == 200, saved.text
+    assert api_client.post(path, json=payload).json() == saved.json()
+    assert api_client.get(path).json() == [payload]
+    assert api_client.get("/api/v1/browser-sessions").json() == []
+    for _ in range(2):
+        run = api_client.post("/api/v1/browser-sessions", json={
+            "id": str(uuid.uuid4()), "name": "Hallway run", "job": "fall", "agent_id": payload["id"],
+        })
+        assert run.status_code == 200
+        assert run.json()["agent_id"] == payload["id"]
+    assert len(api_client.get("/api/v1/browser-sessions").json()) == 2
+    mismatch = api_client.post("/api/v1/browser-sessions", json={
+        "id": str(uuid.uuid4()), "name": "Wrong job", "job": "presence", "agent_id": payload["id"],
+    })
+    assert mismatch.status_code == 409
+
+
+def test_saved_agents_are_private_and_cannot_execute_arbitrary_jobs(api_client):
+    payload = {"id": str(uuid.uuid4()), "name": "My job", "job": "fall"}
+    path = "/api/v1/browser-sessions/jobs"
+    assert api_client.post(path, json=payload).status_code == 200
+    assert api_client.post(path, json={**payload, "job": "open_gate"}).status_code == 422
+
+    async def other_actor():
+        return Actor(subject="other", organization_id=str(uuid.uuid4()), role=OrganizationRole.OWNER, issuer="test")
+
+    api_client.app.dependency_overrides[get_current_actor] = other_actor
+    try:
+        assert api_client.get(path).json() == []
+        assert api_client.post(path, json=payload).status_code == 404
+        assert api_client.post("/api/v1/browser-sessions", json={
+            "id": str(uuid.uuid4()), "name": "Other account", "job": "fall", "agent_id": payload["id"],
+        }).status_code == 404
+    finally:
+        api_client.app.dependency_overrides.clear()
+
+
 def test_browser_session_creates_durable_alert_without_edge_service(api_client):
     s = create(api_client)
     payload = {"id": str(uuid.uuid4()), "at_seconds": 2, "landmark_visibility": 0.9}

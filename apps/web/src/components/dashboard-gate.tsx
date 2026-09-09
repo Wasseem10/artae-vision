@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Dashboard } from "@/components/dashboard";
+import { BrowserMonitor } from "@/components/browser-monitor";
 import { isLocalDemoHost } from "@/lib/demo-auth";
 import { LOGIN_RETURN_KEY } from "@/lib/login-destination";
 import { getSupabaseBrowserClient, isSupabaseConfigured, syncApiSession } from "@/lib/supabase";
 
-export function DashboardGate() {
+export function DashboardGate({ native = false }: { native?: boolean }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 
@@ -69,5 +70,5 @@ export function DashboardGate() {
     return <main aria-label="Loading workspace" style={{ minHeight: "100vh", background: "#fff", color: "#24272a", display: "grid", placeItems: "center" }}><p role="status">Opening your workspace…</p></main>;
   }
 
-  return <Dashboard />;
+  return native ? <Dashboard /> : <BrowserMonitor workspace />;
 }

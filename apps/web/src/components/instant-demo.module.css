@@ -1,4 +1,13 @@
 .page { background: #f6f7f8; color: #171915; min-height: 100vh; }
+.savedJobSetup { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:20px 24px; border-bottom:1px solid #dfe2dc; }
+.savedJobSetup label { display:grid; gap:8px; flex:1; min-width:180px; font-size:13px; }
+.savedJobSetup input { font:inherit; padding:12px; border:1px solid #cbd2d7; border-radius:8px; background:#fff; color:#20282e; }
+.savedJobSetup button,.header button { font:inherit; font-size:13px; padding:12px; border:1px solid #cbd2d7; border-radius:8px; background:#edf2f7; color:#253f56; cursor:pointer; }
+.actionTrace { font-size:12px; line-height:1.6; color:#46535d; margin-top:12px; }
+.actionTrace summary { cursor:pointer; }
+.actionTrace ul { padding-left:18px; }
+.actionTrace p { font-size:11px; }
+.page footer { padding-bottom:30px; }
 .setup { display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end; padding:24px; }
 .setup label { display:grid; gap:10px; flex:1; min-width:200px; font-size:13px; font-weight:500; }
 .setup select, .setup input { font:inherit; border:1px solid #cbd2d7; background:#fff; color:#20282e; border-radius:8px; min-height:44px; padding:10px; width:100%; }

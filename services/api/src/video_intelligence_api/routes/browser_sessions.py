@@ -47,6 +47,57 @@ class SessionCreate(BaseModel):
     job: Literal["presence", "fall"]
     name: str = Field(min_length=1, max_length=80)
     started_at: AwareDatetime | None = None
+    agent_id: UUID | None = None
+
+
+class SavedJobCreate(BaseModel):
+    id: UUID
+    name: str = Field(min_length=1, max_length=80)
+    job: Literal["presence", "fall"]
+
+
+@router.get("/jobs")
+async def list_saved_jobs(session: SessionDependency, actor: ActorDependency):
+    rows = (await session.execute(select(Camera, Rule).join(Rule, Rule.camera_id == Camera.id).where(
+        Camera.organization_id == actor.organization_id,
+        Camera.source_uri.startswith("browser-job:"),
+    ).order_by(Camera.created_at.desc()).limit(100))).all()
+    return [{"id": c.id, "name": c.name, "job": r.key.removeprefix("browser-template-")} for c, r in rows]
+
+
+@router.post("/jobs")
+async def save_browser_job(payload: SavedJobCreate, session: SessionDependency, actor: EditorDependency):
+    camera = await session.get(Camera, str(payload.id))
+    if camera:
+        camera = await tenant_camera(session, actor, camera.id)
+        if camera is None or not camera.source_uri.startswith("browser-job:"):
+            raise HTTPException(404, "Saved job not found")
+        rule = await session.scalar(select(Rule).where(Rule.camera_id == camera.id))
+        if not rule or rule.key != f"browser-template-{payload.job}" or camera.name != payload.name.strip():
+            raise HTTPException(409, "Job identity already exists with another configuration")
+        return {"id": camera.id, "name": camera.name, "job": payload.job}
+    count = await session.scalar(select(func.count()).select_from(Camera).where(
+        Camera.organization_id == actor.organization_id, Camera.source_uri.startswith("browser-job:"),
+    ))
+    if count >= 100:
+        raise HTTPException(429, "Your workspace has reached its 100 saved-job limit")
+    if not payload.name.strip():
+        raise HTTPException(422, "Give your agent a name")
+    camera = Camera(id=str(payload.id), organization_id=actor.organization_id, name=payload.name.strip(),
+                    source_type=SourceType.WEBCAM, source_uri=f"browser-job:{payload.id}")
+    session.add(camera)
+    await session.flush()
+    zone = Zone(id=new_id(), camera_id=camera.id, name="Full frame", points=[
+        {"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}, {"x": 0, "y": 1},
+    ])
+    session.add(zone)
+    await session.flush()
+    session.add(Rule(id=new_id(), camera_id=camera.id, zone_id=zone.id,
+                     key=f"browser-template-{payload.job}", name=camera.name, duration_seconds=1,
+                     minimum_confidence=.6, status=RuleStatus.PAUSED,
+                     original_prompt=f"Show an in-app alert for {payload.job}", spec={"browser_template": True}))
+    await session.commit()
+    return {"id": camera.id, "name": camera.name, "job": payload.job}
 
 
 class BrowserObservation(BaseModel):
@@ -76,6 +127,7 @@ def session_read(camera, rule):
         "job": rule.key.removeprefix("browser-"),
         "created_at": (rule.spec or {}).get("browser_started_at") or camera.created_at,
         "rule_id": rule.id,
+        "agent_id": (rule.spec or {}).get("browser_agent_id"),
     }
 
 
@@ -106,6 +158,13 @@ async def create_session(
         if rule.key != f"browser-{payload.job}":
             raise HTTPException(409, "Session already uses another job")
         return session_read(camera, rule)
+    if payload.agent_id:
+        template = await tenant_camera(session, actor, str(payload.agent_id))
+        template_rule = await session.scalar(select(Rule).where(Rule.camera_id == str(payload.agent_id)))
+        if not template or not template.source_uri.startswith("browser-job:") or not template_rule:
+            raise HTTPException(404, "Saved agent not found")
+        if template_rule.key != f"browser-template-{payload.job}":
+            raise HTTPException(409, "Run does not match the saved agent's job")
     count = await session.scalar(
         select(func.count())
         .select_from(Camera)
@@ -146,7 +205,8 @@ async def create_session(
         minimum_confidence=0.6,
         status=RuleStatus.PAUSED,
         original_prompt=f"Show an in-app alert: {title} (browser pose analysis).",
-        spec={"browser_started_at": payload.started_at.isoformat() if payload.started_at else None},
+        spec={"browser_started_at": payload.started_at.isoformat() if payload.started_at else None,
+              "browser_agent_id": str(payload.agent_id) if payload.agent_id else None},
     )
     # These models use FK IDs, not ORM relationships. Flush parents explicitly;
     # SQLite without FK enforcement previously hid the PostgreSQL ordering bug.
