@@ -1,8 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({API_URL:"https://api.example.test", request:vi.fn()}));
-import { cloudEventFields, mergeSession, sessionMetadata, type BrowserSession } from "./browser-sessions";
+import { request } from "./api";
+import { cloudEventFields, loadCloudSession, mergeSession, sessionMetadata, type BrowserSession } from "./browser-sessions";
 
 describe("merging account and local history", () => {
+  it("loads unverified custom incidents through the session history endpoint", async () => {
+    vi.mocked(request).mockResolvedValueOnce([{ source_event_id: "event", occurred_at_seconds: 3,
+      confidence: 0, event_type: "visual_match", details: { review: { status: "resolved", outcome: "reviewed" } } }])
+      .mockResolvedValueOnce([]);
+    const loaded = await loadCloudSession({ id: "session", scope: "account", name: "Office", job: "custom",
+      createdAt: "2026-09-09T12:00:00Z", events: [], clips: [] });
+    expect(request).toHaveBeenCalledWith("/browser-sessions/session/events");
+    expect(loaded.events).toHaveLength(1);
+    expect(loaded.events[0].review?.status).toBe("resolved");
+    expect(loaded.events[0].title).toBe("Visual condition matched");
+  });
   it("keeps history metadata without retaining video blobs or mutating the recording", () => {
     const blob = new Blob(["video"], { type: "video/webm" });
     const session: BrowserSession = { id: "1", scope: "account", name: "Office", job: "presence",

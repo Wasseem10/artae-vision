@@ -277,7 +277,7 @@ export async function loadCloudSession(
         event_type: string;
         details: CloudEventResult["details"];
       }[]
-    >(`/events?camera_id=${s.id}`),
+    >(`/browser-sessions/${s.id}/events`),
     request<
       {
         id: string;

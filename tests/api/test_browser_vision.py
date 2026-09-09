@@ -44,6 +44,21 @@ def test_real_model_result_creates_account_alert_with_durable_evidence_request(a
     assert api_client.post(path, json=payload).json() == body
     assert len(calls) == 1
     assert len(api_client.get("/api/v1/alerts").json()) == 1
+    history = api_client.get(f"/api/v1/browser-sessions/{camera}/events")
+    assert history.status_code == 200
+    assert history.json()[0]["source_event_id"] == body["event"]["source_event_id"]
+    assert history.json()[0]["verification_status"] == "uncertain"
+    # Keep the general confirmed feed's safety boundary unchanged.
+    assert api_client.get(f"/api/v1/events?camera_id={camera}").json() == []
+    from video_intelligence_api.auth import Actor, get_current_actor
+    from video_intelligence_api.models import OrganizationRole
+    async def other_actor():
+        return Actor(subject="other", organization_id=str(uuid.uuid4()), role=OrganizationRole.OWNER, issuer="test")
+    api_client.app.dependency_overrides[get_current_actor] = other_actor
+    try:
+        assert api_client.get(f"/api/v1/browser-sessions/{camera}/events").status_code == 404
+    finally:
+        api_client.app.dependency_overrides.clear()
     assert api_client.post(path, json={**payload, "id": str(uuid.uuid4())}).status_code == 429
     # A browser cannot bypass the visual model and invent a custom detection.
     assert api_client.post(f"/api/v1/browser-sessions/{camera}/events", json={

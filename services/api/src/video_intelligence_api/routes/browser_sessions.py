@@ -330,6 +330,20 @@ async def create_session(
     return session_read(camera, rule)
 
 
+@router.get("/{camera_id}/events", response_model=list[EventRead])
+async def session_observations(
+    camera_id: str,
+    session: SessionDependency,
+    actor: ActorDependency,
+):
+    camera, _ = await owned_session(camera_id, session, actor)
+    # Account replay must include uncertain candidates and closed false alarms.
+    # The general event feed deliberately filters unverified observations out.
+    return list((await session.scalars(
+        select(Event).where(Event.camera_id == camera.id).order_by(Event.occurred_at).limit(100)
+    )).all())
+
+
 @router.post("/{camera_id}/events", response_model=EventRead)
 async def record_observation(
     camera_id: str,
