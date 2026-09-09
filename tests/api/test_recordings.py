@@ -88,6 +88,18 @@ def test_edge_reports_archives_and_plays_recording_segment(
     assert body["content_url"].startswith(
         f"/api/v1/recordings/{reported['id']}/content?"
     )
+    retry = api_client.put(
+        f"/api/v1/agent/recordings/{reported['id']}/content",
+        content=video,
+        headers={"X-Agent-Key": AGENT_KEY, "Content-Type": "video/mp4"},
+    )
+    assert retry.status_code == 200
+    conflict = api_client.put(
+        f"/api/v1/agent/recordings/{reported['id']}/content",
+        content=b"different content",
+        headers={"X-Agent-Key": AGENT_KEY, "Content-Type": "video/mp4"},
+    )
+    assert conflict.status_code == 409
 
     playback_path = urlsplit(body["content_url"]).path
     playback_query = urlsplit(body["content_url"]).query

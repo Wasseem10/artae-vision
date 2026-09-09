@@ -241,6 +241,12 @@ async def upload_recording_content(
                 await output.write(chunk)
         if size_bytes == 0:
             raise HTTPException(status_code=400, detail="Recording segment is empty")
+        if segment.status == RecordingSegmentStatus.READY:
+            if segment.sha256 == digest.hexdigest() and segment.size_bytes == size_bytes:
+                # A successful upload response can be lost in transit. Retrying
+                # the same bytes must not upload a duplicate cloud object.
+                return recording_response(segment, settings)
+            raise HTTPException(status_code=409, detail="This recording already has different content")
         storage = recording_storage(settings)
         storage_uri = await anyio.to_thread.run_sync(
             lambda: storage.put(
