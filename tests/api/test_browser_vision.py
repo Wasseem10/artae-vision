@@ -3,9 +3,10 @@ import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from cryptography.fernet import Fernet
 from PIL import Image
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from video_intelligence_api.browser_vision import (
     VisualDecision,
     decode_frame,
@@ -20,6 +21,53 @@ def frame():
     out = io.BytesIO()
     Image.new("RGB", (64, 64), "white").save(out, format="JPEG")
     return {"at_seconds": 4, "jpeg": base64.b64encode(out.getvalue()).decode()}
+
+
+@pytest.mark.parametrize("status", ["match", "no_match", "uncertain", "unsupported"])
+def test_long_model_prose_does_not_discard_observations(status):
+    long_text = "The model describes the visible evidence in this frame. " * 12
+    decision = normalize_conditions(
+        {
+            "status": status,
+            "summary": long_text,
+            "conditions": [
+                {
+                    "condition_index": 0,
+                    "status": status,
+                    "summary": long_text,
+                    "interval_definition": long_text,
+                    "matched_frame_index": 1,
+                    "frame_states": ["inactive", "active"],
+                }
+            ],
+        },
+        2,
+        ["Possible fall"],
+    )
+    assert decision.status == status
+    item = decision.conditions[0]
+    assert len(item.summary) <= 240
+    assert item.summary.endswith("…")
+    assert len(item.interval_definition) <= 240
+    assert item.frame_states == ["inactive", "active"]
+    assert item.matched_frame_index == (1 if status == "match" else None)
+
+
+def test_long_aggregate_summary_without_conditions_is_accepted():
+    decision = normalize_decision({"status": "no_match", "summary": "x" * 500}, 8)
+    assert decision.status == "no_match"
+    assert decision.summary == "x" * 239 + "…"
+
+
+@pytest.mark.parametrize("summary", [None, 123, ""])
+def test_invalid_model_summary_still_fails_validation(summary):
+    with pytest.raises(ValidationError):
+        normalize_decision({"status": "match", "summary": summary}, 8)
+
+
+def test_invalid_detection_status_is_not_repaired():
+    with pytest.raises(ValidationError):
+        normalize_decision({"status": "invented", "summary": "x" * 500}, 8)
 
 
 def test_timing_requires_complete_frame_states_and_unambiguous_subject():
@@ -381,7 +429,11 @@ def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatc
         browser_sessions,
         "inspect_frames",
         lambda *_: (
-            VisualDecision(status="match", summary="A possible fall is visible.", matched_frame_index=0),
+            VisualDecision(
+                status="match",
+                summary="A possible fall is visible.",
+                matched_frame_index=0,
+            ),
             {},
         ),
     )
@@ -401,7 +453,13 @@ def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatc
     )
     result = api_client.post(
         f"/api/v1/browser-sessions/{camera}/analyze",
-        json={"id": str(uuid.uuid4()), "frames": [{**frame(), "at_seconds": 7500}, {**frame(), "at_seconds": 7505}]},
+        json={
+            "id": str(uuid.uuid4()),
+            "frames": [
+                {**frame(), "at_seconds": 7500},
+                {**frame(), "at_seconds": 7505},
+            ],
+        },
     )
     assert result.status_code == 200, result.text
     assert result.json()["event"]["occurred_at_seconds"] == 7500
@@ -412,22 +470,32 @@ def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatc
     }
 
 
-def test_sms_connection_test_is_explicit_idempotent_and_bounded(api_client, monkeypatch):
+def test_sms_connection_test_is_explicit_idempotent_and_bounded(
+    api_client, monkeypatch
+):
     settings = api_client.app.state.settings
     settings.sms_enabled = True
     settings.alert_encryption_key = SecretStr(Fernet.generate_key().decode())
     sent = []
+
     def send(**kwargs):
         assert kwargs["test"] is True
         assert kwargs["event"] is None
         sent.append(kwargs)
         return {"status": "accepted", "provider": "aws_sns", "destination": "••••0142"}
+
     monkeypatch.setattr(browser_sessions, "send_caregiver_sms", send)
     for index in range(4):
-        response = api_client.post("/api/v1/browser-sessions", json={
-            "id": str(uuid.uuid4()), "name": "SMS test", "job": "custom",
-            "prompt": "Check for a fall", "caregiver_phone": "+12065550142",
-        })
+        response = api_client.post(
+            "/api/v1/browser-sessions",
+            json={
+                "id": str(uuid.uuid4()),
+                "name": "SMS test",
+                "job": "custom",
+                "prompt": "Check for a fall",
+                "caregiver_phone": "+12065550142",
+            },
+        )
         assert response.status_code == 200, response.text
         path = f"/api/v1/browser-sessions/{response.json()['id']}/test-sms"
         result = api_client.post(path)
@@ -606,7 +674,9 @@ def test_public_demo_analyzes_storyboard_without_account_storage(
     assert result.json()["matched_frame_index"] == 1
     assert result.json()["event"]["details"]["strands_agent"]["status"] == "completed"
     assert result.json()["event"]["details"]["notification"]["channel"] == "in_app"
-    assert result.json()["event"]["details"]["evidence"]["status"] == "awaiting_recording"
+    assert (
+        result.json()["event"]["details"]["evidence"]["status"] == "awaiting_recording"
+    )
     assert result.json()["event"]["details"]["review"]["status"] == "open"
     assert result.json()["checks_remaining"] == 3
     assert api_client.get("/api/v1/alerts").json() == []

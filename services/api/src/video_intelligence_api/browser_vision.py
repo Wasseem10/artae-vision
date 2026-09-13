@@ -8,9 +8,16 @@ from typing import Literal
 import boto3
 from botocore.config import Config
 from PIL import Image, ImageDraw, ImageFont
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from video_intelligence_api.bedrock_identity import bedrock_session
+
+
+def bounded_model_text(value: object) -> object:
+    """Bound model prose without relaxing validation of detection evidence."""
+    if isinstance(value, str) and len(value) > 240:
+        return value[:239].rstrip() + "…"
+    return value
 
 
 class VisualDecision(BaseModel):
@@ -18,6 +25,8 @@ class VisualDecision(BaseModel):
     summary: str = Field(min_length=1, max_length=240)
     matched_frame_index: int | None = Field(default=None, ge=0, le=127)
     conditions: list["ConditionDecision"] = Field(default_factory=list, max_length=5)
+
+    _bound_summary = field_validator("summary", mode="before")(bounded_model_text)
 
 
 class ConditionDecision(BaseModel):
@@ -31,6 +40,10 @@ class ConditionDecision(BaseModel):
     )
     subject_ambiguous: bool = False
     interval_definition: str = Field(default="", max_length=240)
+
+    _bound_prose = field_validator("summary", "interval_definition", mode="before")(
+        bounded_model_text
+    )
 
 
 def prompt_conditions(prompt: str) -> list[str]:
