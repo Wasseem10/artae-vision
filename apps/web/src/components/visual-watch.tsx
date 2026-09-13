@@ -23,11 +23,10 @@ import { mergeConditions, readConditions } from "@/lib/condition-results";
 import { detailedTimes, episodes, mergeObservations, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
 
-type Source = "sample" | "upload" | "webcam";
+type Source = "upload" | "webcam";
 type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "stopped" | "error";
 type Stage = "idle" | "video" | "frames" | "nova" | "strands" | "complete";
 type CapturedFrame = { at_seconds: number; jpeg: string; snapshot: string };
-type SampleScenario = "fall" | "sitting";
 
 const FALL_PROMPT = "Alert me if the person transitions from upright to the floor and appears to remain down. Distinguish this from normal sitting, kneeling, or bending.";
 const PRESETS = [
@@ -114,8 +113,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const startedAtRef = useRef(0);
   const uploadUrlRef = useRef<string | null>(null);
 
-  const [source, setSource] = useState<Source>("sample");
-  const [sampleScenario, setSampleScenario] = useState<SampleScenario>("fall");
+  const [source, setSource] = useState<Source>("upload");
   const [uploadName, setUploadName] = useState("");
   const [prompt, setPrompt] = useState(FALL_PROMPT);
   const [intervalSeconds, setIntervalSeconds] = useState(5);
@@ -125,11 +123,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [timeline, setTimeline] = useState<Timeline>({});
   const [state, setState] = useState<RunState>("idle");
   const [stage, setStage] = useState<Stage>("idle");
-  const [status, setStatus] = useState("Ready to analyze");
+  const [status, setStatus] = useState("Upload a video to begin");
   const [lastResult, setLastResult] = useState<VisualCheckResult | null>(null);
   const [conditionResults, setConditionResults] = useState<ConditionResult[]>([]);
   const [scanComplete, setScanComplete] = useState(false);
   const [events, setEvents] = useState<BrowserEvent[]>([]);
+  const [storyboardFrames, setStoryboardFrames] = useState<CapturedFrame[]>([]);
   const [checks, setChecks] = useState(0);
   const [nextCheck, setNextCheck] = useState<number | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
@@ -334,7 +333,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       runningRef.current = true;
       setState("starting"); setStage("idle"); setStatus("Opening the video source…");
       setLastResult(null); setChecks(0); setNextCheck(null);
-      setConditionResults([]); resultsRef.current = []; setScanComplete(false); setEvents([]);
+      setConditionResults([]); resultsRef.current = []; setScanComplete(false); setEvents([]); setStoryboardFrames([]);
       setTimeline({}); timelineRef.current = {};
       await prepareVideo();
       if (runId !== runIdRef.current) return;
@@ -367,6 +366,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             setStatus(`Detailed scan ${batch + 1} of ${total} — sampling every ${sampleInterval}s…`);
             const frames = await captureTimes(times.slice(batch * 7, batch * 7 + 8));
             if (!active()) return;
+            setStoryboardFrames(frames);
             await analyze(frames, { current: batch + 1, total });
           }
           if (!active()) return;
@@ -378,6 +378,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             setStatus(`Refining event boundary ${i + 1} of ${windows.length}…`);
             const frames = await captureTimes(Array.from({ length: 8 }, (_, j) => from + (to - from) * j / 7));
             if (!active()) return;
+            setStoryboardFrames(frames);
             await analyze(frames, undefined, true);
           }
           if (!active()) return;
@@ -395,6 +396,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           (captured, total) => setStatus(`Sampling moment ${captured} of ${total} across the video…`),
           () => runId === runIdRef.current && runningRef.current,
         );
+        setStoryboardFrames(frames);
         setStage("frames");
         const batches = Array.from(
           { length: Math.ceil(frames.length / 8) },
@@ -431,25 +433,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const video = videoRef.current;
     setSource(next); setUploadName(""); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
-    setTimeline({}); timelineRef.current = {};
+    setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
     if (next !== "webcam") setConfirmationCount(1);
     if (video) {
-      video.pause(); video.srcObject = null; video.src = next === "sample" ? `/vision/samples/${sampleScenario === "fall" ? "fall-lateral" : "sitting"}.mp4` : "";
-      if (next === "sample") setPrompt(FALL_PROMPT);
+      video.pause(); video.srcObject = null; video.removeAttribute("src"); video.load();
     }
-  }
-
-  function chooseSample(next: SampleScenario) {
-    if (runningRef.current || !videoRef.current) return;
-    setSampleScenario(next);
-    setSource("sample"); setUploadName(""); setLastResult(null); setStage("idle");
-    setConditionResults([]); setScanComplete(false); setEvents([]);
-    setTimeline({}); timelineRef.current = {};
-    setPrompt(FALL_PROMPT);
-    videoRef.current.pause(); videoRef.current.srcObject = null;
-    videoRef.current.src = `/vision/samples/${next === "fall" ? "fall-lateral" : "sitting"}.mp4`;
-    setStatus(next === "fall" ? "Staged fall ready to analyze" : "Normal sitting ready — no fall expected");
   }
 
   function chooseUpload(file?: File) {
@@ -461,7 +450,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     videoRef.current.loop = false;
     setSource("upload"); setUploadName(file.name); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
-    setTimeline({}); timelineRef.current = {};
+    setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     if (mode === "public") setEvents([]);
     setStatus("Video ready — describe what to find");
   }
@@ -475,12 +464,19 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     { stage: "video", label: "Video ready" }, { stage: "frames", label: "Frames sampled" },
     { stage: "nova", label: "Nova analyzed" }, { stage: "strands", label: "Strands acted" },
   ];
+  const evidenceFrames = storyboardFrames.length <= 7
+    ? storyboardFrames
+    : Array.from({ length: 7 }, (_, index) => storyboardFrames[Math.round(index * (storyboardFrames.length - 1) / 6)]);
+  const canStart = source === "webcam" || Boolean(uploadName);
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="Artae home">artae<span>VISION</span></Link>
-        <div className={styles.headerStatus}><i className={running ? styles.liveDot : styles.dot} />{running ? "Analysis running" : "Ready"}</div>
+        <div className={styles.headerMeta}>
+          {mode === "public" && <><strong>Live AWS demo</strong><span>No account required · up to {detailed ? 32 : 4} checks</span></>}
+          <div className={styles.headerStatus}><i className={running ? styles.liveDot : styles.dot} />{running ? "Analysis running" : "Ready"}</div>
+        </div>
       </header>
 
       <section className={styles.intro}>
@@ -490,18 +486,13 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
       <section className={styles.workbench}>
         <section className={styles.builder} aria-label="Configure visual monitor">
-          {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to {detailed ? 32 : 4} checks</span></div>}
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>Compare a staged fall with normal sitting, or upload a permitted browser-playable clip.</small></div></div>
+            <div className={styles.stepTitle}><span>1</span><div><strong>Upload care footage</strong><small>Choose a permitted browser-playable video, or connect a webcam for live monitoring.</small></div></div>
             <div className={styles.sourceGrid}>
-              <button className={source === "sample" ? styles.selected : ""} onClick={() => chooseSource("sample")} disabled={running}><FiPlay />Example</button>
-              <label className={source === "upload" ? styles.selected : ""}><FiUpload />{uploadName || "Upload"}<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
+              <label className={source === "upload" ? styles.selected : ""}><FiUpload />Upload video<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
               <button className={source === "webcam" ? styles.selected : ""} onClick={() => chooseSource("webcam")} disabled={running}><FiCamera />Webcam</button>
             </div>
-            {source === "sample" && <div className={styles.sampleChoices} aria-label="Choose sample scenario">
-              <button className={sampleScenario === "fall" ? styles.sampleSelected : ""} onClick={() => chooseSample("fall")} disabled={running}><strong>Staged fall</strong><small>Alert expected</small></button>
-              <button className={sampleScenario === "sitting" ? styles.sampleSelected : ""} onClick={() => chooseSample("sitting")} disabled={running}><strong>Normal sitting</strong><small>No fall expected</small></button>
-            </div>}
+            {uploadName && <div className={styles.uploadedFile}><FiCheck /><span>{uploadName}</span><small>Ready to analyze</small></div>}
           </div>
 
           <div className={styles.step}>
@@ -512,6 +503,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
 
           <div className={styles.stepRow}>
+            <div className={styles.stepTitle}><span>3</span><div><strong>{recorded ? "Choose how to scan" : "Set the monitoring cadence"}</strong><small>{recorded ? "Quickly check conditions or estimate when an event happened." : "Choose how often the care camera should check the scene."}</small></div></div>
             {recorded ? <>
               <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
               {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{[0.5, 1, 2, 5, 10].map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
@@ -521,17 +513,25 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
-            {!running ? <button className={styles.startButton} onClick={() => void start()}><FiPlay />{recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
+            {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{recorded ? uploadName ? "Analyze video" : "Upload a video to continue" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
           </div>
         </section>
 
         <article className={styles.previewCard}>
-          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : source === "upload" ? uploadName || "Uploaded video" : sampleScenario === "fall" ? "Staged fall example" : "Normal sitting comparison"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
+          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : uploadName || "Uploaded care footage"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : uploadName || source === "webcam" ? "READY" : "WAITING"}</span></div>
           <div className={styles.videoWrap}>
-            <video ref={videoRef} src="/vision/samples/fall-lateral.mp4" muted playsInline controls={!running} />
+            <video ref={videoRef} muted playsInline controls={canStart && !running} />
+            {!uploadName && source === "upload" && <label className={styles.videoEmpty}><FiUpload /><strong>Upload footage to begin</strong><span>MP4, WebM, or another browser-playable video · up to 2 hours</span><input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>}
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>
           <canvas ref={canvasRef} hidden />
+          <section className={styles.evidenceTimeline} aria-label="Sampled video evidence">
+            <div className={styles.timelineHeading}><strong>Evidence timeline</strong><span>{evidenceFrames.length ? `${storyboardFrames.length} moments sampled from this video` : "Sampled frames will appear here during analysis"}</span></div>
+            {evidenceFrames.length ? <div className={styles.frameTrack}>{evidenceFrames.map((frame) => <button key={frame.at_seconds} disabled={running || !recorded} onClick={() => { if (videoRef.current) videoRef.current.currentTime = frame.at_seconds; }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={frame.snapshot} alt={`Sampled frame at ${timeLabel(frame.at_seconds)}`} /><span>{timeLabel(frame.at_seconds)}</span>
+            </button>)}</div> : <div className={styles.timelineEmpty}><FiClock />Upload a video and select Analyze video to create its evidence timeline.</div>}
+          </section>
           <div className={styles.pipeline} aria-label="Analysis progress">
             {steps.map((item) => <div className={isStepDone(stage, item.stage, events.some((event) => event.coordinator === "completed")) ? styles.pipelineDone : ""} key={item.stage}><i />{item.label}</div>)}
           </div>
@@ -562,16 +562,18 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         </article>
 
         <aside className={styles.alertCard}>
-          <div className={styles.cardHeader}><div><FiBell /><strong>Caregiver alerts</strong></div><span className={styles.count}>{events.length}</span></div>
-          <div className={styles.notificationRow}>
-            <div><strong>Dashboard alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Enable browser alerts while this page is open"}</small></div>
-            {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
-          </div>
-          <div className={styles.smsSetup}>
-            {mode === "public" ? <p><strong>Text a caregiver</strong><small>Sign in and connect an AWS-verified phone number to send SMS after a confirmed event.</small><Link href="/login?next=app">Sign in to connect</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
-              <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
-              {smsEnabled && <label>Caregiver phone<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>Use international format. AWS sandbox accounts can text verified numbers only.</small></label>}
-            </>}
+          <div className={styles.cardHeader}><div><FiBell /><strong>Caregiver event log</strong><span className={styles.cardDescription}>Detected conditions and agent actions appear here.</span></div><span className={styles.count}>{events.length}</span></div>
+          <div className={styles.alertControls}>
+            <div className={styles.notificationRow}>
+              <div><strong>Dashboard alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Enable browser alerts while this page is open"}</small></div>
+              {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
+            </div>
+            <div className={styles.smsSetup}>
+              {mode === "public" ? <p><strong>Text a caregiver</strong><small>Sign in and connect an AWS-verified phone number to send SMS after a confirmed event.</small><Link href="/login?next=app">Sign in to connect</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
+                <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
+                {smsEnabled && <label>Caregiver phone<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>Use international format. AWS sandbox accounts can text verified numbers only.</small></label>}
+              </>}
+            </div>
           </div>
           <div className={styles.alertList}>
             {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No care event detected</strong><p>If Nova confirms a visible safety condition, the matching frame and Strands caregiver actions appear here.</p></div> : events.map((event) => (
