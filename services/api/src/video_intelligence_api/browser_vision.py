@@ -26,6 +26,11 @@ class ConditionDecision(BaseModel):
     status: Literal["match", "no_match", "uncertain", "unsupported"]
     summary: str = Field(min_length=1, max_length=240)
     matched_frame_index: int | None = None
+    frame_states: list[Literal["active", "inactive", "uncertain"]] = Field(
+        default_factory=list, max_length=8
+    )
+    subject_ambiguous: bool = False
+    interval_definition: str = Field(default="", max_length=240)
 
 
 def prompt_conditions(prompt: str) -> list[str]:
@@ -110,7 +115,7 @@ def decode_frame(encoded: str) -> bytes:
         raise ValueError("Invalid JPEG frame") from exc
 
 
-def inspect_frames(prompt, frames, settings, oidc_token):
+def inspect_frames(prompt, frames, settings, oidc_token, detailed=False):
     conditions = prompt_conditions(prompt)
     aws = bedrock_session(settings.strands_role_arn, settings.strands_region, oidc_token)
     client = (aws or boto3.Session(region_name=settings.strands_region)).client(
@@ -152,11 +157,27 @@ def inspect_frames(prompt, frames, settings, oidc_token):
         "Check each independently. One match does not satisfy another condition. Preserve AND/OR "
         "requirements within an individual condition. Do not omit negative or uncertain answers."
     )
+    if detailed:
+        system_prompt += (
+            " This is DETAILED TIMING mode. For EVERY condition return frame_states with exactly "
+            "one entry per supplied frame in order: active, inactive, or uncertain. For a duration "
+            "question, classify the interval being measured, not the question itself. Example: how "
+            "long a person took to get back up means active from visibly down until upright; "
+            "how long a car was parked means active while that car is stationary in the area. "
+            "Return a concise interval_definition specifying the start and end criteria. "
+            "Use sequential images to judge motion; one image cannot prove a car is stationary. "
+            "Keep the same described subject. If several subjects make the target ambiguous, "
+            "set subject_ambiguous true and all frame_states uncertain. An occluded, off-screen, "
+            "or indistinguishable subject is uncertain, NOT inactive. Never infer arrivals "
+            "before the clip, unseen events, injuries, or safety. Never invent durations. "
+            "Return match if a frame is active, otherwise uncertain if any are uncertain, "
+            "otherwise no_match. For unsupported requests return all states uncertain."
+        )
     result = client.converse(
         modelId=settings.strands_model_id,
         system=[{"text": system_prompt}],
         messages=[{"role": "user", "content": content}],
-        inferenceConfig={"maxTokens": 1500, "temperature": 0},
+        inferenceConfig={"maxTokens": 3000 if detailed else 1500, "temperature": 0},
         toolConfig={
             "tools": [
                 {
@@ -175,7 +196,32 @@ def inspect_frames(prompt, frames, settings, oidc_token):
     for block in result["output"]["message"]["content"]:
         call = block.get("toolUse", {})
         if call.get("name") == "report_observation":
-            return normalize_conditions(call["input"], len(frames), conditions), result.get(
-                "usage", {}
-            )
+            decision = normalize_conditions(call["input"], len(frames), conditions)
+            if detailed:
+                decision = normalize_timing(decision, len(frames))
+            return decision, result.get("usage", {})
     raise RuntimeError("Model did not return a valid observation")
+
+
+def normalize_timing(decision: VisualDecision, frame_count: int) -> VisualDecision:
+    for item in decision.conditions:
+        if (
+            item.subject_ambiguous
+            or len(item.frame_states) != frame_count
+            or item.status == "unsupported"
+        ):
+            item.frame_states = ["uncertain"] * frame_count
+        if item.status != "unsupported":
+            item.status = (
+                "match"
+                if "active" in item.frame_states
+                else "uncertain"
+                if "uncertain" in item.frame_states
+                else "no_match"
+            )
+        item.matched_frame_index = (
+            item.frame_states.index("active") if "active" in item.frame_states else None
+        )
+    return normalize_conditions(
+        decision.model_dump(), frame_count, [item.condition for item in decision.conditions]
+    )

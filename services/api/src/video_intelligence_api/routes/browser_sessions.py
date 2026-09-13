@@ -50,9 +50,11 @@ router = APIRouter(prefix="/browser-sessions", tags=["browser monitoring"])
 logger = logging.getLogger(__name__)
 
 PUBLIC_DEMO_MAX_CHECKS = 4
+PUBLIC_DEMO_DETAILED_CHECKS = 32
 PUBLIC_DEMO_STARTS_PER_HOUR = 8
 _public_demo_starts: dict[str, list[datetime]] = {}
 _public_demo_checks: dict[str, int] = {}
+_public_demo_matches: dict[str, set[int]] = {}
 
 
 class SessionCreate(BaseModel):
@@ -195,6 +197,8 @@ class VisualFrame(BaseModel):
 
 class VisualCheck(BaseModel):
     id: UUID
+    detailed: bool = False
+    refinement: bool = False
     frames: list[VisualFrame] = Field(min_length=1, max_length=8)
 
     @model_validator(mode="after")
@@ -209,10 +213,12 @@ class VisualCheck(BaseModel):
 
 class PublicDemoStart(BaseModel):
     prompt: str = Field(min_length=3, max_length=500)
+    detailed: bool = False
 
 
 class PublicDemoCheck(BaseModel):
     token: str = Field(min_length=20, max_length=4000)
+    refinement: bool = False
     frames: list[VisualFrame] = Field(min_length=1, max_length=8)
 
     @model_validator(mode="after")
@@ -263,14 +269,20 @@ async def start_public_demo(payload: PublicDemoStart, request: Request):
             "sub": "guest",
             "jti": session_id,
             "prompt": payload.prompt.strip(),
+            "detailed": payload.detailed,
             "iat": int(now.timestamp()),
-            "exp": int((now + timedelta(minutes=15)).timestamp()),
+            "exp": int((now + timedelta(minutes=30 if payload.detailed else 15)).timestamp()),
         },
         _public_demo_signing_key(settings),
         algorithm="HS256",
     )
     _public_demo_checks[session_id] = 0
-    return {"id": session_id, "token": token, "max_checks": PUBLIC_DEMO_MAX_CHECKS}
+    _public_demo_matches[session_id] = set()
+    return {
+        "id": session_id,
+        "token": token,
+        "max_checks": PUBLIC_DEMO_DETAILED_CHECKS if payload.detailed else PUBLIC_DEMO_MAX_CHECKS,
+    }
 
 
 @router.post("/public-demo/analyze")
@@ -291,8 +303,10 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
     except (InvalidTokenError, KeyError, ValueError) as exc:
         raise HTTPException(401, "The public demo session expired; start a new run") from exc
     checks = _public_demo_checks.get(session_id, 0)
-    if checks >= PUBLIC_DEMO_MAX_CHECKS:
-        raise HTTPException(429, "This public demo reached its four-check limit")
+    detailed = claims.get("detailed") is True
+    max_checks = PUBLIC_DEMO_DETAILED_CHECKS if detailed else PUBLIC_DEMO_MAX_CHECKS
+    if checks >= max_checks:
+        raise HTTPException(429, f"This public demo reached its {max_checks}-check limit")
     _public_demo_checks[session_id] = checks + 1
     try:
         with anyio.fail_after(30):
@@ -303,6 +317,7 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
                     payload.frames,
                     settings,
                     request.headers.get("x-vercel-oidc-token"),
+                    *([True] if detailed else []),
                 ),
                 abandon_on_cancel=True,
             )
@@ -323,11 +338,17 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
         "match_streak": 1 if decision.status == "match" else 0,
         "confirmation_count": 1,
         "cooldown": False,
-        "checks_remaining": PUBLIC_DEMO_MAX_CHECKS - checks - 1,
+        "checks_remaining": max_checks - checks - 1,
         "event": None,
     }
-    if decision.status != "match":
+    if decision.status != "match" or payload.refinement:
         return result
+    if detailed:
+        matched = {item.condition_index for item in decision.conditions if item.status == "match"}
+        previous = _public_demo_matches.get(session_id, set())
+        if matched and matched.issubset(previous):
+            return result
+        _public_demo_matches[session_id] = previous | matched
 
     now = utc_now()
     event_id = new_id()
@@ -436,6 +457,7 @@ async def analyze_browser_frames(
                     payload.frames,
                     settings,
                     request.headers.get("x-vercel-oidc-token"),
+                    *([True] if payload.detailed else []),
                 ),
                 abandon_on_cancel=True,
             )
@@ -464,7 +486,11 @@ async def analyze_browser_frames(
     ]
     seen_conditions = spec.get("visual_alerted_conditions", [])
     new_match = any(index not in seen_conditions for index in matched_conditions)
-    create_alert = confirmed and (new_match or prior is None or at - float(prior) >= 30)
+    create_alert = (
+        confirmed
+        and not payload.refinement
+        and (new_match or prior is None or (not payload.detailed and at - float(prior) >= 30))
+    )
     result = {
         "status": decision.status,
         "conditions": [item.model_dump() for item in decision.conditions],

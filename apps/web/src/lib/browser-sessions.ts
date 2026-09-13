@@ -217,6 +217,9 @@ export type ConditionResult = {
   summary: string;
   matched_frame_index: number | null;
   at_seconds?: number;
+  frame_states?: ("active" | "inactive" | "uncertain")[];
+  subject_ambiguous?: boolean;
+  interval_definition?: string;
 };
 export type VisualCheckResult = {
   conditions?: ConditionResult[];
@@ -231,19 +234,19 @@ export type VisualCheckResult = {
   checks_remaining?: number;
   event: (CloudEventResult & { source_event_id: string; occurred_at_seconds: number }) | null;
 };
-export function analyzeCloudFrames(s: BrowserSession, frames: { at_seconds: number; jpeg: string }[]) {
+export function analyzeCloudFrames(s: BrowserSession, frames: { at_seconds: number; jpeg: string }[], detailed = false, refinement = false) {
   return apiRequest<VisualCheckResult>(`/browser-sessions/${s.id}/analyze`, {
-    method: "POST", body: JSON.stringify({ id: crypto.randomUUID(), frames }),
+    method: "POST", body: JSON.stringify({ id: crypto.randomUUID(), frames, detailed, refinement }),
     signal: AbortSignal.timeout(70000),
   });
 }
 
 export type PublicDemoSession = { id: string; token: string; max_checks: number };
 
-export function createPublicDemo(prompt: string) {
+export function createPublicDemo(prompt: string, detailed = false) {
   return apiRequest<PublicDemoSession>("/browser-sessions/public-demo", {
     method: "POST",
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, detailed }),
     signal: AbortSignal.timeout(15000),
   });
 }
@@ -251,10 +254,11 @@ export function createPublicDemo(prompt: string) {
 export function analyzePublicDemo(
   session: PublicDemoSession,
   frames: { at_seconds: number; jpeg: string }[],
+  refinement = false,
 ) {
   return apiRequest<VisualCheckResult>("/browser-sessions/public-demo/analyze", {
     method: "POST",
-    body: JSON.stringify({ token: session.token, frames }),
+    body: JSON.stringify({ token: session.token, frames, refinement }),
     signal: AbortSignal.timeout(70000),
   });
 }

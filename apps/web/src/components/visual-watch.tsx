@@ -19,6 +19,7 @@ import {
   type ConditionResult,
 } from "@/lib/browser-sessions";
 import { mergeConditions, readConditions } from "@/lib/condition-results";
+import { detailedTimes, episodes, mergeObservations, refinementWindows, timeLabel, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
 
 type Source = "sample" | "upload" | "webcam";
@@ -105,6 +106,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const runningRef = useRef(false);
   const runIdRef = useRef(0);
   const resultsRef = useRef<ConditionResult[]>([]);
+  const timelineRef = useRef<Timeline>({});
   const sessionRef = useRef<BrowserSession | null>(null);
   const publicSessionRef = useRef<PublicDemoSession | null>(null);
   const startedAtRef = useRef(0);
@@ -115,6 +117,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [prompt, setPrompt] = useState(PRINTER_PROMPT);
   const [intervalSeconds, setIntervalSeconds] = useState(5);
   const [confirmationCount, setConfirmationCount] = useState(1);
+  const [scanMode, setScanMode] = useState("quick");
+  const [sampleInterval, setSampleInterval] = useState(2);
+  const [timeline, setTimeline] = useState<Timeline>({});
   const [state, setState] = useState<RunState>("idle");
   const [stage, setStage] = useState<Stage>("idle");
   const [status, setStatus] = useState("Ready to analyze");
@@ -127,6 +132,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
   const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
   const recorded = source !== "webcam";
+  const detailed = recorded && scanMode === "detailed";
 
   const stop = useCallback((message = "Monitor stopped") => {
     runIdRef.current += 1;
@@ -174,7 +180,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
   async function openSession() {
     if (mode === "public") {
-      publicSessionRef.current = await createPublicDemo(prompt.trim());
+      publicSessionRef.current = await createPublicDemo(prompt.trim(), detailed);
       return;
     }
     const session: BrowserSession = {
@@ -189,6 +195,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   async function analyze(
     frames: CapturedFrame[],
     batch?: { current: number; total: number },
+    refinement = false,
   ) {
     const runId = runIdRef.current;
     setStage("nova");
@@ -198,8 +205,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       : `Amazon Nova is analyzing ${frames.length} sampled frame${frames.length === 1 ? "" : "s"}…`);
     const payload = frames.map(({ at_seconds, jpeg }) => ({ at_seconds, jpeg }));
     const result = mode === "public"
-      ? await analyzePublicDemo(publicSessionRef.current!, payload)
-      : await analyzeCloudFrames(sessionRef.current!, payload);
+      ? await analyzePublicDemo(publicSessionRef.current!, payload, refinement)
+      : await analyzeCloudFrames(sessionRef.current!, payload, detailed, refinement);
     if (runId !== runIdRef.current || !runningRef.current) return result;
     const answers = (result.conditions || []).map((item) => ({
       ...item,
@@ -207,6 +214,18 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     }));
     resultsRef.current = mergeConditions(resultsRef.current, answers);
     setConditionResults(resultsRef.current);
+    if (detailed) {
+      const updated = { ...timelineRef.current };
+      for (let index = 0; index < readConditions(prompt).length; index++) {
+        const answer = answers.find((item) => item.condition_index === index);
+        const valid = !answer?.subject_ambiguous && answer?.frame_states?.length === frames.length;
+        updated[index] = mergeObservations(updated[index] || [], frames.map((frame, i) => ({
+          at: frame.at_seconds, state: valid ? answer!.frame_states![i] : "uncertain",
+        })));
+      }
+      timelineRef.current = updated;
+      setTimeline(updated);
+    }
     setChecks((value) => value + 1);
     setLastResult(result);
     setStage("frames");
@@ -292,13 +311,59 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       setState("starting"); setStage("idle"); setStatus("Opening the video source…");
       setLastResult(null); setChecks(0); setNextCheck(null);
       setConditionResults([]); resultsRef.current = []; setScanComplete(false); setEvents([]);
+      setTimeline({}); timelineRef.current = {};
       await prepareVideo();
       if (runId !== runIdRef.current) return;
+      // Validate before opening a paid run. Never silently stretch the user's cadence.
+      const times = detailed ? detailedTimes(videoRef.current!.duration, sampleInterval) : [];
       setStatus(mode === "public" ? "Opening a rate-limited AWS demo session…" : "Opening your account monitor…");
       await openSession();
       if (runId !== runIdRef.current) return;
       startedAtRef.current = Date.now();
       if (recorded) {
+        if (detailed) {
+          const active = () => runId === runIdRef.current && runningRef.current;
+          const video = videoRef.current!, canvas = canvasRef.current!;
+          video.pause();
+          const captureTimes = async (points: number[]) => {
+            const batchFrames: CapturedFrame[] = [];
+            setState("sampling");
+            for (const at of points) {
+              if (!active()) return [];
+              await seek(video, at);
+              if (!active()) return [];
+              batchFrames.push({ at_seconds: at, ...captureFrame(video, canvas) });
+            }
+            return batchFrames;
+          };
+          const total = Math.max(1, Math.ceil((times.length - 1) / 7));
+          for (let batch = 0; batch < total; batch++) {
+            if (batch > 0 && mode === "account") await new Promise((resolve) => window.setTimeout(resolve, 3100));
+            if (!active()) return;
+            setStatus(`Detailed scan ${batch + 1} of ${total} — sampling every ${sampleInterval}s…`);
+            const frames = await captureTimes(times.slice(batch * 7, batch * 7 + 8));
+            if (!active()) return;
+            await analyze(frames, { current: batch + 1, total });
+          }
+          if (!active()) return;
+          const windows = refinementWindows(timelineRef.current);
+          for (let i = 0; i < windows.length; i++) {
+            if (mode === "account") await new Promise((resolve) => window.setTimeout(resolve, 3100));
+            if (!active()) return;
+            const [from, to] = windows[i];
+            setStatus(`Refining event boundary ${i + 1} of ${windows.length}…`);
+            const frames = await captureTimes(Array.from({ length: 8 }, (_, j) => from + (to - from) * j / 7));
+            if (!active()) return;
+            await analyze(frames, undefined, true);
+          }
+          if (!active()) return;
+          await seek(video, 0);
+          if (!active()) return;
+          runningRef.current = false;
+          setState("stopped"); setStage("complete"); setScanComplete(true);
+          setStatus(`Detailed scan complete — ${times.length} samples plus ${windows.length} boundary rechecks. Review timing estimates below.`);
+          return;
+        }
         setState("sampling"); setStatus("Sampling moments across the video…");
         const frames = await captureStoryboard(
           videoRef.current!,
@@ -342,6 +407,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const video = videoRef.current;
     setSource(next); setUploadName(""); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
+    setTimeline({}); timelineRef.current = {};
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
     if (next !== "webcam") setConfirmationCount(1);
     if (video) {
@@ -359,6 +425,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     videoRef.current.loop = false;
     setSource("upload"); setUploadName(file.name); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
+    setTimeline({}); timelineRef.current = {};
     if (mode === "public") setEvents([]);
     setStatus("Video ready — describe what to find");
   }
@@ -387,7 +454,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
       <section className={styles.workbench}>
         <section className={styles.builder} aria-label="Configure visual monitor">
-          {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to 4 checks</span></div>}
+          {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to {detailed ? 32 : 4} checks</span></div>}
           <div className={styles.step}>
             <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>The example shows an active print. Upload any browser-playable clip to check your own event.</small></div></div>
             <div className={styles.sourceGrid}>
@@ -405,7 +472,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
 
           <div className={styles.stepRow}>
-            {recorded ? <div className={styles.storyboardHint}><FiCheck /><div><strong>Multi-pass video scan</strong><small>Up to 32 moments are checked across the clip in four Nova batches.</small></div></div> : <>
+            {recorded ? <>
+              <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
+              {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{[0.5, 1, 2, 5, 10].map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
+              <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? "One clearly described subject, fixed camera. Up to 192 samples / 10 minutes, with up to 4 closer boundary checks. May take several minutes. Occlusion and missing boundaries remain unknown. Shorter intervals cost more AWS checks." : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
+              {detailed && <div className={styles.presets}><button disabled={running} onClick={() => setPrompt("How long is the single car stationary in the parking space? Measure from stopping until it moves away.")}>Car parked duration</button><button disabled={running} onClick={() => setPrompt("How long does the single person take to get back up? Measure from first visibly on the ground until standing upright again.")}>Time to stand up</button></div>}
+            </> : <>
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
@@ -428,6 +500,23 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             <span>Condition {item.condition_index + 1}</span>
             <strong>{item.status === "match" ? "Detected" : item.status === "no_match" ? scanComplete ? "Not detected in sampled frames" : "Not seen yet" : item.status === "uncertain" ? "Uncertain" : "Unsupported"}</strong>
             <h3>{item.condition}</h3><p>{item.summary}</p>
+            {timeline[item.condition_index] && <div className={styles.timing}>
+              <p><strong>Event timeline {scanComplete ? "— sampled estimates" : "— provisional"}</strong></p>
+              {item.interval_definition && <p>Measured interval: {item.interval_definition}</p>}
+              <p>{timeline[item.condition_index].length} sampled timestamps · {timeline[item.condition_index].filter((point) => point.state === "uncertain").length} uncertain</p>
+              {episodes(timeline[item.condition_index]).length === 0 && <p>No measurable active interval established. Unknown observations are not proof of absence.</p>}
+              {episodes(timeline[item.condition_index]).map((episode, index) => <section key={episode.first} className={styles.episode}>
+                <strong>Interval {index + 1}</strong>
+                <p>{episode.maxDuration === null
+                  ? `Observed active span: ${episode.minDuration.toFixed(1)}s. Full duration unknown — a boundary is outside the recording, obscured, or not yet checked.`
+                  : `Estimated duration: ${episode.minDuration.toFixed(1)}–${episode.maxDuration.toFixed(1)} seconds.`}</p>
+                <p>Start: {episode.startAfter === null ? `already active or unclear before ${timeLabel(episode.first)}` : `${timeLabel(episode.startAfter)}–${timeLabel(episode.first)}`}. End: {episode.endBy === null ? `still active or unclear after ${timeLabel(episode.last)}` : `${timeLabel(episode.last)}–${timeLabel(episode.endBy)}`}.</p>
+                <button className={styles.momentButton} disabled={running || !recorded} onClick={() => { if (videoRef.current) videoRef.current.currentTime = episode.first; }}>Review start {timeLabel(episode.first)}</button>{" "}
+                <button className={styles.momentButton} disabled={running || !recorded} onClick={() => { if (videoRef.current) videoRef.current.currentTime = episode.endBy ?? episode.last; }}>Review end {timeLabel(episode.endBy ?? episode.last)}</button>
+              </section>)}
+              <p>Assumes the same subject and a continuous event between samples. Brief changes can be missed. A person standing up does not establish their safety.</p>
+              <details><summary>Inspect frame observations</summary><div className={styles.observations}>{timeline[item.condition_index].map((point) => <button key={point.at} disabled={running || !recorded} onClick={() => { if (videoRef.current) videoRef.current.currentTime = point.at; }}>{timeLabel(point.at)} · {point.state}</button>)}</div></details>
+            </div>}
             {item.at_seconds !== undefined && <button className={styles.momentButton} onClick={() => { if (!running && videoRef.current && recorded) videoRef.current.currentTime = item.at_seconds!; }} disabled={running || !recorded}>View at {Math.floor(item.at_seconds / 60)}:{Math.floor(item.at_seconds % 60).toString().padStart(2, "0")}</button>}
           </div>)}
           {lastResult && !conditionResults.length && <div className={styles.lastDecision}><p>{lastResult.summary}</p></div>}

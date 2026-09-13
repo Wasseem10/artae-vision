@@ -9,6 +9,7 @@ from video_intelligence_api.browser_vision import (
     decode_frame,
     normalize_conditions,
     normalize_decision,
+    normalize_timing,
 )
 from video_intelligence_api.routes import browser_sessions
 
@@ -17,6 +18,95 @@ def frame():
     out = io.BytesIO()
     Image.new("RGB", (64, 64), "white").save(out, format="JPEG")
     return {"at_seconds": 4, "jpeg": base64.b64encode(out.getvalue()).decode()}
+
+
+def test_timing_requires_complete_frame_states_and_unambiguous_subject():
+    decision = normalize_conditions(
+        {
+            "conditions": [
+                {
+                    "condition_index": 0,
+                    "status": "no_match",
+                    "summary": "Car is stationary.",
+                    "frame_states": ["inactive", "active", "active", "inactive"],
+                },
+                {
+                    "condition_index": 1,
+                    "status": "match",
+                    "summary": "Missing observations.",
+                    "frame_states": ["active"],
+                },
+                {
+                    "condition_index": 2,
+                    "status": "match",
+                    "summary": "Multiple similar cars.",
+                    "subject_ambiguous": True,
+                    "frame_states": ["active"] * 4,
+                },
+            ]
+        },
+        4,
+        ["Car parked", "Person down", "Blue car parked"],
+    )
+    result = normalize_timing(decision, 4)
+    assert result.status == "match"
+    assert result.conditions[0].matched_frame_index == 1
+    assert result.conditions[1].frame_states == ["uncertain"] * 4
+    assert result.conditions[2].status == "uncertain"
+    assert result.conditions[2].matched_frame_index is None
+
+
+def test_detailed_public_budget_is_signed_and_refinement_does_not_send_alert(
+    api_client, monkeypatch
+):
+    api_client.app.state.settings.strands_enabled = True
+    browser_sessions._public_demo_starts.clear()
+    browser_sessions._public_demo_checks.clear()
+    calls = []
+
+    def inspect(*args):
+        calls.append(args)
+        return VisualDecision(status="match", summary="Car visible."), {}
+
+    monkeypatch.setattr(browser_sessions, "inspect_frames", inspect)
+
+    async def forbidden_coordinator(*args, **kwargs):
+        raise AssertionError("Boundary refinement must not emit another alert")
+
+    monkeypatch.setattr(browser_sessions, "coordinate_incident", forbidden_coordinator)
+    start = api_client.post(
+        "/api/v1/browser-sessions/public-demo",
+        json={"prompt": "Car parked", "detailed": True},
+    ).json()
+    assert start["max_checks"] == 32
+    browser_sessions._public_demo_checks[start["id"]] = 4
+    result = api_client.post(
+        "/api/v1/browser-sessions/public-demo/analyze",
+        json={"token": start["token"], "frames": [frame()], "refinement": True},
+    )
+    assert result.status_code == 200, result.text
+    assert calls[0][-1] is True
+    assert result.json()["event"] is None
+    assert result.json()["checks_remaining"] == 27
+    browser_sessions._public_demo_checks[start["id"]] = 32
+    assert (
+        api_client.post(
+            "/api/v1/browser-sessions/public-demo/analyze",
+            json={"token": start["token"], "frames": [frame()]},
+        ).status_code
+        == 429
+    )
+    quick = api_client.post(
+        "/api/v1/browser-sessions/public-demo", json={"prompt": "Car parked"}
+    ).json()
+    browser_sessions._public_demo_checks[quick["id"]] = 4
+    assert (
+        api_client.post(
+            "/api/v1/browser-sessions/public-demo/analyze",
+            json={"token": quick["token"], "frames": [frame()], "detailed": True},
+        ).status_code
+        == 429
+    )
 
 
 def test_per_condition_answers_do_not_require_an_aggregate_status():

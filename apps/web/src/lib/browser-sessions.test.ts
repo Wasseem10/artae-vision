@@ -78,14 +78,14 @@ describe("merging account and local history", () => {
     ]);
     expect(request).toHaveBeenNthCalledWith(1, "/browser-sessions/public-demo", expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ prompt: "Find a failed print" }),
+      body: JSON.stringify({ prompt: "Find a failed print", detailed: false }),
     }));
     expect(request).toHaveBeenNthCalledWith(2, "/browser-sessions/public-demo/analyze", expect.objectContaining({
       method: "POST",
       body: JSON.stringify({ token: "signed-token", frames: [
         { at_seconds: 1, jpeg: "frame-one" },
         { at_seconds: 9, jpeg: "frame-two" },
-      ] }),
+      ], refinement: false }),
     }));
     expect(result.status).toBe("no_match");
     expect(result.checks_remaining).toBe(3);
