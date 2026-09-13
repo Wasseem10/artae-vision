@@ -502,7 +502,6 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             <h3>{item.condition}</h3><p>{item.summary}</p>
             {timeline[item.condition_index] && <div className={styles.timing}>
               <p><strong>Event timeline {scanComplete ? "— sampled estimates" : "— provisional"}</strong></p>
-              {item.interval_definition && <p>Measured interval: {item.interval_definition}</p>}
               <p>{timeline[item.condition_index].length} sampled timestamps · {timeline[item.condition_index].filter((point) => point.state === "uncertain").length} uncertain</p>
               {episodes(timeline[item.condition_index]).length === 0 && <p>No measurable active interval established. Unknown observations are not proof of absence.</p>}
               {episodes(timeline[item.condition_index]).map((episode, index) => <section key={episode.first} className={styles.episode}>
