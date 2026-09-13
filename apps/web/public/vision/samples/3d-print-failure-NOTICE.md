@@ -1,6 +1,6 @@
 # 3D-printer failure demo footage
 
-`3d-print-failure.mp4` is a 26-second presentation sequence assembled from the
+`3d-print-failure.mp4` is a 23-second presentation sequence assembled from the
 ten source frames in the `GreenSkullEarly` sequence of the
 [Bed-Adhesion Failure-Onset Dataset for FDM 3D Printing](https://github.com/EmptyDeck/3DPrint-Failure-Video-Dataset).
 It shows real printer observations in chronological order; it is not an Artae
