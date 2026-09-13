@@ -1,14 +1,14 @@
 # AI Video Intelligence Platform
 
-> **Current status:** `/app` and `/demo` now expose one focused visual-monitor
-> workflow: choose a sample, upload, or webcam; describe up to five visible conditions
-> (one per line); then start or stop analysis. Recorded videos also support detailed
-> timing with adjustable sampling, event intervals, and boundary refinement.
-> Signed-in runs send the unchanged condition and sampled frame to Amazon Nova 2
-> Lite through Bedrock. Confirmed matches invoke Strands, create an account alert,
-> and remain visible after the monitor stops. Live Nova and Strands calls were last
-> verified on September 9, 2026. This is a hackathon prototype, not a validated
-> safety, medical, or emergency-response product. See [tested scope](docs/browser-demo.md).
+> **Current status:** `/demo` is a focused possible-fall prototype: choose a staged
+> sample, upload a permitted video, or use a webcam; then start or stop monitoring.
+> MediaPipe Pose finds an on-device fall candidate, Amazon Nova 2 Lite reviews the
+> short image sequence through Bedrock, and a Strands agent prepares evidence,
+> an in-app alert, and human review. Signed-in account alerts survive Stop and can
+> be reviewed on another device. Optional caregiver SMS uses AWS SNS when the
+> deployment and destination number are configured. This is a hackathon prototype,
+> not a validated medical, emergency-response, or unattended monitoring product.
+> See [tested scope](docs/browser-demo.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
@@ -16,14 +16,21 @@ combine what it sees with authorized business-system context, take guarded actio
 and search the resulting evidence. The revised completion phases are in
 [`docs/product-roadmap.md`](docs/product-roadmap.md).
 
-## No-install demo
+## Senior-safety demo
 
-Open `/demo` for a rate-limited, no-account AWS-backed test; `/app` uses account-owned
-monitoring. The included, attributed video shows an active 3D printer, not a guaranteed
-failure. You can also upload another recorded clip or use a webcam, enter a condition such as
-“alert me if this print shows stringing,” select a 5-second demo interval, and press
-**Start monitoring**. The first check runs immediately. **Stop monitor** always
-remains visible while a run is active.
+Open `/demo` for a no-account possible-fall test. The included clips stage a lateral
+fall, ordinary sitting, and bending so both positive and negative behavior can be
+demonstrated without filming the judge. You can instead upload a permitted clip or
+use a webcam. Press **Start senior-safety check**; the page shows the live candidate
+state, preserves recorded segments, and keeps **Stop and keep history** visible for
+the entire run.
+
+The incident feed is the primary alert channel. A granted browser notification and
+audible cue can surface a possible fall while the page is open. Signed-in caregivers
+can optionally provide an E.164 phone number for AWS transactional SMS. SMS is sent
+only after a fall event is created; an accepted AWS request is not proof of carrier
+delivery. New AWS SMS accounts can send only to verified sandbox destinations until
+production access and any required origination registration are approved.
 
 Nova reports match, no match, uncertainty, or an unsupported request. With two or
 three confirmations selected, the server requires that many consecutive matches
@@ -84,9 +91,21 @@ VIDEO_INTEL_API_STRANDS_REGION=us-east-1
 
 Then run the normal API and browser workspace. A coordinator outage does not suppress
 a locally detected candidate: the API records its fallback and creates the in-app
-review item. A custom vision-call failure is shown as an error, never a fabricated
-detection or an implicit no-match. No SMS, phone, or WhatsApp delivery is enabled
-in this browser flow.
+review item. A vision-call failure is shown as an error, never a fabricated
+detection or an implicit no-match. Caregiver SMS is off by default. To enable it,
+grant the restricted runtime role `sns:Publish`, configure a verified destination
+in the AWS SMS sandbox (or obtain production access), and set:
+
+```dotenv
+VIDEO_INTEL_API_SMS_ENABLED=true
+VIDEO_INTEL_API_SMS_REGION=us-east-1
+# Optional and region-dependent
+VIDEO_INTEL_API_SMS_SENDER_ID=Artae
+```
+
+The destination is encrypted in the account rule using the existing alert-secret
+key and never returned to the browser in full. Phone calls and WhatsApp are not
+implemented.
 See the [submission checklist](docs/hackathon-submission.md),
 [architecture](docs/hackathon-architecture.md), and
 [third-party disclosure](docs/hackathon-disclosures.md).

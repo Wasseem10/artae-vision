@@ -214,6 +214,9 @@ class ApiSettings(BaseSettings):
     strands_region: str = Field(default="us-east-1", min_length=1, max_length=64)
     strands_role_arn: str | None = None
     strands_timeout_seconds: float = Field(default=30, ge=3, le=120)
+    sms_enabled: bool = False
+    sms_region: str = Field(default="us-east-1", min_length=1, max_length=64)
+    sms_sender_id: str | None = Field(default=None, max_length=11)
     detector_model: str = Field(default="yolo26n.pt", min_length=1, max_length=255)
     object_classes: list[str] = Field(default_factory=lambda: list(DEFAULT_OBJECT_CLASSES))
     event_types: list[str] = Field(default_factory=lambda: list(DEFAULT_EVENT_TYPES))

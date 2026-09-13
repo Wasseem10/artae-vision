@@ -20,6 +20,7 @@ from pydantic import AwareDatetime, BaseModel, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from video_intelligence_api.alert_secrets import AlertSecretError, encrypt_alert_secret
 from video_intelligence_api.auth import ActorDependency, EditorDependency
 from video_intelligence_api.browser_incidents import incident_actions, reconcile_browser_evidence
 from video_intelligence_api.browser_vision import decode_frame, inspect_frames, prompt_conditions
@@ -43,6 +44,7 @@ from video_intelligence_api.routes.recordings import (
 )
 from video_intelligence_api.schemas import EventRead, RecordingSegmentReport
 from video_intelligence_api.security import EdgePrincipal
+from video_intelligence_api.sms_alerts import send_caregiver_sms, valid_e164
 from video_intelligence_api.strands_orchestrator import coordinate_incident
 from video_intelligence_api.tenancy import tenant_camera
 
@@ -66,6 +68,16 @@ class SessionCreate(BaseModel):
     prompt: str = Field(default="", max_length=500)
     check_interval_seconds: int = Field(default=60, ge=5, le=3600)
     confirmation_count: int = Field(default=1, ge=1, le=3)
+    caregiver_phone: str | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def validate_caregiver_phone(self):
+        if self.caregiver_phone and (self.job != "fall" or not valid_e164(self.caregiver_phone)):
+            raise ValueError(
+                "Caregiver phone numbers require a fall job and E.164 format, "
+                "such as +12065550142"
+            )
+        return self
 
 
 class SavedJobCreate(BaseModel):
@@ -407,7 +419,12 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
         oidc_token=request.headers.get("x-vercel-oidc-token"),
     )
     if run:
-        event.details = {**event.details, "strands_agent": run.model_dump(mode="json")}
+        event.details = {
+            **event.details,
+            **incident_actions(event, run),
+            "review": {"status": "open", "outcome": None},
+            "strands_agent": run.model_dump(mode="json"),
+        }
     result["event"] = {
         "source_event_id": event.source_event_id,
         "occurred_at_seconds": event.occurred_at_seconds,
@@ -611,7 +628,10 @@ async def list_sessions(session: SessionDependency, actor: ActorDependency):
 
 @router.post("")
 async def create_session(
-    payload: SessionCreate, session: SessionDependency, actor: EditorDependency
+    payload: SessionCreate,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    actor: EditorDependency,
 ):
     if payload.job == "custom":
         try:
@@ -674,6 +694,14 @@ async def create_session(
         if payload.job == "fall"
         else "Person in view"
     )
+    encrypted_phone = None
+    if payload.caregiver_phone:
+        if not settings.sms_enabled:
+            raise HTTPException(503, "AWS caregiver SMS is not enabled for this deployment")
+        try:
+            encrypted_phone = encrypt_alert_secret(payload.caregiver_phone, settings)
+        except AlertSecretError as exc:
+            raise HTTPException(503, "Caregiver text alerts are not configured") from exc
     rule = Rule(
         id=new_id(),
         camera_id=camera.id,
@@ -693,6 +721,7 @@ async def create_session(
             "check_interval_seconds": payload.check_interval_seconds,
             "confirmation_count": payload.confirmation_count,
             "visual_match_streak": 0,
+            "caregiver_phone_encrypted": encrypted_phone,
         },
     )
     # These models use FK IDs, not ORM relationships. Flush parents explicitly;
@@ -802,6 +831,24 @@ async def record_observation(
         "requires_human": fall or bool(run and run.requires_human),
         **incident_actions(event, run),
     }
+    if fall:
+        encrypted_phone = (rule.spec or {}).get("caregiver_phone_encrypted")
+        try:
+            with anyio.fail_after(12):
+                sms = await anyio.to_thread.run_sync(
+                    partial(
+                        send_caregiver_sms,
+                        encrypted_phone=encrypted_phone,
+                        event=event,
+                        camera=camera,
+                        settings=request.app.state.settings,
+                        oidc_token=request.headers.get("x-vercel-oidc-token"),
+                    ),
+                    abandon_on_cancel=True,
+                )
+        except TimeoutError:
+            sms = {"status": "failed", "provider": "aws_sns", "error": "timeout"}
+        event.details = {**event.details, "sms": sms}
     try:
         session.add(event)
         await session.flush()

@@ -1,4 +1,25 @@
 .page { background: #f6f7f8; color: #171915; min-height: 100vh; }
+.seniorPage { --care: #315d78; background: linear-gradient(180deg,#f6f8fa 0,#f7f7f4 62%,#fff 100%); }
+.seniorPage .intro > small { color: var(--care); }
+.seniorPage .workspace { box-shadow: 0 25px 75px rgb(31 54 70 / .1); }
+.seniorPage .start { background:#234f6c; border-color:#234f6c; color:#fff; font-weight:700; }
+.seniorPage .cameraLabel { background:rgb(23 45 58 / .88); }
+.seniorPage .log article > i { background:#2f6688; }
+.seniorPage .log article span { color:#275d7e; }
+.fixedJob { align-self:stretch; background:#f1f5f7; border:1px solid #cad6dd; border-radius:10px; display:grid; gap:5px; min-width:240px; padding:10px 13px; }
+.fixedJob small { color:#6d7e88; font-size:9px; font-weight:800; letter-spacing:.12em; }
+.fixedJob strong { color:#203746; font-size:13px; }
+.fixedJob span { color:#62747f; font-size:10px; line-height:1.4; }
+.caregiverSetup { align-items:center; background:#f8fafb; border-top:1px solid #dfe5e8; display:grid; gap:14px; grid-template-columns:minmax(220px,1fr) auto; padding:20px 24px; }
+.caregiverSetup > div strong { display:block; font-size:14px; }
+.caregiverSetup > div p { color:#66747c; font-size:11px; line-height:1.5; margin:5px 0 0; }
+.caregiverSetup button { background:#fff; border:1px solid #bac9d2; border-radius:8px; color:#274d65; cursor:pointer; font:inherit; font-size:12px; padding:10px 12px; }
+.smsNotice { color:#697981; font-size:11px; grid-column:1 / -1; }
+.smsToggle { align-items:center; display:flex; font-size:12px; gap:9px; grid-column:1 / -1; }
+.smsToggle input { height:17px; width:17px; }
+.phoneField { display:grid; font-size:12px; gap:7px; grid-column:1 / -1; max-width:420px; }
+.phoneField input { background:#fff; border:1px solid #bdcbd3; border-radius:8px; font:inherit; padding:11px 12px; }
+.phoneField small { color:#6d7c84; font-size:10px; }
 .savedJobSetup { display:flex; flex-wrap:wrap; align-items:end; gap:12px; padding:20px 24px; border-bottom:1px solid #dfe2dc; }
 .savedJobSetup label { display:grid; gap:8px; flex:1; min-width:180px; font-size:13px; }
 .savedJobSetup input { font:inherit; padding:12px; border:1px solid #cbd2d7; border-radius:8px; background:#fff; color:#20282e; }
@@ -127,4 +148,6 @@
   .steps span:nth-child(3) { border-left: 0; border-top: 1px solid #dfe2dc; }
   .steps span:nth-child(4) { border-top: 1px solid #dfe2dc; }
   .next { align-items: flex-start; flex-direction: column; gap: 24px; padding-top: 55px; }
+  .caregiverSetup { grid-template-columns:1fr; }
+  .caregiverSetup button { justify-self:start; }
 }

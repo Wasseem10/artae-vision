@@ -486,6 +486,11 @@ def test_public_demo_analyzes_storyboard_without_account_storage(
     )
 
     class DemoRun:
+        tool_actions = (
+            {"tool": "preserve_evidence", "seconds_before": 5, "seconds_after": 10},
+            {"tool": "notify_responder", "message": "Review the possible event"},
+        )
+
         def model_dump(self, **_kwargs):
             return {
                 "status": "completed",
@@ -518,6 +523,9 @@ def test_public_demo_analyzes_storyboard_without_account_storage(
     assert result.json()["status"] == "match"
     assert result.json()["matched_frame_index"] == 1
     assert result.json()["event"]["details"]["strands_agent"]["status"] == "completed"
+    assert result.json()["event"]["details"]["notification"]["channel"] == "in_app"
+    assert result.json()["event"]["details"]["evidence"]["status"] == "awaiting_recording"
+    assert result.json()["event"]["details"]["review"]["status"] == "open"
     assert result.json()["checks_remaining"] == 3
     assert api_client.get("/api/v1/alerts").json() == []
     rejected = api_client.post(

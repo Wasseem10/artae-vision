@@ -9,7 +9,9 @@ import {
 } from "@/lib/browser-pose";
 import {
   createCloudSession,
+  createPublicDemo,
   analyzeCloudFrames,
+  analyzePublicDemo,
   cloudEventFields,
   formatTime,
   loadBrowserWorkspace,
@@ -28,6 +30,7 @@ import {
   type ReviewOutcome,
   type SavedBrowserJob,
   type MonitoringJob,
+  type PublicDemoSession,
 } from "@/lib/browser-sessions";
 import {
   getSupabaseBrowserClient,
@@ -36,7 +39,8 @@ import {
 } from "@/lib/supabase";
 import styles from "./instant-demo.module.css";
 
-export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
+export function BrowserMonitor({ workspace = false, experience = "general" }: { workspace?: boolean; experience?: "general" | "senior-safety" }) {
+  const seniorSafety = experience === "senior-safety";
   const videoRef = useRef<HTMLVideoElement>(null),
     canvasRef = useRef<HTMLCanvasElement>(null),
     playbackRef = useRef<HTMLVideoElement>(null);
@@ -50,7 +54,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   const [scope, setScope] = useState("guest"),
     [source, setSource] = useState<"sample" | "file" | "webcam">(workspace ? "webcam" : "sample"),
     [file, setFile] = useState<File | null>(null);
-  const [job, setJob] = useState<MonitoringJob>("presence"),
+  const [job, setJob] = useState<MonitoringJob>(seniorSafety ? "fall" : "presence"),
     [phase, setPhase] = useState("Ready"),
     [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null),
@@ -84,6 +88,23 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
   const [cloudConsent, setCloudConsent] = useState(false);
   const [visualStatus, setVisualStatus] = useState("");
   const [visualFrames, setVisualFrames] = useState(0);
+  const [caregiverPhone, setCaregiverPhone] = useState("");
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
+
+  function notifyCaregiver(summary: string) {
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Artae Senior Safety · possible fall", {
+        body: `${summary} Check the person immediately.`,
+        tag: "artae-possible-fall",
+      });
+    }
+  }
+
+  async function enableBrowserNotifications() {
+    if (typeof Notification === "undefined") return setNotificationState("unsupported");
+    setNotificationState(await Notification.requestPermission());
+  }
 
   async function saveAgent() {
     if (scope === "guest" || !agentName.trim() || savingJob || running) return;
@@ -132,6 +153,10 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
 
   useEffect(() => {
     mounted.current = true;
+    const notificationTimer = window.setTimeout(
+      () => setNotificationState(typeof Notification === "undefined" ? "unsupported" : Notification.permission),
+      0,
+    );
     let unsubscribe = () => {};
     if (isSupabaseConfigured()) {
       const {
@@ -175,6 +200,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     }
     return () => {
       mounted.current = false;
+      window.clearTimeout(notificationTimer);
       unsubscribe();
       stopRef.current();
       void audio.current?.close();
@@ -283,6 +309,10 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
       setProblem("Choose a video file first.");
       return;
     }
+    if (smsEnabled && !/^\+[1-9]\d{7,14}$/.test(caregiverPhone.trim())) {
+      setProblem("Enter the caregiver phone in international format, such as +12065550142.");
+      return;
+    }
     active.current = true;
     setRunning(true);
     setProblem(null);
@@ -306,6 +336,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
       job,
       agentId: selectedAgent,
       prompt: job === "custom" ? prompt.trim() : "",
+      caregiverPhone: job === "fall" && scope !== "guest" && smsEnabled ? caregiverPhone.trim() : undefined,
       createdAt: new Date().toISOString(),
       events: [],
       clips: [],
@@ -334,6 +365,9 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     const frameCanvas = document.createElement("canvas");
     const visualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
+    const fallVisualBuffer: { at_seconds: number; jpeg: string }[] = [];
+    let lastFallVisualSample = -1;
+    let publicFallSession: PublicDemoSession | null = null;
     const now = () =>
       source === "webcam"
         ? (performance.now() - startTime) / 1000
@@ -368,6 +402,12 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
       if (sound) {
         audio.current ??= new AudioContext();
         await audio.current.resume();
+      }
+      if (scope === "guest" && job === "fall") {
+        setVisualStatus("Opening the AWS fall-review agent…");
+        publicFallSession = await createPublicDemo(
+          "A person transitions from upright to the floor and remains down. Distinguish this from normal sitting, kneeling, or bending.",
+        );
       }
       worker = new Worker("/vision/pose-worker.js");
       await new Promise<void>((resolve, reject) => {
@@ -540,17 +580,36 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
                 ? "Possible fall — please review"
                 : "Person detected",
             visibility: f?.visibility ?? 0,
+            review: { status: "open", outcome: null } as const,
           };
           s.events.push(event);
           persist(s);
           beep();
-          queueCloud(s, async () => {
-            await createCloudSession(s);
-            const result = await saveCloudEvent(s, event);
-            Object.assign(event, cloudEventFields(result));
-            s.cloud = true;
-            persist(s);
-          });
+          notifyCaregiver(event.title);
+          if (scope === "guest" && job === "fall" && publicFallSession && fallVisualBuffer.length) {
+            visualPending = true;
+            setVisualStatus("Amazon Nova is reviewing the possible fall sequence…");
+            const batch = fallVisualBuffer.slice(-8);
+            void analyzePublicDemo(publicFallSession, batch).then((result) => {
+              setVisualFrames((n) => n + result.frames_analyzed);
+              event.title = result.status === "match" ? "Possible fall — caregiver check requested" : "Possible fall candidate — human review required";
+              Object.assign(event, result.event ? cloudEventFields(result.event) : { summary: result.summary });
+              setVisualStatus(result.event
+                ? "Nova confirmed the visible sequence and Strands prepared the caregiver response."
+                : `Nova result: ${result.summary} The local candidate remains available for human review.`);
+              persist(s);
+            }).catch((error) => {
+              setVisualStatus(error instanceof Error ? `AWS review unavailable: ${error.message}` : "AWS review unavailable; local alert kept.");
+            }).finally(() => { visualPending = false; });
+          } else {
+            queueCloud(s, async () => {
+              await createCloudSession(s);
+              const result = await saveCloudEvent(s, event);
+              Object.assign(event, cloudEventFields(result));
+              s.cloud = true;
+              persist(s);
+            });
+          }
           if (s.events.length >= 20) {
             stop();
             setPhase("Stopped at the 20-alert session limit · logs and footage kept");
@@ -588,6 +647,15 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           return;
         }
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        if (job === "fall" && video.readyState >= 2 && lastAt - lastFallVisualSample >= 0.35) {
+          lastFallVisualSample = lastAt;
+          const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
+          frameCanvas.width = Math.round(video.videoWidth * scale);
+          frameCanvas.height = Math.round(video.videoHeight * scale);
+          frameCanvas.getContext("2d")!.drawImage(video, 0, 0, frameCanvas.width, frameCanvas.height);
+          fallVisualBuffer.push({ at_seconds: lastAt, jpeg: frameCanvas.toDataURL("image/jpeg", .72).split(",")[1] });
+          if (fallVisualBuffer.length > 12) fallVisualBuffer.shift();
+        }
         if (job === "custom" && video.readyState >= 2 && lastAt - lastVisualSample >= 1) {
           lastVisualSample = lastAt;
           const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
@@ -755,7 +823,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
     if (loaded.clips[0]) playClip(loaded.clips[0]);
   }
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${seniorSafety ? styles.seniorPage : ""}`}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/">
           artae.
@@ -768,15 +836,14 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
         </div>
       </header>
       <section className={styles.intro}>
-        <small>REAL DETECTION · NO INSTALLATION</small>
+        <small>{seniorSafety ? "COMMUNITY SENIOR SAFETY · HUMAN REVIEW REQUIRED" : "REAL DETECTION · NO INSTALLATION"}</small>
         <h1>
-          Give your camera
-          <br />
-          one clear job.
+          {seniorSafety ? <>Help caregivers notice<br />a possible fall sooner.</> : <>Give your camera<br />one clear job.</>}
         </h1>
         <p>
-          Choose a job, connect video, and watch real detections appear. Start
-          with person detection to check your setup.
+          {seniorSafety
+            ? "Artae watches permitted shared-space footage, flags a possible fall, preserves the moment, and asks an on-duty caregiver to check the person."
+            : "Choose a job, connect video, and watch real detections appear. Start with person detection to check your setup."}
         </p>
       </section>
       <section id="monitor-setup" className={styles.workspace}>
@@ -787,7 +854,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
           </button>
         </div>}
         <div className={styles.setup}>
-          <label>
+          {!seniorSafety && <label>
             1. What should it watch for?
             <select
               value={job}
@@ -798,7 +865,8 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
               <option value="fall">A possible fall · experimental</option>
               <option value="custom" disabled={scope === "guest"}>Describe a visual condition · AWS · sign-in required</option>
             </select>
-          </label>
+          </label>}
+          {seniorSafety && <div className={styles.fixedJob}><small>1. CARE JOB</small><strong>Possible fall in a shared room</strong><span>On-device pose candidate + AWS review + caregiver response</span></div>}
           <label>
             2. Connect video
             <select
@@ -854,6 +922,16 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
             </select>
           </label>}
         </div>
+        {seniorSafety && <div className={styles.caregiverSetup}>
+          <div><strong>3. Choose how the caregiver is alerted</strong><p>The live incident feed and sound always work while this page is open.</p></div>
+          <button type="button" onClick={() => void enableBrowserNotifications()} disabled={notificationState === "granted" || notificationState === "unsupported"}>
+            {notificationState === "granted" ? "Browser alert enabled" : notificationState === "unsupported" ? "Browser alerts unavailable" : "Enable browser alert"}
+          </button>
+          {scope === "guest" ? <span className={styles.smsNotice}>Sign in to connect a verified caregiver phone for AWS SMS.</span> : <>
+            <label className={styles.smsToggle}><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Send AWS SMS on a possible fall</label>
+            {smsEnabled && <label className={styles.phoneField}>Caregiver phone in international format<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>AWS sandbox accounts can text verified numbers only.</small></label>}
+          </>}
+        </div>}
         {job === "custom" && <div className={styles.customJob}>
           <label>What visible condition should trigger an in-app alert?
             <textarea maxLength={500} value={prompt} disabled={running || saving > 0} placeholder="e.g. Someone is holding a red bottle" onChange={(e) => { setPrompt(e.target.value); setSelectedAgent(undefined); }} />
@@ -914,7 +992,7 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
               <span>{metrics.state}</span>
             </div>
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
-            {job === "custom" && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || "Collecting the first four frames…"}</p>}
+            {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS will review a sequence when the local pose detector finds a candidate." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
               <p>
@@ -1028,7 +1106,8 @@ export function BrowserMonitor({ workspace = false }: { workspace?: boolean }) {
                           </>
                         )}
                       </div>
-                      <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" ? "on this device" : "to account"}` : "No text message or phone call is sent."}</small>
+                      {event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}{event.sms.error ? ` · ${event.sms.error}` : ""}</small>}
+                      <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" ? "on this device" : "to account"}` : event.sms?.status === "accepted" ? "AWS accepted the caregiver text; carrier delivery is not guaranteed." : "Awaiting caregiver review."}</small>
                     </div>
                   </article>
                 ))

@@ -105,6 +105,21 @@ def test_browser_session_keeps_recording_time_origin_across_devices(api_client):
     assert datetime.fromisoformat(listed["created_at"]) == started
 
 
+def test_caregiver_sms_fails_closed_when_provider_is_disabled(api_client):
+    api_client.app.state.settings.sms_enabled = False
+    response = api_client.post(
+        "/api/v1/browser-sessions",
+        json={
+            "id": str(uuid.uuid4()),
+            "name": "Senior safety",
+            "job": "fall",
+            "caregiver_phone": "+12065550142",
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "AWS caregiver SMS is not enabled for this deployment"
+
+
 def test_browser_recordings_are_seekable_catalog_entries(api_client):
     s = create(api_client)
     observation = api_client.post(f"/api/v1/browser-sessions/{s['id']}/events", json={

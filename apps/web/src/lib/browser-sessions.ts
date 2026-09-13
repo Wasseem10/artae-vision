@@ -17,6 +17,7 @@ export type BrowserEvent = {
   actions?: string[];
   evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
   notification?: { channel: string; status: string; message: string; priority: string };
+  sms?: { status: string; provider: string; destination?: string; error?: string };
   snapshot?: string;
 };
 export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
@@ -32,6 +33,7 @@ export type CloudEventResult = {
     review?: IncidentReview;
     evidence?: BrowserEvent["evidence"];
     notification?: BrowserEvent["notification"];
+    sms?: BrowserEvent["sms"];
   };
 };
 export function cloudEventFields(result: CloudEventResult) {
@@ -43,6 +45,7 @@ export function cloudEventFields(result: CloudEventResult) {
     actions: result.details.strands_agent?.tools_invoked,
     evidence: result.details.evidence,
     notification: result.details.notification,
+    sms: result.details.sms,
   };
 }
 export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
@@ -73,6 +76,7 @@ export type BrowserSession = {
   agentId?: string;
   checkIntervalSeconds?: number;
   confirmationCount?: number;
+  caregiverPhone?: string;
 };
 export const sessionMetadata = (s: BrowserSession): BrowserSession => ({
   ...s, clips: s.clips.map((clip) => ({ ...clip, blob: undefined })),
@@ -194,6 +198,7 @@ export async function createCloudSession(s: BrowserSession) {
       prompt: s.prompt ?? "",
       check_interval_seconds: s.checkIntervalSeconds ?? 60,
       confirmation_count: s.confirmationCount ?? 1,
+      caregiver_phone: s.caregiverPhone || null,
     }),
   });
 }
