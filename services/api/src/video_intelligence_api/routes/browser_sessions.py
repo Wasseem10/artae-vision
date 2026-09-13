@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 
 from video_intelligence_api.auth import ActorDependency, EditorDependency
 from video_intelligence_api.browser_incidents import incident_actions, reconcile_browser_evidence
-from video_intelligence_api.browser_vision import decode_frame, inspect_frames
+from video_intelligence_api.browser_vision import decode_frame, inspect_frames, prompt_conditions
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
 from video_intelligence_api.models import (
     Alert,
@@ -102,8 +102,11 @@ async def list_saved_jobs(session: SessionDependency, actor: ActorDependency):
 async def save_browser_job(
     payload: SavedJobCreate, session: SessionDependency, actor: EditorDependency
 ):
-    if payload.job == "custom" and not payload.prompt.strip():
-        raise HTTPException(422, "Describe a visible condition to watch for")
+    if payload.job == "custom":
+        try:
+            prompt_conditions(payload.prompt)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
     camera = await session.get(Camera, str(payload.id))
     if camera:
         camera = await tenant_camera(session, actor, camera.id)
@@ -237,6 +240,10 @@ def _public_demo_signing_key(settings) -> bytes:
 async def start_public_demo(payload: PublicDemoStart, request: Request):
     """Issue a short-lived, rate-limited token for the no-account judge demo."""
     settings = request.app.state.settings
+    try:
+        prompt_conditions(payload.prompt)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
     if not settings.strands_enabled:
         raise HTTPException(503, "AWS visual analysis is not configured")
     now = utc_now()
@@ -307,6 +314,7 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
 
     result = {
         "status": decision.status,
+        "conditions": [item.model_dump() for item in decision.conditions],
         "summary": decision.summary,
         "matched_frame_index": decision.matched_frame_index,
         "frames_analyzed": len(payload.frames),
@@ -362,6 +370,7 @@ async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
         raw_payload={"frame_times": [frame.at_seconds for frame in payload.frames]},
         details={
             "source": "bedrock_vision",
+            "conditions": [item.model_dump() for item in decision.conditions],
             "summary": decision.summary,
             "model": settings.strands_model_id,
             "usage": usage,
@@ -450,9 +459,15 @@ async def analyze_browser_frames(
     spec["visual_match_streak"] = match_streak
     prior = spec.get("visual_last_match_seconds")
     confirmed = decision.status == "match" and match_streak >= confirmation_count
-    create_alert = confirmed and (prior is None or at - float(prior) >= 30)
+    matched_conditions = [
+        item.condition_index for item in decision.conditions if item.status == "match"
+    ]
+    seen_conditions = spec.get("visual_alerted_conditions", [])
+    new_match = any(index not in seen_conditions for index in matched_conditions)
+    create_alert = confirmed and (new_match or prior is None or at - float(prior) >= 30)
     result = {
         "status": decision.status,
+        "conditions": [item.model_dump() for item in decision.conditions],
         "summary": decision.summary,
         "frames_analyzed": len(payload.frames),
         "model": settings.strands_model_id,
@@ -489,6 +504,7 @@ async def analyze_browser_frames(
             raw_payload={"frame_times": [f.at_seconds for f in payload.frames]},
             details={
                 "source": "bedrock_vision",
+                "conditions": [item.model_dump() for item in decision.conditions],
                 "summary": decision.summary,
                 "model": settings.strands_model_id,
                 "independently_verified": False,
@@ -514,6 +530,7 @@ async def analyze_browser_frames(
         await reconcile_browser_evidence(session, camera, rule)
         result["event"] = EventRead.model_validate(event).model_dump(mode="json")
         spec["visual_last_match_seconds"] = at
+        spec["visual_alerted_conditions"] = sorted(set(seen_conditions + matched_conditions))
         spec["visual_match_streak"] = 0
     rule.spec = {
         **spec,
@@ -570,8 +587,11 @@ async def list_sessions(session: SessionDependency, actor: ActorDependency):
 async def create_session(
     payload: SessionCreate, session: SessionDependency, actor: EditorDependency
 ):
-    if payload.job == "custom" and not payload.prompt.strip():
-        raise HTTPException(422, "Describe a visible condition to watch for")
+    if payload.job == "custom":
+        try:
+            prompt_conditions(payload.prompt)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
     existing = await session.get(Camera, str(payload.id))
     if existing:
         camera, rule = await owned_session(str(payload.id), session, actor)

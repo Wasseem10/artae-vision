@@ -7,6 +7,7 @@ from PIL import Image
 from video_intelligence_api.browser_vision import (
     VisualDecision,
     decode_frame,
+    normalize_conditions,
     normalize_decision,
 )
 from video_intelligence_api.routes import browser_sessions
@@ -16,6 +17,120 @@ def frame():
     out = io.BytesIO()
     Image.new("RGB", (64, 64), "white").save(out, format="JPEG")
     return {"at_seconds": 4, "jpeg": base64.b64encode(out.getvalue()).decode()}
+
+
+def test_conditions_have_separate_answers_and_missing_answers_are_uncertain():
+    decision = normalize_conditions(
+        {
+            "status": "match",
+            "summary": "Person visible.",
+            "conditions": [
+                {
+                    "condition_index": 0,
+                    "condition": "hallucinated label",
+                    "status": "match",
+                    "summary": "Person visible.",
+                    "matched_frame_index": 3,
+                },
+                {
+                    "condition_index": 1,
+                    "status": "no_match",
+                    "summary": "No dog visible.",
+                },
+            ],
+        },
+        8,
+        ["A person is visible", "A dog is visible", "A truck is visible"],
+    )
+    assert [item.status for item in decision.conditions] == [
+        "match",
+        "no_match",
+        "uncertain",
+    ]
+    assert decision.conditions[0].condition == "A person is visible"
+    assert decision.conditions[0].matched_frame_index == 3
+    assert decision.status == "match"
+
+
+def test_all_negative_conditions_override_inconsistent_top_level_match():
+    decision = normalize_conditions(
+        {
+            "status": "match",
+            "summary": "Incorrect aggregate",
+            "conditions": [
+                {"condition_index": 0, "status": "no_match", "summary": "No person."},
+                {"condition_index": 1, "status": "no_match", "summary": "No dog."},
+            ],
+        },
+        8,
+        ["A person", "A dog"],
+    )
+    assert decision.status == "no_match"
+    assert decision.matched_frame_index is None
+
+
+def test_public_run_keeps_checking_after_first_condition_matches(
+    api_client, monkeypatch
+):
+    api_client.app.state.settings.strands_enabled = True
+    browser_sessions._public_demo_starts.clear()
+    browser_sessions._public_demo_checks.clear()
+    prompts = ["A person is visible", "A truck is visible"]
+    calls = []
+
+    def inspect(prompt, frames, *_):
+        calls.append(prompt)
+        active = 0 if len(calls) == 1 else 1
+        return normalize_conditions(
+            {
+                "status": "match",
+                "summary": "A condition matched",
+                "conditions": [
+                    {
+                        "condition_index": i,
+                        "status": "match" if i == active else "no_match",
+                        "summary": "Visible" if i == active else "Not visible",
+                        "matched_frame_index": 0,
+                    }
+                    for i in range(2)
+                ],
+            },
+            len(frames),
+            prompts,
+        ), {}
+
+    async def coordinator(*_, **kwargs):
+        return None
+
+    monkeypatch.setattr(browser_sessions, "inspect_frames", inspect)
+    monkeypatch.setattr(browser_sessions, "coordinate_incident", coordinator)
+    token = api_client.post(
+        "/api/v1/browser-sessions/public-demo", json={"prompt": "\n".join(prompts)}
+    ).json()["token"]
+    for batch in range(2):
+        response = api_client.post(
+            "/api/v1/browser-sessions/public-demo/analyze",
+            json={
+                "token": token,
+                "frames": [{**frame(), "at_seconds": batch * 40 + 1}],
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["conditions"][batch]["status"] == "match"
+        assert body["event"]["details"]["conditions"][batch]["status"] == "match"
+        assert body["checks_remaining"] == 3 - batch
+    assert len(calls) == 2
+
+
+def test_public_demo_rejects_too_many_conditions_before_inference(api_client):
+    result = api_client.post(
+        "/api/v1/browser-sessions/public-demo",
+        json={
+            "prompt": "\n".join(["A person is visible"] * 6),
+        },
+    )
+    assert result.status_code == 422
 
 
 def test_invalid_model_frame_pointer_does_not_crash_a_valid_decision():

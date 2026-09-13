@@ -16,7 +16,9 @@ import {
   type BrowserSession,
   type PublicDemoSession,
   type VisualCheckResult,
+  type ConditionResult,
 } from "@/lib/browser-sessions";
+import { mergeConditions, readConditions } from "@/lib/condition-results";
 import styles from "./visual-watch.module.css";
 
 type Source = "sample" | "upload" | "webcam";
@@ -68,6 +70,7 @@ async function captureStoryboard(
   video: HTMLVideoElement,
   canvas: HTMLCanvasElement,
   onProgress: (captured: number, total: number) => void,
+  isActive: () => boolean,
 ) {
   await waitForVideo(video);
   if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("This video does not expose a readable duration.");
@@ -78,6 +81,7 @@ async function captureStoryboard(
   const count = Math.min(32, Math.max(8, Math.ceil(video.duration / 6)));
   const frames: CapturedFrame[] = [];
   for (let index = 0; index < count; index += 1) {
+    if (!isActive()) throw new Error("Scan stopped");
     const at = Math.min(video.duration - 0.05, ((index + 0.5) / count) * video.duration);
     await seek(video, Math.max(0, at));
     frames.push({ at_seconds: at, ...captureFrame(video, canvas) });
@@ -99,6 +103,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
   const runningRef = useRef(false);
+  const runIdRef = useRef(0);
+  const resultsRef = useRef<ConditionResult[]>([]);
   const sessionRef = useRef<BrowserSession | null>(null);
   const publicSessionRef = useRef<PublicDemoSession | null>(null);
   const startedAtRef = useRef(0);
@@ -113,6 +119,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [stage, setStage] = useState<Stage>("idle");
   const [status, setStatus] = useState("Ready to analyze");
   const [lastResult, setLastResult] = useState<VisualCheckResult | null>(null);
+  const [conditionResults, setConditionResults] = useState<ConditionResult[]>([]);
+  const [scanComplete, setScanComplete] = useState(false);
   const [events, setEvents] = useState<BrowserEvent[]>([]);
   const [checks, setChecks] = useState(0);
   const [nextCheck, setNextCheck] = useState<number | null>(null);
@@ -121,6 +129,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const recorded = source !== "webcam";
 
   const stop = useCallback((message = "Monitor stopped") => {
+    runIdRef.current += 1;
     runningRef.current = false;
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
@@ -171,7 +180,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const session: BrowserSession = {
       id: crypto.randomUUID(), scope: "account", name: prompt.trim().slice(0, 80), job: "custom",
       prompt: prompt.trim(), createdAt: new Date().toISOString(), events: [], clips: [], cloud: true,
-      checkIntervalSeconds: intervalSeconds, confirmationCount,
+      checkIntervalSeconds: intervalSeconds, confirmationCount: recorded ? 1 : confirmationCount,
     };
     await createCloudSession(session);
     sessionRef.current = session;
@@ -181,6 +190,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     frames: CapturedFrame[],
     batch?: { current: number; total: number },
   ) {
+    const runId = runIdRef.current;
     setStage("nova");
     setState("checking");
     setStatus(batch
@@ -190,20 +200,26 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const result = mode === "public"
       ? await analyzePublicDemo(publicSessionRef.current!, payload)
       : await analyzeCloudFrames(sessionRef.current!, payload);
+    if (runId !== runIdRef.current || !runningRef.current) return result;
+    const answers = (result.conditions || []).map((item) => ({
+      ...item,
+      at_seconds: item.matched_frame_index == null ? undefined : frames[item.matched_frame_index]?.at_seconds,
+    }));
+    resultsRef.current = mergeConditions(resultsRef.current, answers);
+    setConditionResults(resultsRef.current);
     setChecks((value) => value + 1);
     setLastResult(result);
-    setStage(result.event ? "strands" : "complete");
+    setStage("frames");
     if (result.event) {
-      const matched = frames[result.matched_frame_index ?? frames.length - 1] ?? frames.at(-1)!;
+      const matched = result.matched_frame_index == null ? undefined : frames[result.matched_frame_index];
       const fields = cloudEventFields(result.event);
       const event: BrowserEvent = {
-        id: result.event.source_event_id, at: matched.at_seconds, occurredAt: new Date().toISOString(),
-        title: "Condition detected", visibility: 0, snapshot: matched.snapshot, ...fields,
+        id: result.event.source_event_id, at: matched?.at_seconds ?? frames[0].at_seconds, occurredAt: new Date().toISOString(),
+        title: "Conditions detected", visibility: 0, snapshot: matched?.snapshot, ...fields,
         saved: mode === "account", summary: result.summary,
       };
       setEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 10));
       notify(result.summary);
-      setStage("complete");
       setStatus(mode === "account" ? "Condition detected — alert saved" : "Condition detected — Strands prepared the response");
     } else if (result.status === "no_match") {
       setStatus(recorded
@@ -223,10 +239,11 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
   async function runWebcamCheck() {
     if (!runningRef.current || !videoRef.current || !canvasRef.current) return;
+    const runId = runIdRef.current;
     try {
       const frame = { at_seconds: elapsed(startedAtRef.current), ...captureFrame(videoRef.current, canvasRef.current) };
       const result = await analyze([frame]);
-      if (!runningRef.current) return;
+      if (!runningRef.current || runId !== runIdRef.current) return;
       if (result.status === "unsupported" || (mode === "public" && result.checks_remaining === 0)) {
         stop(result.status === "unsupported" ? result.summary : "Public demo complete — start another run for more checks");
         return;
@@ -236,6 +253,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       setNextCheck(due);
       timerRef.current = window.setTimeout(() => void runWebcamCheck(), intervalSeconds * 1000);
     } catch (error) {
+      if (runId !== runIdRef.current) return;
       runningRef.current = false;
       setState("error");
       setStatus(error instanceof Error ? error.message : "The visual check failed.");
@@ -264,15 +282,21 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   }
 
   async function start() {
-    if (!prompt.trim()) { setState("error"); setStatus("Describe one visible condition to watch for."); return; }
+    const conditions = readConditions(prompt);
+    if (!conditions.length || conditions.length > 5) {
+      setState("error"); setStatus("Enter one to five conditions, each on its own line."); return;
+    }
+    const runId = ++runIdRef.current;
     try {
       runningRef.current = true;
       setState("starting"); setStage("idle"); setStatus("Opening the video source…");
       setLastResult(null); setChecks(0); setNextCheck(null);
-      if (mode === "public") setEvents([]);
+      setConditionResults([]); resultsRef.current = []; setScanComplete(false); setEvents([]);
       await prepareVideo();
+      if (runId !== runIdRef.current) return;
       setStatus(mode === "public" ? "Opening a rate-limited AWS demo session…" : "Opening your account monitor…");
       await openSession();
+      if (runId !== runIdRef.current) return;
       startedAtRef.current = Date.now();
       if (recorded) {
         setState("sampling"); setStatus("Sampling moments across the video…");
@@ -280,6 +304,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           videoRef.current!,
           canvasRef.current!,
           (captured, total) => setStatus(`Sampling moment ${captured} of ${total} across the video…`),
+          () => runId === runIdRef.current && runningRef.current,
         );
         setStage("frames");
         const batches = Array.from(
@@ -287,19 +312,24 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           (_, index) => frames.slice(index * 8, index * 8 + 8),
         );
         for (let index = 0; index < batches.length; index += 1) {
-          const result = await analyze(batches[index], {
+          if (index > 0 && mode === "account") await new Promise((resolve) => window.setTimeout(resolve, 3100));
+          if (runId !== runIdRef.current || !runningRef.current) return;
+          await analyze(batches[index], {
             current: index + 1,
             total: batches.length,
           });
-          if (result.event || result.status === "unsupported") break;
+          if (runId !== runIdRef.current || !runningRef.current) return;
         }
         runningRef.current = false;
-        setState("stopped");
+        setState("stopped"); setStage("complete"); setScanComplete(true);
+        const found = resultsRef.current.filter((item) => item.status === "match").length;
+        setStatus(`Scan complete — ${found} of ${conditions.length} conditions detected in sampled frames`);
       } else {
         setState("watching"); setStatus("Live monitor started");
         await runWebcamCheck();
       }
     } catch (error) {
+      if (runId !== runIdRef.current) return;
       runningRef.current = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       setState("error");
@@ -311,6 +341,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     if (runningRef.current) return;
     const video = videoRef.current;
     setSource(next); setUploadName(""); setLastResult(null); setStage("idle");
+    setConditionResults([]); setScanComplete(false);
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
     if (next !== "webcam") setConfirmationCount(1);
     if (video) {
@@ -327,6 +358,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     videoRef.current.src = uploadUrlRef.current;
     videoRef.current.loop = false;
     setSource("upload"); setUploadName(file.name); setLastResult(null); setStage("idle");
+    setConditionResults([]); setScanComplete(false);
     if (mode === "public") setEvents([]);
     setStatus("Video ready — describe what to find");
   }
@@ -366,8 +398,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
 
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>2</span><div><strong>What should Artae find?</strong><small>Use one visible, observable condition.</small></div></div>
-            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={4} aria-label="Condition to watch for" />
+            <div className={styles.stepTitle}><span>2</span><div><strong>What should Artae find?</strong><small>Check up to 5 conditions. Put each on a separate line.</small></div></div>
+            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder={"A person wearing blue is visible.\nA person is lying on the floor."} />
+            <small className={styles.conditionCount}>{readConditions(prompt).length} / 5 conditions · 500 characters total</small>
             <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
           </div>
 
@@ -388,10 +421,16 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
           <canvas ref={canvasRef} hidden />
           <div className={styles.pipeline} aria-label="Analysis progress">
-            {steps.map((item) => <div className={isStepDone(stage, item.stage, Boolean(lastResult?.event)) ? styles.pipelineDone : ""} key={item.stage}><i />{item.label}</div>)}
+            {steps.map((item) => <div className={isStepDone(stage, item.stage, events.some((event) => event.coordinator === "completed")) ? styles.pipelineDone : ""} key={item.stage}><i />{item.label}</div>)}
           </div>
           <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} AWS check${checks === 1 ? "" : "s"} completed` : "No AWS checks yet"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
-          {lastResult && <div className={`${styles.lastDecision} ${lastResult.status === "match" ? styles.matchDecision : ""}`}><span>Nova decision</span><strong>{lastResult.status === "match" ? "Detected" : lastResult.status.replace("_", " ")}</strong><p>{lastResult.summary}</p></div>}
+          {conditionResults.map((item) => <div className={`${styles.lastDecision} ${item.status === "match" ? styles.matchDecision : ""}`} key={item.condition_index}>
+            <span>Condition {item.condition_index + 1}</span>
+            <strong>{item.status === "match" ? "Detected" : item.status === "no_match" ? scanComplete ? "Not detected in sampled frames" : "Not seen yet" : item.status === "uncertain" ? "Uncertain" : "Unsupported"}</strong>
+            <h3>{item.condition}</h3><p>{item.summary}</p>
+            {item.at_seconds !== undefined && <button className={styles.momentButton} onClick={() => { if (!running && videoRef.current && recorded) videoRef.current.currentTime = item.at_seconds!; }} disabled={running || !recorded}>View at {Math.floor(item.at_seconds / 60)}:{Math.floor(item.at_seconds % 60).toString().padStart(2, "0")}</button>}
+          </div>)}
+          {lastResult && !conditionResults.length && <div className={styles.lastDecision}><p>{lastResult.summary}</p></div>}
         </article>
 
         <aside className={styles.alertCard}>

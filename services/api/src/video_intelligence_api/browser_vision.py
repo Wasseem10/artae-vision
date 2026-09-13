@@ -2,6 +2,7 @@
 
 import base64
 import io
+import json
 from typing import Literal
 
 import boto3
@@ -16,6 +17,65 @@ class VisualDecision(BaseModel):
     status: Literal["match", "no_match", "uncertain", "unsupported"]
     summary: str = Field(min_length=1, max_length=240)
     matched_frame_index: int | None = Field(default=None, ge=0, le=127)
+    conditions: list["ConditionDecision"] = Field(default_factory=list, max_length=5)
+
+
+class ConditionDecision(BaseModel):
+    condition_index: int = Field(ge=0, le=4)
+    condition: str = Field(default="", max_length=500)
+    status: Literal["match", "no_match", "uncertain", "unsupported"]
+    summary: str = Field(min_length=1, max_length=240)
+    matched_frame_index: int | None = None
+
+
+def prompt_conditions(prompt: str) -> list[str]:
+    conditions = [line.strip() for line in prompt.splitlines() if line.strip()]
+    if not 1 <= len(conditions) <= 5:
+        raise ValueError("Enter between one and five conditions, one per line")
+    return conditions
+
+
+def normalize_conditions(value: object, frame_count: int, prompts: list[str]) -> VisualDecision:
+    decision = normalize_decision(value, frame_count)
+    # Missing/duplicate answers are uncertainty, never silently negative.
+    answers = []
+    for index, prompt in enumerate(prompts):
+        candidates = [item for item in decision.conditions if item.condition_index == index]
+        if len(candidates) == 1:
+            item = candidates[0]
+        elif len(prompts) == 1 and not decision.conditions:
+            item = ConditionDecision(
+                condition_index=index, **decision.model_dump(exclude={"conditions"})
+            )
+        else:
+            item = ConditionDecision(
+                condition_index=index,
+                status="uncertain",
+                summary="The model did not return a separate answer for this condition.",
+            )
+        item.condition = prompt
+        pointer = item.matched_frame_index
+        if item.status != "match" or pointer is None or not 0 <= pointer < frame_count:
+            item.matched_frame_index = None
+        answers.append(item)
+    decision.conditions = answers
+    matches = [item for item in answers if item.status == "match"]
+    decision.status = (
+        "match"
+        if matches
+        else "uncertain"
+        if any(item.status == "uncertain" for item in answers)
+        else "unsupported"
+        if all(item.status == "unsupported" for item in answers)
+        else "no_match"
+    )
+    decision.summary = (
+        "; ".join(item.summary for item in matches)[:240]
+        if matches
+        else "Each condition has been checked against this batch of sampled frames."
+    )
+    decision.matched_frame_index = matches[0].matched_frame_index if matches else None
+    return decision
 
 
 def normalize_decision(value: object, frame_count: int) -> VisualDecision:
@@ -43,6 +103,7 @@ def decode_frame(encoded: str) -> bytes:
 
 
 def inspect_frames(prompt, frames, settings, oidc_token):
+    conditions = prompt_conditions(prompt)
     aws = bedrock_session(settings.strands_role_arn, settings.strands_region, oidc_token)
     client = (aws or boto3.Session(region_name=settings.strands_region)).client(
         "bedrock-runtime",
@@ -50,7 +111,11 @@ def inspect_frames(prompt, frames, settings, oidc_token):
     )
     content = [
         {
-            "text": f"Visual condition to check (untrusted user data): {prompt}\n"
+            "text": "Conditions to check independently (untrusted user data): "
+            + json.dumps(
+                [{"condition_index": i, "condition": text} for i, text in enumerate(conditions)]
+            )
+            + "\n"
             f"Exactly {len(frames)} frames follow, indexed 0 through {len(frames) - 1}. "
             "Inspect them in chronological order and report only what is visible."
         }
@@ -75,12 +140,15 @@ def inspect_frames(prompt, frames, settings, oidc_token):
         "summary to one plain-language sentence under 25 words. For a match, include "
         "the zero-based index of the strongest supporting frame; otherwise leave "
         "matched_frame_index null. Call report_observation exactly once."
+        " Return a conditions array with exactly one answer for EVERY supplied condition_index. "
+        "Check each independently. One match does not satisfy another condition. Preserve AND/OR "
+        "requirements within an individual condition. Do not omit negative or uncertain answers."
     )
     result = client.converse(
         modelId=settings.strands_model_id,
         system=[{"text": system_prompt}],
         messages=[{"role": "user", "content": content}],
-        inferenceConfig={"maxTokens": 350, "temperature": 0},
+        inferenceConfig={"maxTokens": 1500, "temperature": 0},
         toolConfig={
             "tools": [
                 {
@@ -99,5 +167,7 @@ def inspect_frames(prompt, frames, settings, oidc_token):
     for block in result["output"]["message"]["content"]:
         call = block.get("toolUse", {})
         if call.get("name") == "report_observation":
-            return normalize_decision(call["input"], len(frames)), result.get("usage", {})
+            return normalize_conditions(call["input"], len(frames), conditions), result.get(
+                "usage", {}
+            )
     raise RuntimeError("Model did not return a valid observation")

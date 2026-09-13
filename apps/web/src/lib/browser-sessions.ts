@@ -210,7 +210,16 @@ export async function saveCloudEvent(
     }),
   });
 }
+export type ConditionResult = {
+  condition_index: number;
+  condition: string;
+  status: "match" | "no_match" | "uncertain" | "unsupported";
+  summary: string;
+  matched_frame_index: number | null;
+  at_seconds?: number;
+};
 export type VisualCheckResult = {
+  conditions?: ConditionResult[];
   status: "match" | "no_match" | "uncertain" | "unsupported";
   summary: string;
   matched_frame_index?: number | null;
