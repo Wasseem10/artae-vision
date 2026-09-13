@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 
-import { BrowserMonitor } from "@/components/browser-monitor";
+import { VisualWatch } from "@/components/visual-watch";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
-  description: "Run real on-device person and experimental pose-based fall detection without installing a camera service.",
+  description: "Try Artae's plain-language visual monitor with a sample, upload, or webcam.",
 };
 
 export default function DemoPage() {
-  return <BrowserMonitor />;
+  return <VisualWatch />;
 }

@@ -1,13 +1,13 @@
 # AI Video Intelligence Platform
 
-> **Current status:** The no-install `/demo` runs actual MediaPipe body-pose
-> inference in a browser worker, with person detection, experimental fall
-> candidates, local recording, replay, and persistent logs. Authenticated archive
-> endpoints reuse the account storage backend. Signed-in users can save named jobs,
-> run bounded AWS visual-condition checks, and replay account recordings. Live
-> Nova 2 Lite and Strands calls, positive and negative visual checks, saved alerts,
-> and linked evidence were verified on September 9, 2026. Do not describe this as a validated
-> elder-care or emergency-response product. See [tested scope](docs/browser-demo.md).
+> **Current status:** `/app` and `/demo` now expose one focused visual-monitor
+> workflow: choose a sample, upload, or webcam; describe one visible condition;
+> choose a check interval and confirmation count; then start or stop monitoring.
+> Signed-in runs send the unchanged condition and sampled frame to Amazon Nova 2
+> Lite through Bedrock. Confirmed matches invoke Strands, create an account alert,
+> and remain visible after the monitor stops. Live Nova and Strands calls were last
+> verified on September 9, 2026. This is a hackathon prototype, not a validated
+> safety, medical, or emergency-response product. See [tested scope](docs/browser-demo.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
@@ -17,36 +17,34 @@ and search the resulting evidence. The revised completion phases are in
 
 ## No-install demo
 
-Open `/demo`, choose **A person in view**, leave **Use a sample video** selected,
-and press **Start agent**. For a staged fall, select **A possible fall** and one
-of the named samples. Use **Stop agent**, **Review footage**, and **Past sessions**
-to inspect the results. No account or native camera service is required for this
-local mode. Sign in **before** starting to request account-backed saving.
+Open `/demo` to inspect the workflow, then sign in to run the real AWS-backed
+monitor. The included, attributed 3D-printer failure sequence provides an immediate
+test condition. You can also upload another recorded clip or use a webcam, enter a condition such as
+“alert me if this print shows stringing,” select a 5-second demo interval, and press
+**Start monitoring**. The first check runs immediately. **Stop monitor** always
+remains visible while a run is active.
 
-Signed-in users can select **Describe a visual condition**, enter an observable
-condition, and consent to sampled frames being sent to AWS. The model reports a
-match, no match, uncertainty, or an unsupported request; it is not a guarantee of
-detecting every event. `/app` uses this same browser-first workspace; the native
-camera-service interface remains at `/app/native`.
-
-This path does not send phone calls or run while the page is closed. Guest sessions
-stop after two minutes; account sessions offer 2, 15, or 60 minutes, with a 20-alert
-limit and a visible Stop button. Browser fall detection
-is a one-person temporal heuristic, not a medically validated classifier.
+Nova reports match, no match, uncertainty, or an unsupported request. With two or
+three confirmations selected, the server requires that many consecutive matches
+before creating an alert. The right-hand alert list loads recent account incidents
+and stays visible after stopping. Browser notifications are optional and work only
+while the page is open. `/app/native` preserves the installed-camera engineering UI.
 
 ## Working AWS browser path
 
 The production browser path uses a restricted Vercel OIDC role, not permanent AWS
 keys. The following path has been exercised against the deployed services:
 
-1. A webcam, uploaded video, or licensed sample runs through browser MediaPipe pose inference.
-2. Person/fall jobs use temporal pose rules; custom jobs send up to four sampled frames to Nova 2 Lite.
-3. The API sends the grounded event to the **Strands Incident Coordinator**.
-4. The coordinator invokes `preserve_evidence` and `notify_responder`, adding
+1. A webcam, uploaded video, or licensed sample remains in the browser preview.
+2. At the selected interval, one compressed frame and the user's unchanged visual
+   condition are sent to Nova 2 Lite. Artae does not use a second model to rewrite it.
+3. The API enforces paid-call limits, concurrency, optional consecutive-match
+   confirmation, and alert cooldowns before creating an incident.
+4. A confirmed incident is sent to the **Strands Incident Coordinator**.
+5. The coordinator invokes `preserve_evidence` and `notify_responder`, adding
    `request_human_review` when the supplied facts are ambiguous.
-5. Artae saves an in-app alert, links overlapping uploaded recording segments,
-   and displays the coordinator trace and human-review controls. Review status
-   and footage persist after stopping and reloading.
+6. Artae saves an in-app alert with the model explanation. Alert history persists
+   after stopping and across signed-in devices.
 
 Strands is disabled by default so ordinary development never spends AWS credits.
 After configuring an AWS credential supported by the AWS SDK, set:

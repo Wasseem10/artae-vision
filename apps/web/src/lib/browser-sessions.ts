@@ -7,6 +7,7 @@ function request<T>(path: string, init?: RequestInit): Promise<T> {
 export type BrowserEvent = {
   id: string;
   at: number;
+  occurredAt?: string;
   title: string;
   visibility: number;
   saved?: boolean;
@@ -16,6 +17,7 @@ export type BrowserEvent = {
   actions?: string[];
   evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
   notification?: { channel: string; status: string; message: string; priority: string };
+  snapshot?: string;
 };
 export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
 export type IncidentReview = {
@@ -68,6 +70,8 @@ export type BrowserSession = {
   clips: BrowserClip[];
   cloud?: boolean;
   agentId?: string;
+  checkIntervalSeconds?: number;
+  confirmationCount?: number;
 };
 export const sessionMetadata = (s: BrowserSession): BrowserSession => ({
   ...s, clips: s.clips.map((clip) => ({ ...clip, blob: undefined })),
@@ -187,6 +191,8 @@ export async function createCloudSession(s: BrowserSession) {
       started_at: s.createdAt,
       agent_id: s.agentId,
       prompt: s.prompt ?? "",
+      check_interval_seconds: s.checkIntervalSeconds ?? 60,
+      confirmation_count: s.confirmationCount ?? 1,
     }),
   });
 }
@@ -208,6 +214,9 @@ export type VisualCheckResult = {
   summary: string;
   frames_analyzed: number;
   cooldown: boolean;
+  confirmed: boolean;
+  match_streak: number;
+  confirmation_count: number;
   event: (CloudEventResult & { source_event_id: string; occurred_at_seconds: number }) | null;
 };
 export function analyzeCloudFrames(s: BrowserSession, frames: { at_seconds: number; jpeg: string }[]) {
@@ -250,7 +259,8 @@ export async function listCloudSessions(
 ): Promise<BrowserSession[]> {
   const rows =
     await request<
-      { id: string; name: string; job: MonitoringJob; created_at: string; agent_id?: string; prompt?: string }[]
+      { id: string; name: string; job: MonitoringJob; created_at: string; agent_id?: string; prompt?: string;
+        check_interval_seconds?: number; confirmation_count?: number }[]
     >("/browser-sessions");
   return rows.map((r) => ({
     id: r.id,
@@ -261,6 +271,8 @@ export async function listCloudSessions(
     cloud: true,
     agentId: r.agent_id,
     prompt: r.prompt,
+    checkIntervalSeconds: r.check_interval_seconds,
+    confirmationCount: r.confirmation_count,
     events: [],
     clips: [],
   }));
@@ -273,6 +285,7 @@ export async function loadCloudSession(
       {
         source_event_id: string;
         occurred_at_seconds: number;
+        occurred_at: string;
         confidence: number;
         event_type: string;
         details: CloudEventResult["details"];
@@ -294,6 +307,7 @@ export async function loadCloudSession(
     events: events.map((e) => ({
       id: e.source_event_id,
       at: e.occurred_at_seconds,
+      occurredAt: e.occurred_at,
       visibility: e.confidence,
       title:
         e.event_type === "visual_match" ? "Visual condition matched" : e.event_type === "person_fall"

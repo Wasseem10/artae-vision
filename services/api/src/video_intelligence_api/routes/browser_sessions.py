@@ -5,9 +5,9 @@ They create an in-app alert only. External recipients/physical actions are not
 accepted in these payloads. Recording uploads reuse the tenant archive pipeline.
 """
 
+import logging
 from datetime import datetime, timedelta
 from functools import partial
-import logging
 from typing import Literal
 from uuid import UUID
 
@@ -55,6 +55,8 @@ class SessionCreate(BaseModel):
     started_at: AwareDatetime | None = None
     agent_id: UUID | None = None
     prompt: str = Field(default="", max_length=500)
+    check_interval_seconds: int = Field(default=60, ge=5, le=3600)
+    confirmation_count: int = Field(default=1, ge=1, le=3)
 
 
 class SavedJobCreate(BaseModel):
@@ -178,10 +180,16 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
     rule = await session.scalar(select(Rule).where(Rule.id == rule.id).with_for_update().execution_options(populate_existing=True))
     spec = dict(rule.spec or {})
     at = payload.frames[-1].at_seconds
+    confirmation_count = int(spec.get("confirmation_count", 1))
+    match_streak = int(spec.get("visual_match_streak", 0)) + 1 if decision.status == "match" else 0
+    spec["visual_match_streak"] = match_streak
     prior = spec.get("visual_last_match_seconds")
-    create_alert = decision.status == "match" and (prior is None or at - float(prior) >= 30)
+    confirmed = decision.status == "match" and match_streak >= confirmation_count
+    create_alert = confirmed and (prior is None or at - float(prior) >= 30)
     result = {"status": decision.status, "summary": decision.summary, "frames_analyzed": len(payload.frames),
-              "model": settings.strands_model_id, "event": None, "cooldown": decision.status == "match" and not create_alert}
+              "model": settings.strands_model_id, "event": None,
+              "confirmed": confirmed, "match_streak": match_streak, "confirmation_count": confirmation_count,
+              "cooldown": confirmed and not create_alert}
     if create_alert:
         count = await session.scalar(select(func.count()).select_from(Event).where(Event.camera_id == camera.id))
         if count >= 20:
@@ -208,6 +216,7 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
         await reconcile_browser_evidence(session, camera, rule)
         result["event"] = EventRead.model_validate(event).model_dump(mode="json")
         spec["visual_last_match_seconds"] = at
+        spec["visual_match_streak"] = 0
     rule.spec = {**spec, "visual_check_id": str(payload.id), "visual_result": result,
                  "visual_busy_until": (utc_now() + timedelta(seconds=3)).isoformat()}
     await session.commit()
@@ -233,6 +242,8 @@ def session_read(camera, rule):
         "rule_id": rule.id,
         "agent_id": (rule.spec or {}).get("browser_agent_id"),
         "prompt": (rule.spec or {}).get("visual_prompt", ""),
+        "check_interval_seconds": (rule.spec or {}).get("check_interval_seconds", 60),
+        "confirmation_count": (rule.spec or {}).get("confirmation_count", 1),
     }
 
 
@@ -316,7 +327,10 @@ async def create_session(
         original_prompt=payload.prompt if payload.job == "custom" else f"Show an in-app alert: {title} (browser pose analysis).",
         spec={"browser_started_at": payload.started_at.isoformat() if payload.started_at else None,
               "browser_agent_id": str(payload.agent_id) if payload.agent_id else None,
-              "visual_prompt": payload.prompt},
+              "visual_prompt": payload.prompt,
+              "check_interval_seconds": payload.check_interval_seconds,
+              "confirmation_count": payload.confirmation_count,
+              "visual_match_streak": 0},
     )
     # These models use FK IDs, not ORM relationships. Flush parents explicitly;
     # SQLite without FK enforcement previously hid the PostgreSQL ordering bug.

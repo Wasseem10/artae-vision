@@ -1,6 +1,7 @@
 import base64
 import io
 import uuid
+from datetime import datetime, timedelta, timezone
 
 from PIL import Image
 from video_intelligence_api.browser_vision import VisualDecision, decode_frame
@@ -88,3 +89,39 @@ def test_invalid_frames_and_empty_jobs_rejected_before_paid_inference(api_client
         "id": str(uuid.uuid4()), "frames": [{"at_seconds": 0, "jpeg": "x" * 100}],
     }).status_code == 422
     assert decode_frame(frame()["jpeg"]).startswith(b"\xff\xd8")
+
+
+def test_custom_job_waits_for_configured_matching_checks(api_client, monkeypatch):
+    response = api_client.post("/api/v1/browser-sessions", json={
+        "id": str(uuid.uuid4()), "name": "Printer watch", "job": "custom",
+        "prompt": "Visible stringing around the print", "check_interval_seconds": 5,
+        "confirmation_count": 2,
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()["confirmation_count"] == 2
+    camera = response.json()["id"]
+    api_client.app.state.settings.strands_enabled = True
+    monkeypatch.setattr(browser_sessions, "inspect_frames", lambda *_: (
+        VisualDecision(status="match", summary="Stringing is visible."), {}
+    ))
+    async def no_coordinator(*args, **kwargs):
+        return None
+    monkeypatch.setattr(browser_sessions, "coordinate_incident", no_coordinator)
+    moment = datetime(2026, 9, 12, tzinfo=timezone.utc)
+    def advancing_now():
+        nonlocal moment
+        moment += timedelta(seconds=4)
+        return moment
+    monkeypatch.setattr(browser_sessions, "utc_now", advancing_now)
+    path = f"/api/v1/browser-sessions/{camera}/analyze"
+    first = api_client.post(path, json={"id": str(uuid.uuid4()), "frames": [frame()]})
+    assert first.status_code == 200, first.text
+    assert first.json()["match_streak"] == 1
+    assert first.json()["confirmed"] is False
+    assert first.json()["event"] is None
+    second_frame = {**frame(), "at_seconds": 9}
+    second = api_client.post(path, json={"id": str(uuid.uuid4()), "frames": [second_frame]})
+    assert second.status_code == 200, second.text
+    assert second.json()["confirmed"] is True
+    assert second.json()["event"] is not None
+    assert len(api_client.get("/api/v1/alerts").json()) == 1

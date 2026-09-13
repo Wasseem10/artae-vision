@@ -2,7 +2,22 @@
 
 ## What runs
 
-### Live AWS visual jobs (September 9)
+### Focused live AWS visual monitor (September 12)
+
+`/app` and `/demo` use the focused `VisualWatch` interface. It accepts a licensed
+sample, uploaded video, or webcam, one natural-language visual condition, an
+adjustable 5/15/30/60-second sampling interval, and one to three required
+consecutive matches. Start performs the first check immediately. Stop cancels the
+timer and webcam tracks without removing the alert history. There is no hidden
+continuous recording in this focused path.
+
+The unchanged user condition and one sampled frame are sent to Nova 2 Lite. A
+match can create an alert only after the configured consecutive-match threshold.
+No-match resets the streak. The backend still owns rate limits, a 30-second alert
+cooldown, tenant isolation, and idempotency. Browser notifications are optional;
+the durable source of truth is the signed-in account alert list.
+
+### Live AWS visual jobs (verified September 9)
 
 Signed-in users can save a plain-language visual condition. After explicit frame-sharing
 consent, the browser samples four 640-pixel JPEG frames and sends them to Nova 2 Lite
