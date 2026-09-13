@@ -1,7 +1,7 @@
 # Design QA — Upload-first caregiver evidence workspace
 
 - Source visual truth: `C:\Users\wasse\.codex\generated_images\01a0416b-0da5-7e53-b3e5-893f92234733\exec-e9f78dcd-6129-4263-a387-0800f693b385.png`
-- Implementation: `http://127.0.0.1:3000/demo`, captured inline with the Codex in-app Browser on September 13, 2026.
+- Implementation: `https://artae-vision.vercel.app/demo`, captured inline with the Codex in-app Browser on September 13, 2026.
 - Comparison viewport: 1440 × 1024 CSS pixels at device density 1.
 - Source pixels: 1487 × 1058. Implementation full-page capture: 1440 × 1266 pixels; the first 1024 pixels were used for viewport-level comparison.
 - State: public demo, upload-first empty state and uploaded-video ready state.
@@ -20,7 +20,7 @@ The implementation matches the selected direction's two-track structure: a narro
 
 ## Focused comparison evidence
 
-The setup rail, video header, evidence strip, progress row, and event-log header were inspected separately at desktop size. Upload interaction was tested with a permitted local MP4: the filename appeared, the video reached ready state 4, and Analyze video became enabled. A scan sampled eight real frames and rendered seven representative timeline thumbnails. The local AWS request returned a service error after sampling; this is an environment/service result rather than a visual defect and will be rechecked against the deployed API.
+The setup rail, video header, evidence strip, progress row, and event-log header were inspected separately at desktop size. Upload interaction was tested with a permitted local MP4: the filename appeared, the video reached ready state 4, and Analyze video became enabled. The deployed AWS scan sampled eight real frames, rendered seven representative timeline thumbnails, detected the fall condition in one Nova check, and created a caregiver event with the Strands actions Request Human Review, Preserve Evidence, and Notify Responder.
 
 ## Findings
 
@@ -42,6 +42,8 @@ No actionable P0, P1, or P2 visual differences remain.
 - Video preview readiness: passed.
 - Analyze button enable/disable behavior: passed.
 - Real frame sampling and evidence thumbnail rendering: passed.
+- Live Amazon Nova condition detection: passed, 1 of 1 conditions detected.
+- Live Strands caregiver event actions: passed.
 - Responsive reflow: passed at phone, tablet, and desktop sizes.
 - Browser console: no warning or error entries from the redesigned interface.
 
