@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { detailedTimes, episodes, mergeObservations, refinementWindows, timelineStatus, type Observation } from "./video-timeline";
+import { detailedTimes, episodes, mergeObservations, recommendedDetailedInterval, refinementWindows, timelineStatus, type Observation } from "./video-timeline";
 
 describe("detailed video timeline", () => {
   it("includes clip boundaries and refuses silent downsampling", () => {
     expect(detailedTimes(6, 2)).toEqual([0, 2, 4, 5.95]);
     expect(detailedTimes(300, 2)).toHaveLength(151);
     expect(() => detailedTimes(300, 0.5)).toThrow("192");
-    expect(() => detailedTimes(601, 5)).toThrow("10 minutes");
+    expect(detailedTimes(1200, 10)).toHaveLength(121);
+    expect(() => detailedTimes(1201, 10)).toThrow("20 minutes");
     expect(() => detailedTimes(Infinity, 2)).toThrow();
+  });
+  it("recommends a supported cadence that keeps long clips inside the sample budget", () => {
+    expect(recommendedDetailedInterval(300, 2)).toBe(2);
+    expect(recommendedDetailedInterval(1200, 2)).toBe(10);
   });
   it("computes sample-bounded durations across batches", () => {
     const first: Observation[] = [{ at: 0, state: "inactive" }, { at: 2, state: "active" }];

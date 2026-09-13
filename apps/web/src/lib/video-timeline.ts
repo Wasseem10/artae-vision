@@ -7,6 +7,20 @@ export type Episode = {
   minDuration: number; maxDuration: number | null;
 };
 
+export const DETAILED_INTERVALS = [0.5, 1, 2, 5, 10, 15, 30] as const;
+
+export function recommendedDetailedInterval(duration: number, requested: number): number {
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 1200) {
+    throw new Error("Detailed timing supports clips up to 20 minutes.");
+  }
+  if (!DETAILED_INTERVALS.includes(requested as (typeof DETAILED_INTERVALS)[number])) {
+    throw new Error("Choose a supported sampling interval.");
+  }
+  const end = Math.max(0, duration - 0.05);
+  const minimum = end / 190;
+  return DETAILED_INTERVALS.find((interval) => interval >= requested && interval >= minimum) ?? 30;
+}
+
 export function timelineStatus(points: Observation[]): "match" | "no_match" | "uncertain" {
   if (points.some((point) => point.state === "active")) return "match";
   if (!points.length || points.some((point) => point.state === "uncertain")) return "uncertain";
@@ -14,8 +28,8 @@ export function timelineStatus(points: Observation[]): "match" | "no_match" | "u
 }
 
 export function detailedTimes(duration: number, interval: number): number[] {
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 600) throw new Error("Detailed timing supports clips up to 10 minutes. Trim a longer video first.");
-  if (![0.5, 1, 2, 5, 10].includes(interval)) throw new Error("Choose a supported sampling interval.");
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 1200) throw new Error("Detailed timing supports clips up to 20 minutes.");
+  if (!DETAILED_INTERVALS.includes(interval as (typeof DETAILED_INTERVALS)[number])) throw new Error("Choose a supported sampling interval.");
   const end = Math.max(0, duration - 0.05);
   const times = Array.from({ length: Math.floor(end / interval) + 1 }, (_, i) => i * interval);
   if (end > times[times.length - 1]) times.push(end);

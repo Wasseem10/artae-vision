@@ -20,7 +20,7 @@ import {
   type ConditionResult,
 } from "@/lib/browser-sessions";
 import { mergeConditions, readConditions } from "@/lib/condition-results";
-import { detailedTimes, episodes, mergeObservations, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
+import { DETAILED_INTERVALS, detailedTimes, episodes, mergeObservations, recommendedDetailedInterval, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
 
 type Source = "upload" | "webcam";
@@ -115,11 +115,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
   const [source, setSource] = useState<Source>("upload");
   const [uploadName, setUploadName] = useState("");
-  const [prompt, setPrompt] = useState(FALL_PROMPT);
+  const [prompt, setPrompt] = useState("");
   const [intervalSeconds, setIntervalSeconds] = useState(5);
   const [confirmationCount, setConfirmationCount] = useState(1);
   const [scanMode, setScanMode] = useState("quick");
   const [sampleInterval, setSampleInterval] = useState(2);
+  const [videoDuration, setVideoDuration] = useState(0);
   const [timeline, setTimeline] = useState<Timeline>({});
   const [state, setState] = useState<RunState>("idle");
   const [stage, setStage] = useState<Stage>("idle");
@@ -138,6 +139,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
   const recorded = source !== "webcam";
   const detailed = recorded && scanMode === "detailed";
+  const effectiveSampleInterval = detailed && videoDuration > 0 && videoDuration <= 1200
+    ? recommendedDetailedInterval(videoDuration, sampleInterval)
+    : sampleInterval;
 
   const stop = useCallback((message = "Monitor stopped") => {
     runIdRef.current += 1;
@@ -337,8 +341,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       setTimeline({}); timelineRef.current = {};
       await prepareVideo();
       if (runId !== runIdRef.current) return;
-      // Validate before opening a paid run. Never silently stretch the user's cadence.
-      const times = detailed ? detailedTimes(videoRef.current!.duration, sampleInterval) : [];
+      // Adapt long clips to an explicitly displayed cadence before opening a paid run.
+      const activeSampleInterval = detailed
+        ? recommendedDetailedInterval(videoRef.current!.duration, sampleInterval)
+        : sampleInterval;
+      if (detailed && activeSampleInterval !== sampleInterval) setSampleInterval(activeSampleInterval);
+      const times = detailed ? detailedTimes(videoRef.current!.duration, activeSampleInterval) : [];
       setStatus(mode === "public" ? "Opening a rate-limited AWS demo session…" : "Opening your account monitor…");
       await openSession();
       if (runId !== runIdRef.current) return;
@@ -363,7 +371,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           for (let batch = 0; batch < total; batch++) {
             if (batch > 0 && mode === "account") await new Promise((resolve) => window.setTimeout(resolve, 3100));
             if (!active()) return;
-            setStatus(`Detailed scan ${batch + 1} of ${total} — sampling every ${sampleInterval}s…`);
+            setStatus(`Detailed scan ${batch + 1} of ${total} — sampling every ${activeSampleInterval}s…`);
             const frames = await captureTimes(times.slice(batch * 7, batch * 7 + 8));
             if (!active()) return;
             setStoryboardFrames(frames);
@@ -431,7 +439,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   function chooseSource(next: Source) {
     if (runningRef.current) return;
     const video = videoRef.current;
-    setSource(next); setUploadName(""); setLastResult(null); setStage("idle");
+    setSource(next); setUploadName(""); setVideoDuration(0); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
     setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
@@ -448,7 +456,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     videoRef.current.srcObject = null;
     videoRef.current.src = uploadUrlRef.current;
     videoRef.current.loop = false;
-    setSource("upload"); setUploadName(file.name); setLastResult(null); setStage("idle");
+    setSource("upload"); setUploadName(file.name); setVideoDuration(0); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
     setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     if (mode === "public") setEvents([]);
@@ -467,7 +475,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const evidenceFrames = storyboardFrames.length <= 7
     ? storyboardFrames
     : Array.from({ length: 7 }, (_, index) => storyboardFrames[Math.round(index * (storyboardFrames.length - 1) / 6)]);
-  const canStart = source === "webcam" || Boolean(uploadName);
+  const hasVideoSource = source === "webcam" || Boolean(uploadName);
+  const canStart = hasVideoSource && readConditions(prompt).length > 0;
 
   return (
     <main className={styles.page}>
@@ -497,7 +506,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
           <div className={styles.step}>
             <div className={styles.stepTitle}><span>2</span><div><strong>What should the care agent watch for?</strong><small>Describe up to 5 visible safety conditions, one per line.</small></div></div>
-            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder={"Alert me if a person falls and remains on the floor.\nAlert me if the person visibly asks for help."} />
+            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder="Type the visible condition Artae should watch for…" />
             <small className={styles.conditionCount}>{readConditions(prompt).length} / 5 conditions · 500 characters total</small>
             <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
           </div>
@@ -506,21 +515,21 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             <div className={styles.stepTitle}><span>3</span><div><strong>{recorded ? "Choose how to scan" : "Set the monitoring cadence"}</strong><small>{recorded ? "Quickly check conditions or estimate when an event happened." : "Choose how often the care camera should check the scene."}</small></div></div>
             {recorded ? <>
               <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
-              {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{[0.5, 1, 2, 5, 10].map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
-              <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? "One clearly described subject, fixed camera. Up to 192 samples / 10 minutes, with up to 4 closer boundary checks. May take several minutes. Occlusion and missing boundaries remain unknown. Shorter intervals cost more AWS checks." : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
+              {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{DETAILED_INTERVALS.map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
+              <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? `Up to 192 samples across clips up to 20 minutes. ${effectiveSampleInterval !== sampleInterval ? `For this video, Artae will sample about every ${effectiveSampleInterval}s to stay within that limit. ` : ""}Up to 4 closer boundary checks refine detected events.` : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
               {detailed && <div className={styles.presets}><button disabled={running} onClick={() => setPrompt("How long does the single person remain on the floor? Measure from first visibly on the ground until standing upright again.")}>Time on floor</button><button disabled={running} onClick={() => setPrompt("How long does the single person take to get back up? Measure from first visibly on the ground until standing upright again.")}>Time to stand up</button></div>}
             </> : <>
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
-            {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{recorded ? uploadName ? "Analyze video" : "Upload a video to continue" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
+            {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{!hasVideoSource ? "Upload a video to continue" : !readConditions(prompt).length ? "Describe what to watch for" : recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
           </div>
         </section>
 
         <article className={styles.previewCard}>
           <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : uploadName || "Uploaded care footage"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : uploadName || source === "webcam" ? "READY" : "WAITING"}</span></div>
           <div className={styles.videoWrap}>
-            <video ref={videoRef} muted playsInline controls={canStart && !running} />
+            <video ref={videoRef} muted playsInline controls={hasVideoSource && !running} onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)} />
             {!uploadName && source === "upload" && <label className={styles.videoEmpty}><FiUpload /><strong>Upload footage to begin</strong><span>MP4, WebM, or another browser-playable video · up to 2 hours</span><input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>}
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>

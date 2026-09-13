@@ -8,12 +8,12 @@
 
 ## Full-view comparison evidence
 
-The implementation matches the selected direction's two-track structure: a narrow three-step setup rail at left; a large video, evidence timeline, and agent progress surface at right; and a wide caregiver event log below the video. The prior third-column alert layout and its large unused vertical area are gone. The requested product change intentionally replaces the mock's staged-fall example controls with a direct upload action and an honest empty video state.
+The implementation keeps the selected direction's upload-first hierarchy: a compact three-step setup rail, a dominant video/evidence surface, and a narrower caregiver activity rail aligned to the top of the video. This intentional refinement keeps event results visible without scrolling while avoiding equal-width dashboard columns. The mock's staged-fall controls remain replaced by direct upload and an honest empty video state.
 
 ## Required fidelity surfaces
 
 - Fonts and typography: IBM Plex Sans is preserved. The single-line desktop headline, 14px body copy, numbered step hierarchy, labels, and compact status text follow the source's weight and wrapping pattern. No visible clipping or truncation was found.
-- Spacing and layout rhythm: the 360px / flexible two-column grid, 14px gutter, compact intro, full-width right-column event log, 12px radii, and fine separators match the reference hierarchy. The page has no horizontal overflow at the tested 390px, 1024px, and 1440px widths.
+- Spacing and layout rhythm: the compact setup rail / flexible video / narrow event-log grid, 14px gutters, compact intro, 12px radii, and fine separators preserve the reference hierarchy. At 1180px and below, the activity rail moves below the video; the page has no horizontal overflow at the tested 390px, 1024px, and 1280px widths.
 - Colors and visual tokens: warm off-white canvas, white surfaces, charcoal typography, pale gray dividers, and restrained slate-blue selection state match the source. Contrast remains readable without introducing dark-mode styling.
 - Image quality and asset fidelity: uploaded video uses the browser's native media rendering without stretching. Timeline thumbnails are real frames sampled from the uploaded file, not placeholders or decorative assets. The no-upload state uses the existing React icon set and contains no generated or approximate imagery.
 - Copy and content: the core Nova/Strands explanation, upload instructions, five-condition prompt, scan modes, progress stages, and caregiver response language remain accurate. Example and staged/normal sample copy were removed as requested.
@@ -24,7 +24,7 @@ The setup rail, video header, evidence strip, progress row, and event-log header
 
 ## Findings
 
-No actionable P0, P1, or P2 visual differences remain.
+No actionable P0, P1, or P2 visual differences remain. At the verified 1280 × 720 viewport, the video and caregiver event log both begin at y=220, so alerts are visible immediately.
 
 - Accepted product deviation: the reference contains built-in sample scenarios; the implementation omits them because the selected build must begin with the judge's own uploaded footage.
 - Accepted product deviation: the implementation retains compact dashboard/browser and optional caregiver-text controls above the event log because they are working product actions, not decorative mock content.
@@ -33,7 +33,7 @@ No actionable P0, P1, or P2 visual differences remain.
 ## Comparison history
 
 - Initial state: the former three-column implementation made the alert panel a tall empty column and visually reduced the video.
-- Fixes: moved alerts beneath the video, added an upload-first gate, created a functional sampled-frame evidence timeline, consolidated alert destinations, and moved public-demo metadata into the header.
+- Fixes: aligned alerts beside the video on desktop, added an upload-first gate, created a functional sampled-frame evidence timeline, consolidated alert destinations, and moved public-demo metadata into the header.
 - Post-fix evidence: desktop, tablet, and phone browser captures show the selected hierarchy with no horizontal overflow; the upload-ready capture shows a real selected video and enabled primary action.
 
 ## Primary interactions and console check
@@ -53,7 +53,9 @@ No actionable P0, P1, or P2 visual differences remain.
 - [x] Make upload the primary first step.
 - [x] Keep prompt, scan-mode, webcam, and notification behavior working.
 - [x] Render an evidence timeline from sampled uploaded-video frames.
-- [x] Move the caregiver event log below the video.
+- [x] Keep the caregiver event log visible beside the video on desktop, with responsive stacking on smaller screens.
+- [x] Start with an empty condition field and require an explicit user instruction.
+- [x] Support detailed scans up to 20 minutes with a visible, sample-budget-safe cadence.
 - [x] Verify responsive layout and automated frontend checks.
 
 final result: passed
