@@ -64,17 +64,24 @@ function seek(video: HTMLVideoElement, at: number) {
   });
 }
 
-async function captureStoryboard(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
+async function captureStoryboard(
+  video: HTMLVideoElement,
+  canvas: HTMLCanvasElement,
+  onProgress: (captured: number, total: number) => void,
+) {
   await waitForVideo(video);
   if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("This video does not expose a readable duration.");
   if (video.duration > 7200) throw new Error("For this demo, choose a video shorter than two hours.");
   video.pause();
-  const count = Math.min(8, Math.max(4, Math.ceil(video.duration / 4)));
+  // Four public AWS checks × eight images gives recorded clips much denser
+  // coverage than the original single eight-frame request.
+  const count = Math.min(32, Math.max(8, Math.ceil(video.duration / 6)));
   const frames: CapturedFrame[] = [];
   for (let index = 0; index < count; index += 1) {
     const at = Math.min(video.duration - 0.05, ((index + 0.5) / count) * video.duration);
     await seek(video, Math.max(0, at));
     frames.push({ at_seconds: at, ...captureFrame(video, canvas) });
+    onProgress(index + 1, count);
   }
   await seek(video, 0);
   return frames;
@@ -170,10 +177,15 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     sessionRef.current = session;
   }
 
-  async function analyze(frames: CapturedFrame[]) {
+  async function analyze(
+    frames: CapturedFrame[],
+    batch?: { current: number; total: number },
+  ) {
     setStage("nova");
     setState("checking");
-    setStatus(`Amazon Nova is analyzing ${frames.length} sampled frame${frames.length === 1 ? "" : "s"}…`);
+    setStatus(batch
+      ? `Amazon Nova is analyzing batch ${batch.current} of ${batch.total}…`
+      : `Amazon Nova is analyzing ${frames.length} sampled frame${frames.length === 1 ? "" : "s"}…`);
     const payload = frames.map(({ at_seconds, jpeg }) => ({ at_seconds, jpeg }));
     const result = mode === "public"
       ? await analyzePublicDemo(publicSessionRef.current!, payload)
@@ -194,9 +206,17 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       setStage("complete");
       setStatus(mode === "account" ? "Condition detected — alert saved" : "Condition detected — Strands prepared the response");
     } else if (result.status === "no_match") {
-      setStatus(recorded ? "Condition not detected in the sampled video" : "No match — monitoring continues");
+      setStatus(recorded
+        ? batch && batch.current < batch.total
+          ? `No match in batch ${batch.current} — continuing through the video…`
+          : "Condition not detected in the sampled video"
+        : "No match — monitoring continues");
     } else if (result.status === "uncertain") {
-      setStatus(recorded ? "Nova could not confirm the condition from this video" : "Nova was uncertain — monitoring continues");
+      setStatus(recorded
+        ? batch && batch.current < batch.total
+          ? `Batch ${batch.current} was uncertain — continuing through the video…`
+          : "Nova could not confirm the condition from this video"
+        : "Nova was uncertain — monitoring continues");
     } else if (result.status === "unsupported") setStatus(result.summary);
     return result;
   }
@@ -256,9 +276,23 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       startedAtRef.current = Date.now();
       if (recorded) {
         setState("sampling"); setStatus("Sampling moments across the video…");
-        const frames = await captureStoryboard(videoRef.current!, canvasRef.current!);
+        const frames = await captureStoryboard(
+          videoRef.current!,
+          canvasRef.current!,
+          (captured, total) => setStatus(`Sampling moment ${captured} of ${total} across the video…`),
+        );
         setStage("frames");
-        await analyze(frames);
+        const batches = Array.from(
+          { length: Math.ceil(frames.length / 8) },
+          (_, index) => frames.slice(index * 8, index * 8 + 8),
+        );
+        for (let index = 0; index < batches.length; index += 1) {
+          const result = await analyze(batches[index], {
+            current: index + 1,
+            total: batches.length,
+          });
+          if (result.event || result.status === "unsupported") break;
+        }
         runningRef.current = false;
         setState("stopped");
       } else {
@@ -338,7 +372,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
 
           <div className={styles.stepRow}>
-            {recorded ? <div className={styles.storyboardHint}><FiCheck /><div><strong>Whole-video scan</strong><small>Nova receives up to 8 moments sampled across the clip.</small></div></div> : <>
+            {recorded ? <div className={styles.storyboardHint}><FiCheck /><div><strong>Multi-pass video scan</strong><small>Up to 32 moments are checked across the clip in four Nova batches.</small></div></div> : <>
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
