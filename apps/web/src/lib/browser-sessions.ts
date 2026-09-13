@@ -27,6 +27,7 @@ export type IncidentReview = {
 };
 export type CloudEventResult = {
   details: {
+    summary?: string;
     strands_agent?: { status: string; summary: string; tools_invoked?: string[] };
     review?: IncidentReview;
     evidence?: BrowserEvent["evidence"];
@@ -37,7 +38,7 @@ export function cloudEventFields(result: CloudEventResult) {
   return {
     saved: true,
     coordinator: result.details.strands_agent?.status,
-    summary: result.details.strands_agent?.summary,
+    summary: result.details.summary ?? result.details.strands_agent?.summary,
     review: result.details.review,
     actions: result.details.strands_agent?.tools_invoked,
     evidence: result.details.evidence,
@@ -212,16 +213,39 @@ export async function saveCloudEvent(
 export type VisualCheckResult = {
   status: "match" | "no_match" | "uncertain" | "unsupported";
   summary: string;
+  matched_frame_index?: number | null;
   frames_analyzed: number;
   cooldown: boolean;
   confirmed: boolean;
   match_streak: number;
   confirmation_count: number;
+  checks_remaining?: number;
   event: (CloudEventResult & { source_event_id: string; occurred_at_seconds: number }) | null;
 };
 export function analyzeCloudFrames(s: BrowserSession, frames: { at_seconds: number; jpeg: string }[]) {
   return apiRequest<VisualCheckResult>(`/browser-sessions/${s.id}/analyze`, {
     method: "POST", body: JSON.stringify({ id: crypto.randomUUID(), frames }),
+    signal: AbortSignal.timeout(70000),
+  });
+}
+
+export type PublicDemoSession = { id: string; token: string; max_checks: number };
+
+export function createPublicDemo(prompt: string) {
+  return apiRequest<PublicDemoSession>("/browser-sessions/public-demo", {
+    method: "POST",
+    body: JSON.stringify({ prompt }),
+    signal: AbortSignal.timeout(15000),
+  });
+}
+
+export function analyzePublicDemo(
+  session: PublicDemoSession,
+  frames: { at_seconds: number; jpeg: string }[],
+) {
+  return apiRequest<VisualCheckResult>("/browser-sessions/public-demo/analyze", {
+    method: "POST",
+    body: JSON.stringify({ token: session.token, frames }),
     signal: AbortSignal.timeout(70000),
   });
 }

@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function DemoPage() {
-  return <VisualWatch />;
+  return <VisualWatch mode="public" />;
 }

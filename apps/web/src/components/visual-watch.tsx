@@ -6,38 +6,33 @@ import { FiBell, FiCamera, FiCheck, FiClock, FiPlay, FiSquare, FiUpload, FiVideo
 
 import {
   analyzeCloudFrames,
+  analyzePublicDemo,
   cloudEventFields,
   createCloudSession,
+  createPublicDemo,
   listCloudSessions,
   loadCloudSession,
   type BrowserEvent,
   type BrowserSession,
+  type PublicDemoSession,
   type VisualCheckResult,
 } from "@/lib/browser-sessions";
-import { ApiError } from "@/lib/api";
-
 import styles from "./visual-watch.module.css";
 
 type Source = "sample" | "upload" | "webcam";
-type RunState = "idle" | "starting" | "watching" | "checking" | "stopped" | "error";
+type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "stopped" | "error";
+type Stage = "idle" | "video" | "frames" | "nova" | "strands" | "complete";
+type CapturedFrame = { at_seconds: number; jpeg: string; snapshot: string };
 
 const PRINTER_PROMPT = "Alert me if this 3D print shows visible stringing, spaghetti-like filament, or has detached from the print bed.";
-const SAMPLE_PROMPT = PRINTER_PROMPT;
-
 const PRESETS = [
   { label: "3D print failure", prompt: PRINTER_PROMPT },
-  { label: "Person at counter", prompt: "Alert me when a person is waiting at the counter and appears to need service." },
-  { label: "Empty work station", prompt: "Alert me when this work station is visibly empty." },
+  { label: "Person waiting", prompt: "Alert me when a person is visibly waiting at the counter." },
+  { label: "Empty station", prompt: "Alert me when this work station is visibly empty." },
 ];
 
-function elapsed(startedAt: number) {
-  return Math.max(0, (Date.now() - startedAt) / 1000);
-}
-
-function clock(value: string | number) {
-  const date = typeof value === "string" ? new Date(value) : new Date(value);
-  return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
-}
+function elapsed(startedAt: number) { return Math.max(0, (Date.now() - startedAt) / 1000); }
+function clock(value: string | number) { return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
 
 function captureFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
   if (!video.videoWidth || !video.videoHeight) throw new Error("The video is not ready yet.");
@@ -51,61 +46,102 @@ function captureFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
   return { jpeg: dataUrl.split(",")[1], snapshot: dataUrl };
 }
 
-export function VisualWatch() {
+function waitForVideo(video: HTMLVideoElement) {
+  if (video.readyState >= 2 && video.videoWidth) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error("The video could not be opened.")), 8000);
+    video.addEventListener("loadeddata", () => { window.clearTimeout(timeout); resolve(); }, { once: true });
+  });
+}
+
+function seek(video: HTMLVideoElement, at: number) {
+  return new Promise<void>((resolve, reject) => {
+    if (Math.abs(video.currentTime - at) < 0.04) return resolve();
+    const timeout = window.setTimeout(() => reject(new Error("Could not sample this video.")), 5000);
+    video.addEventListener("seeked", () => { window.clearTimeout(timeout); resolve(); }, { once: true });
+    video.currentTime = at;
+  });
+}
+
+async function captureStoryboard(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
+  await waitForVideo(video);
+  if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("This video does not expose a readable duration.");
+  if (video.duration > 7200) throw new Error("For this demo, choose a video shorter than two hours.");
+  video.pause();
+  const count = Math.min(8, Math.max(4, Math.ceil(video.duration / 4)));
+  const frames: CapturedFrame[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const at = Math.min(video.duration - 0.05, ((index + 0.5) / count) * video.duration);
+    await seek(video, Math.max(0, at));
+    frames.push({ at_seconds: at, ...captureFrame(video, canvas) });
+  }
+  await seek(video, 0);
+  return frames;
+}
+
+function isStepDone(current: Stage, target: Stage, hasAction: boolean) {
+  if (target === "strands") return hasAction;
+  const order: Stage[] = ["idle", "video", "frames", "nova", "complete"];
+  return order.indexOf(current) >= order.indexOf(target);
+}
+
+export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
   const runningRef = useRef(false);
   const sessionRef = useRef<BrowserSession | null>(null);
+  const publicSessionRef = useRef<PublicDemoSession | null>(null);
   const startedAtRef = useRef(0);
   const uploadUrlRef = useRef<string | null>(null);
 
   const [source, setSource] = useState<Source>("sample");
   const [uploadName, setUploadName] = useState("");
-  const [prompt, setPrompt] = useState(SAMPLE_PROMPT);
+  const [prompt, setPrompt] = useState(PRINTER_PROMPT);
   const [intervalSeconds, setIntervalSeconds] = useState(5);
   const [confirmationCount, setConfirmationCount] = useState(1);
   const [state, setState] = useState<RunState>("idle");
-  const [status, setStatus] = useState("Ready to monitor");
+  const [stage, setStage] = useState<Stage>("idle");
+  const [status, setStatus] = useState("Ready to analyze");
   const [lastResult, setLastResult] = useState<VisualCheckResult | null>(null);
   const [events, setEvents] = useState<BrowserEvent[]>([]);
   const [checks, setChecks] = useState(0);
   const [nextCheck, setNextCheck] = useState<number | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
-  const [authRequired, setAuthRequired] = useState(false);
+  const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
+  const recorded = source !== "webcam";
 
-  const stop = useCallback((message = "Monitoring stopped") => {
+  const stop = useCallback((message = "Monitor stopped") => {
     runningRef.current = false;
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-    const video = videoRef.current;
-    if (video) video.pause();
+    videoRef.current?.pause();
     setNextCheck(null);
     setState("stopped");
     setStatus(message);
   }, []);
 
   const loadHistory = useCallback(async () => {
+    if (mode === "public") return;
     try {
-      const sessions = (await listCloudSessions("account")).filter((item) => item.job === "custom").slice(0, 6);
-      const loaded = await Promise.all(sessions.map((item) => loadCloudSession(item)));
-      setEvents(loaded.flatMap((item) => item.events).sort((a, b) => b.at - a.at).slice(0, 20));
-    } catch {
-      // A new user may have no history yet; monitoring remains available.
-    }
-  }, []);
+      const latest = (await listCloudSessions("account")).filter((item) => item.job === "custom").slice(0, 1);
+      const loaded = await Promise.all(latest.map((item) => loadCloudSession(item)));
+      setEvents(loaded.flatMap((item) => item.events).sort((a, b) =>
+        new Date(b.occurredAt || b.at).getTime() - new Date(a.occurredAt || a.at).getTime()
+      ).slice(0, 10));
+    } catch { /* Monitoring remains available when history cannot load. */ }
+  }, [mode]);
 
   useEffect(() => {
-    const notificationTimer = window.setTimeout(() => {
-      if (typeof Notification === "undefined") setNotificationState("unsupported");
-      else setNotificationState(Notification.permission);
+    const timer = window.setTimeout(() => {
+      setNotificationState(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
       void loadHistory();
     }, 0);
     return () => {
-      window.clearTimeout(notificationTimer);
+      window.clearTimeout(timer);
       runningRef.current = false;
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -115,62 +151,73 @@ export function VisualWatch() {
 
   const notify = useCallback((summary: string) => {
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("Artae found what you asked for", { body: summary, tag: "artae-visual-match" });
+      new Notification("Artae detected your condition", { body: summary, tag: "artae-visual-match" });
     }
   }, []);
 
-  const schedule = useCallback((delaySeconds: number, callback: () => void) => {
-    const due = Date.now() + delaySeconds * 1000;
-    setNextCheck(due);
-    timerRef.current = window.setTimeout(callback, delaySeconds * 1000);
-  }, []);
+  async function openSession() {
+    if (mode === "public") {
+      publicSessionRef.current = await createPublicDemo(prompt.trim());
+      return;
+    }
+    const session: BrowserSession = {
+      id: crypto.randomUUID(), scope: "account", name: prompt.trim().slice(0, 80), job: "custom",
+      prompt: prompt.trim(), createdAt: new Date().toISOString(), events: [], clips: [], cloud: true,
+      checkIntervalSeconds: intervalSeconds, confirmationCount,
+    };
+    await createCloudSession(session);
+    sessionRef.current = session;
+  }
 
-  async function runCheck() {
-    if (!runningRef.current || !sessionRef.current || !videoRef.current || !canvasRef.current) return;
+  async function analyze(frames: CapturedFrame[]) {
+    setStage("nova");
+    setState("checking");
+    setStatus(`Amazon Nova is analyzing ${frames.length} sampled frame${frames.length === 1 ? "" : "s"}…`);
+    const payload = frames.map(({ at_seconds, jpeg }) => ({ at_seconds, jpeg }));
+    const result = mode === "public"
+      ? await analyzePublicDemo(publicSessionRef.current!, payload)
+      : await analyzeCloudFrames(sessionRef.current!, payload);
+    setChecks((value) => value + 1);
+    setLastResult(result);
+    setStage(result.event ? "strands" : "complete");
+    if (result.event) {
+      const matched = frames[result.matched_frame_index ?? frames.length - 1] ?? frames.at(-1)!;
+      const fields = cloudEventFields(result.event);
+      const event: BrowserEvent = {
+        id: result.event.source_event_id, at: matched.at_seconds, occurredAt: new Date().toISOString(),
+        title: "Condition detected", visibility: 0, snapshot: matched.snapshot, ...fields,
+        saved: mode === "account", summary: result.summary,
+      };
+      setEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 10));
+      notify(result.summary);
+      setStage("complete");
+      setStatus(mode === "account" ? "Condition detected — alert saved" : "Condition detected — Strands prepared the response");
+    } else if (result.status === "no_match") {
+      setStatus(recorded ? "Condition not detected in the sampled video" : "No match — monitoring continues");
+    } else if (result.status === "uncertain") {
+      setStatus(recorded ? "Nova could not confirm the condition from this video" : "Nova was uncertain — monitoring continues");
+    } else if (result.status === "unsupported") setStatus(result.summary);
+    return result;
+  }
+
+  async function runWebcamCheck() {
+    if (!runningRef.current || !videoRef.current || !canvasRef.current) return;
     try {
-      setState("checking");
-      setStatus("Amazon Nova is checking the latest frame…");
-      const captured = captureFrame(videoRef.current, canvasRef.current);
-      const result = await analyzeCloudFrames(sessionRef.current, [{
-        at_seconds: elapsed(startedAtRef.current),
-        jpeg: captured.jpeg,
-      }]);
+      const frame = { at_seconds: elapsed(startedAtRef.current), ...captureFrame(videoRef.current, canvasRef.current) };
+      const result = await analyze([frame]);
       if (!runningRef.current) return;
-      setChecks((value) => value + 1);
-      setLastResult(result);
-      if (result.status === "unsupported") {
-        stop(result.summary);
+      if (result.status === "unsupported" || (mode === "public" && result.checks_remaining === 0)) {
+        stop(result.status === "unsupported" ? result.summary : "Public demo complete — start another run for more checks");
         return;
       }
-      if (result.event) {
-        const event: BrowserEvent = {
-          id: result.event.source_event_id,
-          at: Date.now(),
-          occurredAt: new Date().toISOString(),
-          title: "Condition detected",
-          visibility: 0,
-          snapshot: captured.snapshot,
-          ...cloudEventFields(result.event),
-          summary: result.summary,
-        };
-        setEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 20));
-        notify(result.summary);
-        setStatus("Condition detected — alert saved");
-      } else if (result.status === "match") {
-        setStatus(`Possible match ${result.match_streak} of ${result.confirmation_count}`);
-      } else if (result.status === "uncertain") {
-        setStatus("Nova could not tell from this frame; it will check again");
-      } else {
-        setStatus("No match — monitoring continues");
-      }
       setState("watching");
-      schedule(intervalSeconds, () => void runCheck());
+      const due = Date.now() + intervalSeconds * 1000;
+      setNextCheck(due);
+      timerRef.current = window.setTimeout(() => void runWebcamCheck(), intervalSeconds * 1000);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "The visual check failed.";
       runningRef.current = false;
-      setNextCheck(null);
       setState("error");
-      setStatus(message);
+      setStatus(error instanceof Error ? error.message : "The visual check failed.");
     }
   }
 
@@ -180,79 +227,60 @@ export function VisualWatch() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     if (source === "webcam") {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
       streamRef.current = stream;
       video.src = "";
       video.srcObject = stream;
       video.loop = false;
-      video.muted = true;
+      await video.play();
     } else {
-      if (!video.src) throw new Error(source === "upload" ? "Choose a video first." : "The example video is unavailable.");
+      if (!video.src) throw new Error("Choose a video first.");
       video.srcObject = null;
-      video.loop = true;
-      video.muted = true;
+      video.loop = false;
+      await waitForVideo(video);
     }
-    await video.play();
-    if (!video.videoWidth) await new Promise<void>((resolve) => video.addEventListener("loadeddata", () => resolve(), { once: true }));
+    setStage("video");
   }
 
   async function start() {
-    if (!prompt.trim()) {
-      setState("error");
-      setStatus("Describe one visible condition to watch for.");
-      return;
-    }
+    if (!prompt.trim()) { setState("error"); setStatus("Describe one visible condition to watch for."); return; }
     try {
-      setState("starting");
-      setStatus("Opening the video source…");
-      setAuthRequired(false);
-      await prepareVideo();
-      const session: BrowserSession = {
-        id: crypto.randomUUID(),
-        scope: "account",
-        name: prompt.trim().slice(0, 80),
-        job: "custom",
-        prompt: prompt.trim(),
-        createdAt: new Date().toISOString(),
-        events: [],
-        clips: [],
-        cloud: true,
-        checkIntervalSeconds: intervalSeconds,
-        confirmationCount,
-      };
-      setStatus("Starting the cloud monitor…");
-      await createCloudSession(session);
-      sessionRef.current = session;
-      startedAtRef.current = Date.now();
       runningRef.current = true;
-      setChecks(0);
-      setLastResult(null);
-      setState("watching");
-      setStatus("Monitoring is live");
-      await runCheck();
+      setState("starting"); setStage("idle"); setStatus("Opening the video source…");
+      setLastResult(null); setChecks(0); setNextCheck(null);
+      if (mode === "public") setEvents([]);
+      await prepareVideo();
+      setStatus(mode === "public" ? "Opening a rate-limited AWS demo session…" : "Opening your account monitor…");
+      await openSession();
+      startedAtRef.current = Date.now();
+      if (recorded) {
+        setState("sampling"); setStatus("Sampling moments across the video…");
+        const frames = await captureStoryboard(videoRef.current!, canvasRef.current!);
+        setStage("frames");
+        await analyze(frames);
+        runningRef.current = false;
+        setState("stopped");
+      } else {
+        setState("watching"); setStatus("Live monitor started");
+        await runWebcamCheck();
+      }
     } catch (error) {
       runningRef.current = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
-      const message = error instanceof Error ? error.message : "Monitoring could not start.";
-      if (error instanceof ApiError && error.status === 401) setAuthRequired(true);
       setState("error");
-      setStatus(message);
+      setStatus(error instanceof Error ? error.message : "Monitoring could not start.");
     }
   }
 
   function chooseSource(next: Source) {
     if (runningRef.current) return;
     const video = videoRef.current;
-    setSource(next);
-    setUploadName("");
+    setSource(next); setUploadName(""); setLastResult(null); setStage("idle");
+    setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
+    if (next !== "webcam") setConfirmationCount(1);
     if (video) {
-      video.pause();
-      video.srcObject = null;
-      video.src = next === "sample" ? "/vision/samples/3d-print-failure.mp4" : "";
-      video.loop = next === "sample";
-      if (next === "sample") setPrompt(SAMPLE_PROMPT);
+      video.pause(); video.srcObject = null; video.src = next === "sample" ? "/vision/samples/3d-print-failure.mp4" : "";
+      if (next === "sample") setPrompt(PRINTER_PROMPT);
     }
   }
 
@@ -262,9 +290,10 @@ export function VisualWatch() {
     uploadUrlRef.current = URL.createObjectURL(file);
     videoRef.current.srcObject = null;
     videoRef.current.src = uploadUrlRef.current;
-    videoRef.current.loop = true;
-    setSource("upload");
-    setUploadName(file.name);
+    videoRef.current.loop = false;
+    setSource("upload"); setUploadName(file.name); setLastResult(null); setStage("idle");
+    if (mode === "public") setEvents([]);
+    setStatus("Video ready — describe what to find");
   }
 
   async function enableNotifications() {
@@ -272,79 +301,76 @@ export function VisualWatch() {
     setNotificationState(await Notification.requestPermission());
   }
 
-  const running = state === "starting" || state === "watching" || state === "checking";
+  const steps: { stage: Stage; label: string }[] = [
+    { stage: "video", label: "Video ready" }, { stage: "frames", label: "Frames sampled" },
+    { stage: "nova", label: "Nova analyzed" }, { stage: "strands", label: "Strands acted" },
+  ];
 
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="Artae home">artae<span>VISION</span></Link>
-        <div className={styles.headerStatus}><i className={running ? styles.liveDot : styles.dot} />{running ? "Monitor live" : "Monitor off"}</div>
+        <div className={styles.headerStatus}><i className={running ? styles.liveDot : styles.dot} />{running ? "Analysis running" : "Ready"}</div>
       </header>
 
       <section className={styles.intro}>
-        <p className={styles.eyebrow}>VISUAL MONITOR</p>
-        <h1>Tell your camera what to watch for.</h1>
-        <p>Artae checks the video on your schedule. Amazon Nova judges the visible condition, and Strands saves the alert only when action is needed.</p>
+        <div><p className={styles.eyebrow}>AI VIDEO AGENT</p><h1>Describe it. Artae finds it.</h1></div>
+        <p>Upload a video or connect a camera. Amazon Nova checks your exact request, then a Strands agent prepares the alert and evidence.</p>
       </section>
 
-      <section className={styles.builder} aria-label="Configure visual monitor">
-        <div className={styles.step}>
-          <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>Use the example, upload a clip, or connect your camera.</small></div></div>
-          <div className={styles.sourceGrid}>
-            <button className={source === "sample" ? styles.selected : ""} onClick={() => chooseSource("sample")} disabled={running}><FiPlay />3D printer demo</button>
-            <label className={source === "upload" ? styles.selected : ""}><FiUpload />{uploadName || "Upload video"}<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
-            <button className={source === "webcam" ? styles.selected : ""} onClick={() => chooseSource("webcam")} disabled={running}><FiCamera />Webcam</button>
+      <section className={styles.workbench}>
+        <section className={styles.builder} aria-label="Configure visual monitor">
+          {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to 4 checks</span></div>}
+          <div className={styles.step}>
+            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>Try the example, upload your own, or use a webcam.</small></div></div>
+            <div className={styles.sourceGrid}>
+              <button className={source === "sample" ? styles.selected : ""} onClick={() => chooseSource("sample")} disabled={running}><FiPlay />Example</button>
+              <label className={source === "upload" ? styles.selected : ""}><FiUpload />{uploadName || "Upload"}<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
+              <button className={source === "webcam" ? styles.selected : ""} onClick={() => chooseSource("webcam")} disabled={running}><FiCamera />Webcam</button>
+            </div>
           </div>
-        </div>
 
-        <div className={styles.step}>
-          <div className={styles.stepTitle}><span>2</span><div><strong>Describe one visible event</strong><small>Your words go directly to Nova. Artae does not rewrite the request.</small></div></div>
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={3} aria-label="Condition to watch for" />
-          <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
-        </div>
-
-        <div className={styles.stepRow}>
-          <div className={styles.compactStep}>
-            <label htmlFor="interval"><FiClock /> Check every</label>
-            <select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}>
-              <option value={5}>5 seconds (demo)</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option>
-            </select>
+          <div className={styles.step}>
+            <div className={styles.stepTitle}><span>2</span><div><strong>What should Artae find?</strong><small>Use one visible, observable condition.</small></div></div>
+            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={4} aria-label="Condition to watch for" />
+            <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
           </div>
-          <div className={styles.compactStep}>
-            <label htmlFor="confirmations"><FiCheck /> Confirm after</label>
-            <select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}>
-              <option value={1}>1 matching check</option><option value={2}>2 matching checks</option><option value={3}>3 matching checks</option>
-            </select>
-          </div>
-          {!running ? authRequired ? <Link className={styles.startButton} href="/login"><FiPlay /> Sign in to run monitor</Link> : <button className={styles.startButton} onClick={() => void start()}><FiPlay /> Start monitoring</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare /> Stop monitor</button>}
-        </div>
-      </section>
 
-      <section className={styles.monitorGrid}>
+          <div className={styles.stepRow}>
+            {recorded ? <div className={styles.storyboardHint}><FiCheck /><div><strong>Whole-video scan</strong><small>Nova receives up to 8 moments sampled across the clip.</small></div></div> : <>
+              <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
+              <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
+            </>}
+            {!running ? <button className={styles.startButton} onClick={() => void start()}><FiPlay />{recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
+          </div>
+        </section>
+
         <article className={styles.previewCard}>
-          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Webcam" : source === "upload" ? uploadName || "Uploaded video" : "3D printer demo"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "LIVE" : "OFF"}</span></div>
+          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Webcam" : source === "upload" ? uploadName || "Uploaded video" : "Printer example"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
           <div className={styles.videoWrap}>
-            <video ref={videoRef} src="/vision/samples/3d-print-failure.mp4" muted loop playsInline controls={!running} />
-            {running && <div className={styles.videoBadge}>{state === "checking" ? "NOVA CHECKING FRAME" : "MONITORING"}</div>}
+            <video ref={videoRef} src="/vision/samples/3d-print-failure.mp4" muted playsInline controls={!running} />
+            {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>
           <canvas ref={canvasRef} hidden />
-          <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} check${checks === 1 ? "" : "s"} completed` : "No checks yet"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
-          {lastResult && <div className={styles.lastDecision}><span>Last decision</span><strong>{lastResult.status.replace("_", " ")}</strong><p>{lastResult.summary}</p></div>}
+          <div className={styles.pipeline} aria-label="Analysis progress">
+            {steps.map((item) => <div className={isStepDone(stage, item.stage, Boolean(lastResult?.event)) ? styles.pipelineDone : ""} key={item.stage}><i />{item.label}</div>)}
+          </div>
+          <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} AWS check${checks === 1 ? "" : "s"} completed` : "No AWS checks yet"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
+          {lastResult && <div className={`${styles.lastDecision} ${lastResult.status === "match" ? styles.matchDecision : ""}`}><span>Nova decision</span><strong>{lastResult.status === "match" ? "Detected" : lastResult.status.replace("_", " ")}</strong><p>{lastResult.summary}</p></div>}
         </article>
 
         <aside className={styles.alertCard}>
-          <div className={styles.cardHeader}><div><FiBell /><strong>Alerts</strong></div><span className={styles.count}>{events.length}</span></div>
+          <div className={styles.cardHeader}><div><FiBell /><strong>{mode === "public" ? "This run" : "Latest run"}</strong></div><span className={styles.count}>{events.length}</span></div>
           <div className={styles.notificationRow}>
-            <div><strong>Browser notifications</strong><small>{notificationState === "granted" ? "Enabled" : notificationState === "denied" ? "Blocked in browser settings" : notificationState === "unsupported" ? "Not supported here" : "Get notified while this page is open"}</small></div>
+            <div><strong>In-app alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Optional browser alerts work while this page is open"}</small></div>
             {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
           </div>
           <div className={styles.alertList}>
-            {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No detections yet</strong><p>Confirmed matches will appear here with the model’s explanation and timestamp.</p></div> : events.map((event) => (
+            {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No match yet</strong><p>When Nova confirms your condition, the matching frame and Strands actions appear here.</p></div> : events.map((event) => (
               <article className={styles.alertItem} key={event.id}>
-                {/* Captured frames are short-lived data URLs and cannot use the image optimizer. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {event.snapshot && <img src={event.snapshot} alt="Frame captured when the condition matched" />}
-                <div><div className={styles.alertMeta}><span>CONDITION DETECTED</span><time>{clock(event.occurredAt || event.at)}</time></div><p>{event.summary || event.title}</p><small>Saved to your account · human review recommended</small></div>
+                {event.snapshot && <img src={event.snapshot} alt="Frame that best supports the detected condition" />}
+                <div><div className={styles.alertMeta}><span>DETECTED</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div><small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review recommended</small></div>
               </article>
             ))}
           </div>

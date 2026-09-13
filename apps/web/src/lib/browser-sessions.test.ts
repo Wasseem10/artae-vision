@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({API_URL:"https://api.example.test", request:vi.fn()}));
 import { request } from "./api";
-import { cloudEventFields, loadBrowserWorkspace, loadCloudSession, mergeSession, sessionMetadata, type BrowserSession } from "./browser-sessions";
+import { analyzePublicDemo, cloudEventFields, createPublicDemo, loadBrowserWorkspace, loadCloudSession, mergeSession, sessionMetadata, type BrowserSession } from "./browser-sessions";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.mocked(request).mockReset(); });
 
@@ -65,5 +65,29 @@ describe("merging account and local history", () => {
     expect(merged.clips[0].saved).toBe(true);
     expect(merged.events).toHaveLength(2);
     expect(merged.events[1].saved).toBeUndefined();
+  });
+  it("opens and analyzes a temporary public AWS demo without account credentials", async () => {
+    vi.mocked(request).mockResolvedValueOnce({ id: "guest-run", token: "signed-token", max_checks: 4 })
+      .mockResolvedValueOnce({ status: "no_match", summary: "No failure is visible.", frames_analyzed: 2,
+        cooldown: false, confirmed: false, match_streak: 0, confirmation_count: 1,
+        checks_remaining: 3, event: null });
+    const session = await createPublicDemo("Find a failed print");
+    const result = await analyzePublicDemo(session, [
+      { at_seconds: 1, jpeg: "frame-one" },
+      { at_seconds: 9, jpeg: "frame-two" },
+    ]);
+    expect(request).toHaveBeenNthCalledWith(1, "/browser-sessions/public-demo", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ prompt: "Find a failed print" }),
+    }));
+    expect(request).toHaveBeenNthCalledWith(2, "/browser-sessions/public-demo/analyze", expect.objectContaining({
+      method: "POST",
+      body: JSON.stringify({ token: "signed-token", frames: [
+        { at_seconds: 1, jpeg: "frame-one" },
+        { at_seconds: 9, jpeg: "frame-two" },
+      ] }),
+    }));
+    expect(result.status).toBe("no_match");
+    expect(result.checks_remaining).toBe(3);
   });
 });

@@ -5,6 +5,7 @@ They create an in-app alert only. External recipients/physical actions are not
 accepted in these payloads. Recording uploads reuse the tenant archive pipeline.
 """
 
+import hashlib
 import logging
 from datetime import datetime, timedelta
 from functools import partial
@@ -12,8 +13,9 @@ from typing import Literal
 from uuid import UUID
 
 import anyio
-
+import jwt
 from fastapi import APIRouter, HTTPException, Request
+from jwt.exceptions import InvalidTokenError
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -47,6 +49,11 @@ from video_intelligence_api.tenancy import tenant_camera
 router = APIRouter(prefix="/browser-sessions", tags=["browser monitoring"])
 logger = logging.getLogger(__name__)
 
+PUBLIC_DEMO_MAX_CHECKS = 4
+PUBLIC_DEMO_STARTS_PER_HOUR = 8
+_public_demo_starts: dict[str, list[datetime]] = {}
+_public_demo_checks: dict[str, int] = {}
+
 
 class SessionCreate(BaseModel):
     id: UUID
@@ -68,16 +75,33 @@ class SavedJobCreate(BaseModel):
 
 @router.get("/jobs")
 async def list_saved_jobs(session: SessionDependency, actor: ActorDependency):
-    rows = (await session.execute(select(Camera, Rule).join(Rule, Rule.camera_id == Camera.id).where(
-        Camera.organization_id == actor.organization_id,
-        Camera.source_uri.startswith("browser-job:"),
-    ).order_by(Camera.created_at.desc()).limit(100))).all()
-    return [{"id": c.id, "name": c.name, "job": r.key.removeprefix("browser-template-"),
-             "prompt": (r.spec or {}).get("visual_prompt", "")} for c, r in rows]
+    rows = (
+        await session.execute(
+            select(Camera, Rule)
+            .join(Rule, Rule.camera_id == Camera.id)
+            .where(
+                Camera.organization_id == actor.organization_id,
+                Camera.source_uri.startswith("browser-job:"),
+            )
+            .order_by(Camera.created_at.desc())
+            .limit(100)
+        )
+    ).all()
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "job": r.key.removeprefix("browser-template-"),
+            "prompt": (r.spec or {}).get("visual_prompt", ""),
+        }
+        for c, r in rows
+    ]
 
 
 @router.post("/jobs")
-async def save_browser_job(payload: SavedJobCreate, session: SessionDependency, actor: EditorDependency):
+async def save_browser_job(
+    payload: SavedJobCreate, session: SessionDependency, actor: EditorDependency
+):
     if payload.job == "custom" and not payload.prompt.strip():
         raise HTTPException(422, "Describe a visible condition to watch for")
     camera = await session.get(Camera, str(payload.id))
@@ -86,30 +110,67 @@ async def save_browser_job(payload: SavedJobCreate, session: SessionDependency, 
         if camera is None or not camera.source_uri.startswith("browser-job:"):
             raise HTTPException(404, "Saved job not found")
         rule = await session.scalar(select(Rule).where(Rule.camera_id == camera.id))
-        if not rule or rule.key != f"browser-template-{payload.job}" or camera.name != payload.name.strip() or (rule.spec or {}).get("visual_prompt", "") != payload.prompt:
+        if (
+            not rule
+            or rule.key != f"browser-template-{payload.job}"
+            or camera.name != payload.name.strip()
+            or (rule.spec or {}).get("visual_prompt", "") != payload.prompt
+        ):
             raise HTTPException(409, "Job identity already exists with another configuration")
-        return {"id": camera.id, "name": camera.name, "job": payload.job, "prompt": (rule.spec or {}).get("visual_prompt", "")}
-    count = await session.scalar(select(func.count()).select_from(Camera).where(
-        Camera.organization_id == actor.organization_id, Camera.source_uri.startswith("browser-job:"),
-    ))
+        return {
+            "id": camera.id,
+            "name": camera.name,
+            "job": payload.job,
+            "prompt": (rule.spec or {}).get("visual_prompt", ""),
+        }
+    count = await session.scalar(
+        select(func.count())
+        .select_from(Camera)
+        .where(
+            Camera.organization_id == actor.organization_id,
+            Camera.source_uri.startswith("browser-job:"),
+        )
+    )
     if count >= 100:
         raise HTTPException(429, "Your workspace has reached its 100 saved-job limit")
     if not payload.name.strip():
         raise HTTPException(422, "Give your agent a name")
-    camera = Camera(id=str(payload.id), organization_id=actor.organization_id, name=payload.name.strip(),
-                    source_type=SourceType.WEBCAM, source_uri=f"browser-job:{payload.id}")
+    camera = Camera(
+        id=str(payload.id),
+        organization_id=actor.organization_id,
+        name=payload.name.strip(),
+        source_type=SourceType.WEBCAM,
+        source_uri=f"browser-job:{payload.id}",
+    )
     session.add(camera)
     await session.flush()
-    zone = Zone(id=new_id(), camera_id=camera.id, name="Full frame", points=[
-        {"x": 0, "y": 0}, {"x": 1, "y": 0}, {"x": 1, "y": 1}, {"x": 0, "y": 1},
-    ])
+    zone = Zone(
+        id=new_id(),
+        camera_id=camera.id,
+        name="Full frame",
+        points=[
+            {"x": 0, "y": 0},
+            {"x": 1, "y": 0},
+            {"x": 1, "y": 1},
+            {"x": 0, "y": 1},
+        ],
+    )
     session.add(zone)
     await session.flush()
-    session.add(Rule(id=new_id(), camera_id=camera.id, zone_id=zone.id,
-                     key=f"browser-template-{payload.job}", name=camera.name, duration_seconds=1,
-                     minimum_confidence=.6, status=RuleStatus.PAUSED,
-                     original_prompt=payload.prompt or f"Show an in-app alert for {payload.job}",
-                     spec={"browser_template": True, "visual_prompt": payload.prompt}))
+    session.add(
+        Rule(
+            id=new_id(),
+            camera_id=camera.id,
+            zone_id=zone.id,
+            key=f"browser-template-{payload.job}",
+            name=camera.name,
+            duration_seconds=1,
+            minimum_confidence=0.6,
+            status=RuleStatus.PAUSED,
+            original_prompt=payload.prompt or f"Show an in-app alert for {payload.job}",
+            spec={"browser_template": True, "visual_prompt": payload.prompt},
+        )
+    )
     await session.commit()
     return {"id": camera.id, "name": camera.name, "job": payload.job, "prompt": payload.prompt}
 
@@ -125,27 +186,215 @@ class IncidentReview(BaseModel):
 
 
 class VisualFrame(BaseModel):
-    at_seconds: float = Field(ge=0, le=3600, allow_inf_nan=False)
+    at_seconds: float = Field(ge=0, le=7200, allow_inf_nan=False)
     jpeg: str = Field(min_length=20, max_length=250000)
 
 
 class VisualCheck(BaseModel):
     id: UUID
-    frames: list[VisualFrame] = Field(min_length=1, max_length=4)
+    frames: list[VisualFrame] = Field(min_length=1, max_length=8)
 
     @model_validator(mode="after")
     def validate_frames(self):
         times = [frame.at_seconds for frame in self.frames]
-        if times != sorted(times) or times[-1] - times[0] > 10:
-            raise ValueError("Frames must be chronological and cover at most ten seconds")
+        if times != sorted(times):
+            raise ValueError("Frames must be chronological")
         for frame in self.frames:
             decode_frame(frame.jpeg)
         return self
 
 
+class PublicDemoStart(BaseModel):
+    prompt: str = Field(min_length=3, max_length=500)
+
+
+class PublicDemoCheck(BaseModel):
+    token: str = Field(min_length=20, max_length=4000)
+    frames: list[VisualFrame] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_frames(self):
+        times = [frame.at_seconds for frame in self.frames]
+        if times != sorted(times):
+            raise ValueError("Frames must be chronological")
+        for frame in self.frames:
+            decode_frame(frame.jpeg)
+        return self
+
+
+def _public_demo_client(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "").split(",", maxsplit=1)[0].strip()
+    return forwarded or (request.client.host if request.client else "unknown")
+
+
+def _public_demo_signing_key(settings) -> bytes:
+    """Derive a domain-separated 256-bit key from the private dashboard secret."""
+    source = settings.dashboard_key.get_secret_value().encode()
+    return hashlib.sha256(b"artae-public-demo-v1\0" + source).digest()
+
+
+@router.post("/public-demo")
+async def start_public_demo(payload: PublicDemoStart, request: Request):
+    """Issue a short-lived, rate-limited token for the no-account judge demo."""
+    settings = request.app.state.settings
+    if not settings.strands_enabled:
+        raise HTTPException(503, "AWS visual analysis is not configured")
+    now = utc_now()
+    client = _public_demo_client(request)
+    recent = [
+        value for value in _public_demo_starts.get(client, []) if value > now - timedelta(hours=1)
+    ]
+    if len(recent) >= PUBLIC_DEMO_STARTS_PER_HOUR:
+        raise HTTPException(429, "This browser has reached the hourly public-demo limit")
+    recent.append(now)
+    _public_demo_starts[client] = recent
+    session_id = new_id()
+    token = jwt.encode(
+        {
+            "iss": "artae-api",
+            "aud": "artae-public-demo",
+            "sub": "guest",
+            "jti": session_id,
+            "prompt": payload.prompt.strip(),
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(minutes=15)).timestamp()),
+        },
+        _public_demo_signing_key(settings),
+        algorithm="HS256",
+    )
+    _public_demo_checks[session_id] = 0
+    return {"id": session_id, "token": token, "max_checks": PUBLIC_DEMO_MAX_CHECKS}
+
+
+@router.post("/public-demo/analyze")
+async def analyze_public_demo(payload: PublicDemoCheck, request: Request):
+    """Analyze guest-supplied frames without creating account-owned records."""
+    settings = request.app.state.settings
+    try:
+        claims = jwt.decode(
+            payload.token,
+            _public_demo_signing_key(settings),
+            algorithms=["HS256"],
+            audience="artae-public-demo",
+            issuer="artae-api",
+            options={"require": ["exp", "iat", "jti", "prompt"]},
+        )
+        session_id = str(claims["jti"])
+        prompt = str(claims["prompt"])
+    except (InvalidTokenError, KeyError, ValueError) as exc:
+        raise HTTPException(401, "The public demo session expired; start a new run") from exc
+    checks = _public_demo_checks.get(session_id, 0)
+    if checks >= PUBLIC_DEMO_MAX_CHECKS:
+        raise HTTPException(429, "This public demo reached its four-check limit")
+    _public_demo_checks[session_id] = checks + 1
+    try:
+        with anyio.fail_after(30):
+            decision, usage = await anyio.to_thread.run_sync(
+                partial(
+                    inspect_frames,
+                    prompt,
+                    payload.frames,
+                    settings,
+                    request.headers.get("x-vercel-oidc-token"),
+                ),
+                abandon_on_cancel=True,
+            )
+    except Exception as exc:
+        logger.exception("AWS public demo check failed for session=%s", session_id)
+        raise HTTPException(
+            503, "AWS could not analyze these frames. Please retry shortly."
+        ) from exc
+
+    result = {
+        "status": decision.status,
+        "summary": decision.summary,
+        "matched_frame_index": decision.matched_frame_index,
+        "frames_analyzed": len(payload.frames),
+        "model": settings.strands_model_id,
+        "confirmed": decision.status == "match",
+        "match_streak": 1 if decision.status == "match" else 0,
+        "confirmation_count": 1,
+        "cooldown": False,
+        "checks_remaining": PUBLIC_DEMO_MAX_CHECKS - checks - 1,
+        "event": None,
+    }
+    if decision.status != "match":
+        return result
+
+    now = utc_now()
+    event_id = new_id()
+    camera = Camera(
+        id=session_id,
+        organization_id="public-demo",
+        name="Public demo video",
+        source_type=SourceType.WEBCAM,
+        source_uri=f"public-demo:{session_id}",
+    )
+    rule = Rule(
+        id=new_id(),
+        camera_id=camera.id,
+        zone_id=new_id(),
+        key="browser-custom",
+        name="Public visual condition",
+        duration_seconds=1,
+        minimum_confidence=0.6,
+        status=RuleStatus.PAUSED,
+        original_prompt=prompt,
+        spec={"public_demo": True},
+    )
+    event = Event(
+        id=event_id,
+        source_event_id=event_id,
+        schema_version=1,
+        camera_id=camera.id,
+        rule_id=rule.id,
+        event_type="visual_match",
+        track_id=0,
+        object_class="visual condition",
+        zone_name="Full frame",
+        entered_at_seconds=payload.frames[0].at_seconds,
+        occurred_at_seconds=payload.frames[-1].at_seconds,
+        dwell_seconds=max(0, payload.frames[-1].at_seconds - payload.frames[0].at_seconds),
+        confidence=0,
+        clip_uri="browser-only",
+        occurred_at=now,
+        verification_status=VerificationStatus.UNCERTAIN,
+        raw_payload={"frame_times": [frame.at_seconds for frame in payload.frames]},
+        details={
+            "source": "bedrock_vision",
+            "summary": decision.summary,
+            "model": settings.strands_model_id,
+            "usage": usage,
+            "public_demo": True,
+            "independently_verified": False,
+        },
+    )
+    run = await coordinate_incident(
+        event,
+        camera,
+        rule,
+        settings,
+        oidc_token=request.headers.get("x-vercel-oidc-token"),
+    )
+    if run:
+        event.details = {**event.details, "strands_agent": run.model_dump(mode="json")}
+    result["event"] = {
+        "source_event_id": event.source_event_id,
+        "occurred_at_seconds": event.occurred_at_seconds,
+        "occurred_at": now.isoformat(),
+        "details": event.details,
+    }
+    return result
+
+
 @router.post("/{camera_id}/analyze")
-async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: Request,
-                                 session: SessionDependency, actor: EditorDependency):
+async def analyze_browser_frames(
+    camera_id: str,
+    payload: VisualCheck,
+    request: Request,
+    session: SessionDependency,
+    actor: EditorDependency,
+):
     camera, rule = await owned_session(camera_id, session, actor)
     settings = request.app.state.settings
     if rule.key != "browser-custom":
@@ -163,21 +412,37 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
         raise HTTPException(429, "This run has reached its 720 visual-check limit")
     # Reserve capacity in PostgreSQL before a paid model call. Never trust a
     # client timer as the only rate/concurrency control.
-    rule.spec = {**spec, "visual_checks": int(spec.get("visual_checks", 0)) + 1,
-                 "visual_busy_until": (now + timedelta(seconds=70)).isoformat()}
+    rule.spec = {
+        **spec,
+        "visual_checks": int(spec.get("visual_checks", 0)) + 1,
+        "visual_busy_until": (now + timedelta(seconds=70)).isoformat(),
+    }
     await session.commit()
     try:
         with anyio.fail_after(30):
-            decision, usage = await anyio.to_thread.run_sync(partial(
-                inspect_frames, rule.original_prompt, payload.frames, settings,
-                request.headers.get("x-vercel-oidc-token"),
-            ), abandon_on_cancel=True)
+            decision, usage = await anyio.to_thread.run_sync(
+                partial(
+                    inspect_frames,
+                    rule.original_prompt,
+                    payload.frames,
+                    settings,
+                    request.headers.get("x-vercel-oidc-token"),
+                ),
+                abandon_on_cancel=True,
+            )
     except Exception as exc:
         # Never turn an unavailable model into a positive detection or a silent
         # negative. The browser must show the failure and stop this custom job.
         logger.exception("AWS visual check failed for camera=%s", camera.id)
-        raise HTTPException(503, "AWS could not analyze these frames. Detection stopped; retry shortly.") from exc
-    rule = await session.scalar(select(Rule).where(Rule.id == rule.id).with_for_update().execution_options(populate_existing=True))
+        raise HTTPException(
+            503, "AWS could not analyze these frames. Detection stopped; retry shortly."
+        ) from exc
+    rule = await session.scalar(
+        select(Rule)
+        .where(Rule.id == rule.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     spec = dict(rule.spec or {})
     at = payload.frames[-1].at_seconds
     confirmation_count = int(spec.get("confirmation_count", 1))
@@ -186,30 +451,63 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
     prior = spec.get("visual_last_match_seconds")
     confirmed = decision.status == "match" and match_streak >= confirmation_count
     create_alert = confirmed and (prior is None or at - float(prior) >= 30)
-    result = {"status": decision.status, "summary": decision.summary, "frames_analyzed": len(payload.frames),
-              "model": settings.strands_model_id, "event": None,
-              "confirmed": confirmed, "match_streak": match_streak, "confirmation_count": confirmation_count,
-              "cooldown": confirmed and not create_alert}
+    result = {
+        "status": decision.status,
+        "summary": decision.summary,
+        "frames_analyzed": len(payload.frames),
+        "model": settings.strands_model_id,
+        "event": None,
+        "matched_frame_index": decision.matched_frame_index,
+        "confirmed": confirmed,
+        "match_streak": match_streak,
+        "confirmation_count": confirmation_count,
+        "cooldown": confirmed and not create_alert,
+    }
     if create_alert:
-        count = await session.scalar(select(func.count()).select_from(Event).where(Event.camera_id == camera.id))
+        count = await session.scalar(
+            select(func.count()).select_from(Event).where(Event.camera_id == camera.id)
+        )
         if count >= 20:
             raise HTTPException(429, "The session reached its 20-alert limit")
-        event = Event(id=new_id(), source_event_id=str(payload.id), schema_version=1, camera_id=camera.id,
-                      rule_id=rule.id, event_type="visual_match", track_id=0, object_class="visual condition",
-                      zone_name="Full frame", entered_at_seconds=payload.frames[0].at_seconds,
-                      occurred_at_seconds=at, dwell_seconds=max(0, at-payload.frames[0].at_seconds),
-                      confidence=0, clip_uri="", occurred_at=now, verification_status=VerificationStatus.UNCERTAIN,
-                      raw_payload={"frame_times": [f.at_seconds for f in payload.frames]}, details={
-                          "source": "bedrock_vision", "summary": decision.summary, "model": settings.strands_model_id,
-                          "independently_verified": False, "requires_human": True,
-                          "confidence_meaning": "No calibrated probability is reported",
-                          "frame_count": len(payload.frames), "usage": usage,
-                      })
-        run = await coordinate_incident(event, camera, rule, settings,
-                                        oidc_token=request.headers.get("x-vercel-oidc-token"))
+        event = Event(
+            id=new_id(),
+            source_event_id=str(payload.id),
+            schema_version=1,
+            camera_id=camera.id,
+            rule_id=rule.id,
+            event_type="visual_match",
+            track_id=0,
+            object_class="visual condition",
+            zone_name="Full frame",
+            entered_at_seconds=payload.frames[0].at_seconds,
+            occurred_at_seconds=at,
+            dwell_seconds=max(0, at - payload.frames[0].at_seconds),
+            confidence=0,
+            clip_uri="",
+            occurred_at=now,
+            verification_status=VerificationStatus.UNCERTAIN,
+            raw_payload={"frame_times": [f.at_seconds for f in payload.frames]},
+            details={
+                "source": "bedrock_vision",
+                "summary": decision.summary,
+                "model": settings.strands_model_id,
+                "independently_verified": False,
+                "requires_human": True,
+                "confidence_meaning": "No calibrated probability is reported",
+                "frame_count": len(payload.frames),
+                "usage": usage,
+            },
+        )
+        run = await coordinate_incident(
+            event, camera, rule, settings, oidc_token=request.headers.get("x-vercel-oidc-token")
+        )
         if run:
             event.details = {**event.details, "strands_agent": run.model_dump(mode="json")}
-        event.details = {**event.details, **incident_actions(event, run), "review": {"status": "open", "outcome": None}}
+        event.details = {
+            **event.details,
+            **incident_actions(event, run),
+            "review": {"status": "open", "outcome": None},
+        }
         session.add(event)
         await session.flush()
         session.add(Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now))
@@ -217,8 +515,12 @@ async def analyze_browser_frames(camera_id: str, payload: VisualCheck, request: 
         result["event"] = EventRead.model_validate(event).model_dump(mode="json")
         spec["visual_last_match_seconds"] = at
         spec["visual_match_streak"] = 0
-    rule.spec = {**spec, "visual_check_id": str(payload.id), "visual_result": result,
-                 "visual_busy_until": (utc_now() + timedelta(seconds=3)).isoformat()}
+    rule.spec = {
+        **spec,
+        "visual_check_id": str(payload.id),
+        "visual_result": result,
+        "visual_busy_until": (utc_now() + timedelta(seconds=3)).isoformat(),
+    }
     await session.commit()
     return result
 
@@ -278,12 +580,17 @@ async def create_session(
         return session_read(camera, rule)
     if payload.agent_id:
         template = await tenant_camera(session, actor, str(payload.agent_id))
-        template_rule = await session.scalar(select(Rule).where(Rule.camera_id == str(payload.agent_id)))
+        template_rule = await session.scalar(
+            select(Rule).where(Rule.camera_id == str(payload.agent_id))
+        )
         if not template or not template.source_uri.startswith("browser-job:") or not template_rule:
             raise HTTPException(404, "Saved agent not found")
         if template_rule.key != f"browser-template-{payload.job}":
             raise HTTPException(409, "Run does not match the saved agent's job")
-        if payload.job == "custom" and (template_rule.spec or {}).get("visual_prompt") != payload.prompt:
+        if (
+            payload.job == "custom"
+            and (template_rule.spec or {}).get("visual_prompt") != payload.prompt
+        ):
             raise HTTPException(409, "Run does not match the saved agent's visual condition")
     count = await session.scalar(
         select(func.count())
@@ -314,7 +621,13 @@ async def create_session(
             {"x": 0, "y": 1},
         ],
     )
-    title = "Custom visual condition" if payload.job == "custom" else "Possible fall" if payload.job == "fall" else "Person in view"
+    title = (
+        "Custom visual condition"
+        if payload.job == "custom"
+        else "Possible fall"
+        if payload.job == "fall"
+        else "Person in view"
+    )
     rule = Rule(
         id=new_id(),
         camera_id=camera.id,
@@ -324,13 +637,17 @@ async def create_session(
         duration_seconds=1,
         minimum_confidence=0.6,
         status=RuleStatus.PAUSED,
-        original_prompt=payload.prompt if payload.job == "custom" else f"Show an in-app alert: {title} (browser pose analysis).",
-        spec={"browser_started_at": payload.started_at.isoformat() if payload.started_at else None,
-              "browser_agent_id": str(payload.agent_id) if payload.agent_id else None,
-              "visual_prompt": payload.prompt,
-              "check_interval_seconds": payload.check_interval_seconds,
-              "confirmation_count": payload.confirmation_count,
-              "visual_match_streak": 0},
+        original_prompt=payload.prompt
+        if payload.job == "custom"
+        else f"Show an in-app alert: {title} (browser pose analysis).",
+        spec={
+            "browser_started_at": payload.started_at.isoformat() if payload.started_at else None,
+            "browser_agent_id": str(payload.agent_id) if payload.agent_id else None,
+            "visual_prompt": payload.prompt,
+            "check_interval_seconds": payload.check_interval_seconds,
+            "confirmation_count": payload.confirmation_count,
+            "visual_match_streak": 0,
+        },
     )
     # These models use FK IDs, not ORM relationships. Flush parents explicitly;
     # SQLite without FK enforcement previously hid the PostgreSQL ordering bug.
@@ -353,9 +670,16 @@ async def session_observations(
     camera, _ = await owned_session(camera_id, session, actor)
     # Account replay must include uncertain candidates and closed false alarms.
     # The general event feed deliberately filters unverified observations out.
-    return list((await session.scalars(
-        select(Event).where(Event.camera_id == camera.id).order_by(Event.occurred_at).limit(100)
-    )).all())
+    return list(
+        (
+            await session.scalars(
+                select(Event)
+                .where(Event.camera_id == camera.id)
+                .order_by(Event.occurred_at)
+                .limit(100)
+            )
+        ).all()
+    )
 
 
 @router.post("/{camera_id}/events", response_model=EventRead)
@@ -368,7 +692,9 @@ async def record_observation(
 ):
     camera, rule = await owned_session(camera_id, session, actor)
     if rule.key == "browser-custom":
-        raise HTTPException(422, "Custom jobs require server-side image analysis, not client observations")
+        raise HTTPException(
+            422, "Custom jobs require server-side image analysis, not client observations"
+        )
     existing = await session.scalar(select(Event).where(Event.source_event_id == str(payload.id)))
     if existing:
         if existing.camera_id != camera.id:
@@ -415,7 +741,10 @@ async def record_observation(
         },
     )
     run = await coordinate_incident(
-        event, camera, rule, request.app.state.settings,
+        event,
+        camera,
+        rule,
+        request.app.state.settings,
         oidc_token=request.headers.get("x-vercel-oidc-token"),
     )
     if run:
@@ -459,9 +788,9 @@ async def review_browser_incident(
     """Persist a human decision; never mark the detector/model as independently verified."""
     await owned_session(camera_id, session, actor)
     event = await session.scalar(
-        select(Event).where(
-            Event.camera_id == camera_id, Event.source_event_id == str(source_event_id)
-        ).with_for_update()
+        select(Event)
+        .where(Event.camera_id == camera_id, Event.source_event_id == str(source_event_id))
+        .with_for_update()
     )
     if event is None:
         raise HTTPException(404, "Incident not found")
