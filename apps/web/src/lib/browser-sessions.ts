@@ -17,7 +17,7 @@ export type BrowserEvent = {
   actions?: string[];
   evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
   notification?: { channel: string; status: string; message: string; priority: string };
-  sms?: { status: string; provider: string; destination?: string; error?: string };
+  sms?: { status: string; provider: string; destination?: string; error?: string; message?: string };
   snapshot?: string;
 };
 export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
@@ -50,6 +50,9 @@ export function cloudEventFields(result: CloudEventResult) {
 }
 export async function getNotificationCapabilities(): Promise<{ sms: boolean }> {
   return request<{ sms: boolean }>("/browser-sessions/notification-capabilities");
+}
+export async function sendTestSms(session: BrowserSession): Promise<NonNullable<BrowserEvent["sms"]>> {
+  return request(`/browser-sessions/${session.id}/test-sms`, { method: "POST" });
 }
 export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
   return request<CloudEventResult>(`/browser-sessions/${s.id}/events/${event.id}/review`, {

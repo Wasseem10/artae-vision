@@ -11,6 +11,7 @@ import {
   createCloudSession,
   createPublicDemo,
   getNotificationCapabilities,
+  sendTestSms,
   listCloudSessions,
   loadCloudSession,
   type BrowserEvent,
@@ -138,6 +139,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [smsAvailable, setSmsAvailable] = useState(false);
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [caregiverPhone, setCaregiverPhone] = useState("");
+  const [testingSms, setTestingSms] = useState(false);
+  const [testReceipt, setTestReceipt] = useState<BrowserEvent["sms"]>();
   const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
   const recorded = source !== "webcam";
   const detailed = recorded && scanMode === "detailed";
@@ -205,6 +208,27 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     };
     await createCloudSession(session);
     sessionRef.current = session;
+  }
+
+  async function testText() {
+    const phone = caregiverPhone.trim();
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+      setTestReceipt({ status: "failed", provider: "aws_sns", message: "Enter your number with its country code, such as +12065550142." });
+      return;
+    }
+    setTestingSms(true);
+    setTestReceipt(undefined);
+    try {
+      const testSession: BrowserSession = {
+        id: crypto.randomUUID(), scope: "account", name: "Text alert connection test", job: "custom",
+        prompt: "Check for a possible fall", createdAt: new Date().toISOString(), events: [], clips: [], cloud: true,
+        caregiverPhone: phone,
+      };
+      await createCloudSession(testSession);
+      setTestReceipt(await sendTestSms(testSession));
+    } catch (error) {
+      setTestReceipt({ status: "failed", provider: "aws_sns", message: error instanceof Error ? error.message : "The text could not be requested." });
+    } finally { setTestingSms(false); }
   }
 
   async function analyze(
@@ -601,9 +625,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
             </div>
             <div className={styles.smsSetup}>
-              {mode === "public" ? <p><strong>Text a caregiver</strong><small>Sign in and connect an AWS-verified phone number to send SMS after a confirmed event.</small><Link href="/login?next=app">Sign in to connect</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
+              {mode === "public" ? <p><strong>Text me what happened</strong><small>Sign in to add your phone. A detected event sends its description and video timestamp by text.</small><Link href="/login?next=demo">Sign in for text alerts</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
                 <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
-                {smsEnabled && <label>Caregiver phone<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>Use international format. AWS sandbox accounts can text verified numbers only.</small></label>}
+                {smsEnabled && <><label>Your phone number<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running || testingSms} onChange={(event) => { setCaregiverPhone(event.target.value); setTestReceipt(undefined); }} /><small>Include your country code. We text what was detected and where it happened in the video.</small></label><button type="button" disabled={running || testingSms || !caregiverPhone.trim()} onClick={() => void testText()}>{testingSms ? "Sending test…" : "Send test text"}</button><small>Texting currently requires an AWS-verified destination.</small>{testReceipt && <p role="status">{testReceipt.status === "accepted" ? "AWS accepted the test text. Check your phone to confirm it arrived." : testReceipt.message || "The test failed. Check your number and AWS text messaging setup."}</p>}</>}
               </>}
             </div>
           </div>
@@ -612,7 +636,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <article className={styles.alertItem} key={event.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {event.snapshot && <img src={event.snapshot} alt="Frame that best supports the detected condition" />}
-                <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <div className={`${styles.deliveryReceipt} ${event.sms.status === "accepted" ? styles.deliveryAccepted : styles.deliveryFailed}`}><FiBell /><div><strong>{event.sms.status === "accepted" ? "Caregiver text accepted by AWS" : "Caregiver text needs attention"}</strong><small>{event.sms.destination ? `Sent toward ${event.sms.destination}` : event.sms.error ? `Delivery error: ${event.sms.error.replaceAll("_", " ")}` : "Check the AWS SMS configuration"}</small></div></div>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
+                <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <div className={`${styles.deliveryReceipt} ${event.sms.status === "accepted" ? styles.deliveryAccepted : styles.deliveryFailed}`}><FiBell /><div><strong>{event.sms.status === "accepted" ? "Caregiver text accepted by AWS" : "Caregiver text needs attention"}</strong><small>{event.sms.status === "accepted" ? `Submitted for delivery to ${event.sms.destination || "your phone"}` : event.sms.message || (event.sms.error ? `Delivery error: ${event.sms.error.replaceAll("_", " ")}` : "Check the AWS SMS configuration")}</small></div></div>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
               </article>
             ))}
           </div>

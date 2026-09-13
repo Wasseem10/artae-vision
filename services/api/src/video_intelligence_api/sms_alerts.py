@@ -8,6 +8,7 @@ failure must never suppress the durable in-app incident.
 from __future__ import annotations
 
 import re
+from botocore.config import Config
 
 from video_intelligence_api.alert_secrets import AlertSecretError, decrypt_alert_secret
 from video_intelligence_api.bedrock_identity import bedrock_session
@@ -31,6 +32,7 @@ def send_caregiver_sms(
     camera,
     settings: ApiSettings,
     oidc_token: str | None,
+    test: bool = False,
 ) -> dict[str, object]:
     """Send one transactional alert and return an operator-safe receipt."""
     if not encrypted_phone:
@@ -52,17 +54,26 @@ def send_caregiver_sms(
         ),
         "Possible fall detected",
     )
+    details = getattr(event, "details", None) or {}
+    summary = " ".join(str(details.get("summary") or matched).split())[:360]
+    at = getattr(event, "occurred_at_seconds", None)
+    timing = ""
+    if isinstance(at, (float, int)) and at >= 0:
+        seconds = int(at)
+        timing = f" Around {seconds // 3600:02d}:{seconds // 60 % 60:02d}:{seconds % 60:02d} in the video."
     message = (
-        f"Artae Care Alert: {matched}. Camera: {camera.name}. "
-        f"Time: {event.occurred_at.isoformat()}. Check the person immediately. "
-        "This is an AI-generated alert requiring human review."
-    )[:600]
+        "Artae test text: Your alert connection works. No fall was detected or reported by this test."
+        if test else
+        f"Artae video alert: {summary}{timing} Review the footage and check whether help is needed."
+    )
     try:
         boto_session = bedrock_session(settings.strands_role_arn, settings.sms_region, oidc_token)
         client = (
-            boto_session.client("sns", region_name=settings.sms_region)
+            boto_session.client("sns", region_name=settings.sms_region,
+                                config=Config(connect_timeout=3, read_timeout=6, retries={"max_attempts": 0}))
             if boto_session is not None
-            else __import__("boto3").client("sns", region_name=settings.sms_region)
+            else __import__("boto3").client("sns", region_name=settings.sms_region,
+                                           config=Config(connect_timeout=3, read_timeout=6, retries={"max_attempts": 0}))
         )
         attributes = {
             "AWS.SNS.SMS.SMSType": {"DataType": "String", "StringValue": "Transactional"}
@@ -87,11 +98,21 @@ def send_caregiver_sms(
             "provider_message_id": message_id,
         }
     except Exception as exc:  # AWS errors are reflected in the incident, never promoted to success.
+        code = getattr(exc, "response", {}).get("Error", {}).get("Code", type(exc).__name__)
+        explanations = {
+            "AuthorizationError": "AWS has not granted this app permission to send texts (sns:Publish).",
+            "AccessDenied": "AWS has not granted this app permission to send texts (sns:Publish).",
+            "AccessDeniedException": "AWS has not granted this app permission to send texts (sns:Publish).",
+            "InvalidParameter": "AWS rejected this destination. Check the phone format and verify the number in the AWS SMS sandbox.",
+            "OptedOut": "This phone has opted out of text messages.",
+            "Throttled": "AWS is limiting text requests. Try again shortly.",
+        }
         return {
             "status": "failed",
             "provider": "aws_sns",
             "destination": _masked_destination(phone),
-            "error": type(exc).__name__,
+            "error": code,
+            "message": explanations.get(code, "AWS could not send this text. Check SMS permissions, the verified destination, and your sending limits."),
         }
 
 

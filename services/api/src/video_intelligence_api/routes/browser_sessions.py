@@ -30,6 +30,7 @@ from video_intelligence_api.models import (
     AlertStatus,
     Camera,
     Event,
+    Organization,
     Rule,
     RuleStatus,
     SourceType,
@@ -211,7 +212,7 @@ class IncidentReview(BaseModel):
 
 
 class VisualFrame(BaseModel):
-    at_seconds: float = Field(ge=0, le=7200, allow_inf_nan=False)
+    at_seconds: float = Field(ge=0, le=14400, allow_inf_nan=False)
     jpeg: str = Field(min_length=20, max_length=250000)
 
 
@@ -546,7 +547,11 @@ async def analyze_browser_frames(
             object_class="visual condition",
             zone_name="Full frame",
             entered_at_seconds=payload.frames[0].at_seconds,
-            occurred_at_seconds=at,
+            occurred_at_seconds=(
+                payload.frames[decision.matched_frame_index].at_seconds
+                if decision.matched_frame_index is not None
+                and 0 <= decision.matched_frame_index < len(payload.frames) else at
+            ),
             dwell_seconds=max(0, at - payload.frames[0].at_seconds),
             confidence=0,
             clip_uri="",
@@ -619,6 +624,47 @@ async def owned_session(camera_id: str, session, actor):
     if rule is None or rule.key not in {"browser-presence", "browser-fall", "browser-custom"}:
         raise HTTPException(404, "Browser job not found")
     return camera, rule
+
+
+@router.post("/{camera_id}/test-sms")
+async def test_browser_sms(
+    camera_id: str, request: Request, session: SessionDependency, actor: EditorDependency,
+):
+    """One explicit test per session, at most three tests per workspace per hour."""
+    camera, rule = await owned_session(camera_id, session, actor)
+    await session.scalar(select(Organization).where(Organization.id == actor.organization_id).with_for_update())
+    await session.refresh(rule)
+    spec = dict(rule.spec or {})
+    if not spec.get("caregiver_phone_encrypted"):
+        raise HTTPException(422, "Enter a caregiver phone number before sending a test text")
+    if spec.get("sms_test_at"):
+        if spec.get("sms_test_receipt"):
+            return spec["sms_test_receipt"]
+        raise HTTPException(409, "This test text was already requested. Check your phone.")
+    cutoff = (utc_now() - timedelta(hours=1)).isoformat()
+    count = await session.scalar(
+        select(func.count()).select_from(Rule).join(Camera, Camera.id == Rule.camera_id).where(
+            Camera.organization_id == actor.organization_id,
+            Rule.spec["sms_test_at"].as_string() >= cutoff,
+        )
+    )
+    if count >= 3:
+        raise HTTPException(429, "Three test texts were already requested this hour. Please try later.")
+    rule.spec = {**spec, "sms_test_at": utc_now().isoformat()}
+    await session.commit()
+    try:
+        with anyio.fail_after(12):
+            receipt = await anyio.to_thread.run_sync(partial(
+                send_caregiver_sms, encrypted_phone=spec["caregiver_phone_encrypted"],
+                event=None, camera=camera, settings=request.app.state.settings,
+                oidc_token=request.headers.get("x-vercel-oidc-token"), test=True,
+            ), abandon_on_cancel=True)
+    except TimeoutError:
+        receipt = {"status": "failed", "provider": "aws_sns", "error": "timeout",
+                   "message": "AWS did not respond in time. Check your phone before retrying."}
+    rule.spec = {**rule.spec, "sms_test_receipt": receipt}
+    await session.commit()
+    return receipt
 
 
 def session_read(camera, rule):

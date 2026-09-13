@@ -381,7 +381,7 @@ def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatc
         browser_sessions,
         "inspect_frames",
         lambda *_: (
-            VisualDecision(status="match", summary="A possible fall is visible."),
+            VisualDecision(status="match", summary="A possible fall is visible.", matched_frame_index=0),
             {},
         ),
     )
@@ -401,14 +401,43 @@ def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatc
     )
     result = api_client.post(
         f"/api/v1/browser-sessions/{camera}/analyze",
-        json={"id": str(uuid.uuid4()), "frames": [frame()]},
+        json={"id": str(uuid.uuid4()), "frames": [{**frame(), "at_seconds": 7500}, {**frame(), "at_seconds": 7505}]},
     )
     assert result.status_code == 200, result.text
+    assert result.json()["event"]["occurred_at_seconds"] == 7500
     assert result.json()["event"]["details"]["sms"] == {
         "status": "accepted",
         "provider": "aws_sns",
         "destination": "••••0142",
     }
+
+
+def test_sms_connection_test_is_explicit_idempotent_and_bounded(api_client, monkeypatch):
+    settings = api_client.app.state.settings
+    settings.sms_enabled = True
+    settings.alert_encryption_key = SecretStr(Fernet.generate_key().decode())
+    sent = []
+    def send(**kwargs):
+        assert kwargs["test"] is True
+        assert kwargs["event"] is None
+        sent.append(kwargs)
+        return {"status": "accepted", "provider": "aws_sns", "destination": "••••0142"}
+    monkeypatch.setattr(browser_sessions, "send_caregiver_sms", send)
+    for index in range(4):
+        response = api_client.post("/api/v1/browser-sessions", json={
+            "id": str(uuid.uuid4()), "name": "SMS test", "job": "custom",
+            "prompt": "Check for a fall", "caregiver_phone": "+12065550142",
+        })
+        assert response.status_code == 200, response.text
+        path = f"/api/v1/browser-sessions/{response.json()['id']}/test-sms"
+        result = api_client.post(path)
+        if index < 3:
+            assert result.status_code == 200, result.text
+            assert api_client.post(path).json() == result.json()
+        else:
+            assert result.status_code == 429
+    assert len(sent) == 3
+    assert api_client.get("/api/v1/alerts").json() == []
 
 
 def test_negative_and_unavailable_models_never_fabricate_alerts(

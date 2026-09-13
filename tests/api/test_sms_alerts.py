@@ -60,6 +60,9 @@ def test_sms_uses_transactional_aws_delivery_and_masks_destination(monkeypatch) 
             assert payload["MessageAttributes"]["AWS.SNS.SMS.SMSType"]["StringValue"] == (
                 "Transactional"
             )
+            assert "A person fell beside the chair" in payload["Message"]
+            assert "00:01:23" in payload["Message"]
+            assert "watch for a fall" not in payload["Message"]
             return {"MessageId": "message-123"}
 
     class Session:
@@ -75,7 +78,9 @@ def test_sms_uses_transactional_aws_delivery_and_masks_destination(monkeypatch) 
     monkeypatch.setattr(sms_alerts, "bedrock_session", lambda *_args: Session())
     result = send_caregiver_sms(
         encrypted_phone=encrypted,
-        event=SimpleNamespace(occurred_at=datetime.now(UTC)),
+        event=SimpleNamespace(occurred_at=datetime.now(UTC), occurred_at_seconds=83,
+                              details={"summary": "A person fell beside the chair",
+                                       "conditions": [{"condition": "watch for a fall", "status": "match"}]}),
         camera=SimpleNamespace(name="Community room"),
         settings=config,
         oidc_token=None,
@@ -86,3 +91,39 @@ def test_sms_uses_transactional_aws_delivery_and_masks_destination(monkeypatch) 
         "destination": "••••0142",
         "provider_message_id": "message-123",
     }
+
+
+def test_sms_error_reports_permission_failure_without_leaking_aws_details(monkeypatch):
+    from botocore.exceptions import ClientError
+
+    class Client:
+        def publish(self, **_payload):
+            raise ClientError({"Error": {"Code": "AuthorizationError", "Message": "private-account-secret"}}, "Publish")
+    class Session:
+        def client(self, *_args, **_kwargs):
+            return Client()
+    config = settings(sms_enabled=True, alert_encryption_key=SecretStr(Fernet.generate_key().decode()))
+    monkeypatch.setattr(sms_alerts, "bedrock_session", lambda *_args: Session())
+    receipt = send_caregiver_sms(encrypted_phone=encrypt_alert_secret("+12065550142", config),
+                                event=None, camera=SimpleNamespace(name="Test"), settings=config,
+                                oidc_token=None, test=True)
+    assert receipt["status"] == "failed"
+    assert "sns:Publish" in receipt["message"]
+    assert "private-account-secret" not in str(receipt)
+
+
+def test_connection_text_does_not_claim_an_incident(monkeypatch):
+    class Client:
+        def publish(self, **payload):
+            assert payload["Message"].startswith("Artae test text:")
+            assert "No fall was detected or reported by this test" in payload["Message"]
+            return {"MessageId": "test-1"}
+    class Session:
+        def client(self, *_args, **_kwargs):
+            return Client()
+    config = settings(sms_enabled=True, alert_encryption_key=SecretStr(Fernet.generate_key().decode()))
+    monkeypatch.setattr(sms_alerts, "bedrock_session", lambda *_args: Session())
+    receipt = send_caregiver_sms(encrypted_phone=encrypt_alert_secret("+12065550142", config),
+                                event=None, camera=SimpleNamespace(name="Test"), settings=config,
+                                oidc_token=None, test=True)
+    assert receipt["status"] == "accepted"
