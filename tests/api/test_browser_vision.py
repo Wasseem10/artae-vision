@@ -4,7 +4,11 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from PIL import Image
-from video_intelligence_api.browser_vision import VisualDecision, decode_frame
+from video_intelligence_api.browser_vision import (
+    VisualDecision,
+    decode_frame,
+    normalize_decision,
+)
 from video_intelligence_api.routes import browser_sessions
 
 
@@ -12,6 +16,29 @@ def frame():
     out = io.BytesIO()
     Image.new("RGB", (64, 64), "white").save(out, format="JPEG")
     return {"at_seconds": 4, "jpeg": base64.b64encode(out.getvalue()).decode()}
+
+
+def test_invalid_model_frame_pointer_does_not_crash_a_valid_decision():
+    decision = normalize_decision(
+        {
+            "status": "match",
+            "summary": "The condition is visible.",
+            "matched_frame_index": 15,
+        },
+        frame_count=8,
+    )
+    assert decision.status == "match"
+    assert decision.matched_frame_index is None
+
+    valid = normalize_decision(
+        {
+            "status": "match",
+            "summary": "The condition is visible.",
+            "matched_frame_index": 3,
+        },
+        frame_count=8,
+    )
+    assert valid.matched_frame_index == 3
 
 
 def custom_session(client):

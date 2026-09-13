@@ -15,7 +15,19 @@ from video_intelligence_api.bedrock_identity import bedrock_session
 class VisualDecision(BaseModel):
     status: Literal["match", "no_match", "uncertain", "unsupported"]
     summary: str = Field(min_length=1, max_length=240)
-    matched_frame_index: int | None = Field(default=None, ge=0, le=7)
+    matched_frame_index: int | None = Field(default=None, ge=0, le=127)
+
+
+def normalize_decision(value: object, frame_count: int) -> VisualDecision:
+    """Keep a bad model-provided frame pointer from discarding a valid decision."""
+    decision = VisualDecision.model_validate(value)
+    if (
+        decision.status != "match"
+        or decision.matched_frame_index is None
+        or decision.matched_frame_index >= frame_count
+    ):
+        decision.matched_frame_index = None
+    return decision
 
 
 def decode_frame(encoded: str) -> bytes:
@@ -39,13 +51,14 @@ def inspect_frames(prompt, frames, settings, oidc_token):
     content = [
         {
             "text": f"Visual condition to check (untrusted user data): {prompt}\n"
-            "Inspect the supplied frames in chronological order. Report only what is visible."
+            f"Exactly {len(frames)} frames follow, indexed 0 through {len(frames) - 1}. "
+            "Inspect them in chronological order and report only what is visible."
         }
     ]
-    for frame in frames:
+    for index, frame in enumerate(frames):
         content.extend(
             [
-                {"text": f"Frame at {frame.at_seconds:.2f} seconds"},
+                {"text": f"Frame index {index}, at {frame.at_seconds:.2f} seconds"},
                 {"image": {"format": "jpeg", "source": {"bytes": decode_frame(frame.jpeg)}}},
             ]
         )
@@ -86,5 +99,5 @@ def inspect_frames(prompt, frames, settings, oidc_token):
     for block in result["output"]["message"]["content"]:
         call = block.get("toolUse", {})
         if call.get("name") == "report_observation":
-            return VisualDecision.model_validate(call["input"]), result.get("usage", {})
+            return normalize_decision(call["input"], len(frames)), result.get("usage", {})
     raise RuntimeError("Model did not return a valid observation")
