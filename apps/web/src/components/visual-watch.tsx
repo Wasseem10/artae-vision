@@ -19,7 +19,7 @@ import {
   type ConditionResult,
 } from "@/lib/browser-sessions";
 import { mergeConditions, readConditions } from "@/lib/condition-results";
-import { detailedTimes, episodes, mergeObservations, refinementWindows, timeLabel, type Timeline } from "@/lib/video-timeline";
+import { detailedTimes, episodes, mergeObservations, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
 
 type Source = "sample" | "upload" | "webcam";
@@ -225,6 +225,17 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       }
       timelineRef.current = updated;
       setTimeline(updated);
+      resultsRef.current = resultsRef.current.map((item) => {
+        if (item.status === "unsupported") return item;
+        const points = updated[item.condition_index] || [];
+        const status = timelineStatus(points);
+        return { ...item, status, at_seconds: points.find((point) => point.state === "active")?.at,
+          summary: status === item.status ? item.summary : status === "uncertain"
+            ? "Observations conflict or are incomplete; no active timestamp is currently established."
+            : status === "no_match" ? "The condition is absent in the sampled observations." : "The condition is visible at the highlighted timestamps.",
+        };
+      });
+      setConditionResults(resultsRef.current);
     }
     setChecks((value) => value + 1);
     setLastResult(result);

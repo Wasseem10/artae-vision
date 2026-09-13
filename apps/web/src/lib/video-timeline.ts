@@ -7,6 +7,12 @@ export type Episode = {
   minDuration: number; maxDuration: number | null;
 };
 
+export function timelineStatus(points: Observation[]): "match" | "no_match" | "uncertain" {
+  if (points.some((point) => point.state === "active")) return "match";
+  if (!points.length || points.some((point) => point.state === "uncertain")) return "uncertain";
+  return "no_match";
+}
+
 export function detailedTimes(duration: number, interval: number): number[] {
   if (!Number.isFinite(duration) || duration <= 0 || duration > 600) throw new Error("Detailed timing supports clips up to 10 minutes. Trim a longer video first.");
   if (![0.5, 1, 2, 5, 10].includes(interval)) throw new Error("Choose a supported sampling interval.");

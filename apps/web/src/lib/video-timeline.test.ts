@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detailedTimes, episodes, mergeObservations, refinementWindows, type Observation } from "./video-timeline";
+import { detailedTimes, episodes, mergeObservations, refinementWindows, timelineStatus, type Observation } from "./video-timeline";
 
 describe("detailed video timeline", () => {
   it("includes clip boundaries and refuses silent downsampling", () => {
@@ -33,7 +33,11 @@ describe("detailed video timeline", () => {
     expect(result.every((event) => event.maxDuration === null)).toBe(true);
   });
   it("preserves conflicting overlap judgments as uncertain", () => {
-    expect(mergeObservations([{ at: 2, state: "active" }], [{ at: 2, state: "inactive" }])).toEqual([{ at: 2, state: "uncertain" }]);
+    const merged = mergeObservations([{ at: 2, state: "active" }], [{ at: 2, state: "inactive" }]);
+    expect(merged).toEqual([{ at: 2, state: "uncertain" }]);
+    expect(timelineStatus(merged)).toBe("uncertain");
+    expect(timelineStatus([...merged, { at: 3, state: "active" }])).toBe("match");
+    expect(timelineStatus([{ at: 2, state: "inactive" }])).toBe("no_match");
   });
   it("bounds refinement cost and deduplicates shared windows", () => {
     const points: Observation[] = Array.from({ length: 12 }, (_, i) => ({ at: i * 2, state: i % 2 ? "active" : "inactive" }));
