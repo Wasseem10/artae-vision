@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { BrowserMonitor } from "@/components/browser-monitor";
+import { VisualWatch } from "@/components/visual-watch";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function DemoPage() {
-  return <BrowserMonitor experience="senior-safety" />;
+  return <VisualWatch mode="public" />;
 }

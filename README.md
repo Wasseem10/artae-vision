@@ -1,14 +1,13 @@
 # AI Video Intelligence Platform
 
-> **Current status:** `/demo` is a focused possible-fall prototype: choose a staged
-> sample, upload a permitted video, or use a webcam; then start or stop monitoring.
-> MediaPipe Pose finds an on-device fall candidate, Amazon Nova 2 Lite reviews the
-> short image sequence through Bedrock, and a Strands agent prepares evidence,
-> an in-app alert, and human review. Signed-in account alerts survive Stop and can
-> be reviewed on another device. Optional caregiver SMS uses AWS SNS when the
-> deployment and destination number are configured. This is a hackathon prototype,
-> not a validated medical, emergency-response, or unattended monitoring product.
-> See [tested scope](docs/browser-demo.md).
+> **Current status:** `/demo` keeps the compact upload-and-prompt workflow: choose
+> a sample, upload a permitted video, or use a webcam; describe the visible condition;
+> then run the AWS-backed analysis. Amazon Nova 2 Lite reviews sampled frames through
+> Bedrock, and confirmed matches invoke a Strands agent to prepare evidence, an
+> in-app notification, and human review. The separate browser-monitor foundation
+> also supports on-device MediaPipe fall candidates and optional AWS caregiver SMS.
+> This is a hackathon prototype, not a validated medical, emergency-response, or
+> unattended monitoring product. See [tested scope](docs/browser-demo.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
@@ -16,14 +15,13 @@ combine what it sees with authorized business-system context, take guarded actio
 and search the resulting evidence. The revised completion phases are in
 [`docs/product-roadmap.md`](docs/product-roadmap.md).
 
-## Senior-safety demo
+## No-install demo
 
-Open `/demo` for a no-account possible-fall test. The included clips stage a lateral
-fall, ordinary sitting, and bending so both positive and negative behavior can be
-demonstrated without filming the judge. You can instead upload a permitted clip or
-use a webcam. Press **Start senior-safety check**; the page shows the live candidate
-state, preserves recorded segments, and keeps **Stop and keep history** visible for
-the entire run.
+Open `/demo` for the compact, rate-limited, no-account AWS-backed workflow. Choose
+the included example, upload a permitted browser-playable clip, or use a webcam;
+describe one or more visible conditions and start analysis. Recorded clips can be
+sampled across the full video, and the result panel shows Nova's decision and the
+Strands actions prepared for a confirmed match.
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers
