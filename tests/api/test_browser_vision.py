@@ -3,7 +3,9 @@ import io
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from cryptography.fernet import Fernet
 from PIL import Image
+from pydantic import SecretStr
 from video_intelligence_api.browser_vision import (
     VisualDecision,
     decode_frame,
@@ -356,6 +358,57 @@ def test_real_model_result_creates_account_alert_with_durable_evidence_request(
         ).status_code
         == 422
     )
+
+
+def test_visual_care_event_sends_configured_caregiver_sms(api_client, monkeypatch):
+    settings = api_client.app.state.settings
+    settings.sms_enabled = True
+    settings.alert_encryption_key = SecretStr(Fernet.generate_key().decode())
+    response = api_client.post(
+        "/api/v1/browser-sessions",
+        json={
+            "id": str(uuid.uuid4()),
+            "name": "Senior care",
+            "job": "custom",
+            "prompt": "Alert me if a person falls and remains on the floor",
+            "caregiver_phone": "+12065550142",
+        },
+    )
+    assert response.status_code == 200, response.text
+    camera = response.json()["id"]
+    settings.strands_enabled = True
+    monkeypatch.setattr(
+        browser_sessions,
+        "inspect_frames",
+        lambda *_: (
+            VisualDecision(status="match", summary="A possible fall is visible."),
+            {},
+        ),
+    )
+
+    async def no_coordinator(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(browser_sessions, "coordinate_incident", no_coordinator)
+    monkeypatch.setattr(
+        browser_sessions,
+        "send_caregiver_sms",
+        lambda **_kwargs: {
+            "status": "accepted",
+            "provider": "aws_sns",
+            "destination": "••••0142",
+        },
+    )
+    result = api_client.post(
+        f"/api/v1/browser-sessions/{camera}/analyze",
+        json={"id": str(uuid.uuid4()), "frames": [frame()]},
+    )
+    assert result.status_code == 200, result.text
+    assert result.json()["event"]["details"]["sms"] == {
+        "status": "accepted",
+        "provider": "aws_sns",
+        "destination": "••••0142",
+    }
 
 
 def test_negative_and_unavailable_models_never_fabricate_alerts(

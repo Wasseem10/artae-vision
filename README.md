@@ -17,11 +17,13 @@ and search the resulting evidence. The revised completion phases are in
 
 ## No-install demo
 
-Open `/demo` for the compact, rate-limited, no-account AWS-backed workflow. Choose
-the included example, upload a permitted browser-playable clip, or use a webcam;
-describe one or more visible conditions and start analysis. Recorded clips can be
-sampled across the full video, and the result panel shows Nova's decision and the
-Strands actions prepared for a confirmed match.
+Open `/demo` for the compact, rate-limited, no-account AWS-backed workflow. The
+default staged-fall clip and normal-sitting negative control make the caregiver
+scenario testable without asking a judge to appear on camera. A judge can also
+upload a permitted browser-playable clip or use a webcam, describe one or more
+visible safety conditions, and start analysis. Recorded clips are sampled across
+the full video, and the result panel shows Nova's decision and the Strands actions
+prepared for a confirmed match.
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers

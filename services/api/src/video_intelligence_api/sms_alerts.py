@@ -44,10 +44,18 @@ def send_caregiver_sms(
     if not valid_e164(phone):
         return {"status": "failed", "provider": "aws_sns", "error": "invalid_destination"}
 
+    matched = next(
+        (
+            item.get("condition")
+            for item in (getattr(event, "details", None) or {}).get("conditions", [])
+            if item.get("status") == "match" and item.get("condition")
+        ),
+        "Possible fall detected",
+    )
     message = (
-        "Artae Senior Safety: possible fall detected. "
-        f"Camera: {camera.name}. Time: {event.occurred_at.isoformat()}. "
-        "Check the person immediately. This is an AI-generated alert requiring human review."
+        f"Artae Care Alert: {matched}. Camera: {camera.name}. "
+        f"Time: {event.occurred_at.isoformat()}. Check the person immediately. "
+        "This is an AI-generated alert requiring human review."
     )[:600]
     try:
         boto_session = bedrock_session(settings.strands_role_arn, settings.sms_region, oidc_token)

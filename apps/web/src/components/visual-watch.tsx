@@ -10,6 +10,7 @@ import {
   cloudEventFields,
   createCloudSession,
   createPublicDemo,
+  getNotificationCapabilities,
   listCloudSessions,
   loadCloudSession,
   type BrowserEvent,
@@ -26,13 +27,14 @@ type Source = "sample" | "upload" | "webcam";
 type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "stopped" | "error";
 type Stage = "idle" | "video" | "frames" | "nova" | "strands" | "complete";
 type CapturedFrame = { at_seconds: number; jpeg: string; snapshot: string };
+type SampleScenario = "fall" | "sitting";
 
-const PRINTER_PROMPT = "Alert me when this 3D printer is actively extruding green filament onto the print bed.";
+const FALL_PROMPT = "Alert me if the person transitions from upright to the floor and appears to remain down. Distinguish this from normal sitting, kneeling, or bending.";
 const PRESETS = [
-  { label: "Printer running", prompt: PRINTER_PROMPT },
-  { label: "Print failure", prompt: "Alert me if this 3D print shows visible stringing, loose filament, or has detached from the print bed." },
-  { label: "Person waiting", prompt: "Alert me when a person is visibly waiting at the counter." },
-  { label: "Empty station", prompt: "Alert me when this work station is visibly empty." },
+  { label: "Possible fall", prompt: FALL_PROMPT },
+  { label: "Still on floor", prompt: "Alert me if the person is visibly lying on the floor and has not returned to an upright position." },
+  { label: "Needs assistance", prompt: "Alert me if the person is on the floor or visibly reaching upward for assistance." },
+  { label: "Unsafe exit", prompt: "Alert me if the person approaches or crosses the room exit without visible assistance." },
 ];
 
 function elapsed(startedAt: number) { return Math.max(0, (Date.now() - startedAt) / 1000); }
@@ -113,8 +115,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const uploadUrlRef = useRef<string | null>(null);
 
   const [source, setSource] = useState<Source>("sample");
+  const [sampleScenario, setSampleScenario] = useState<SampleScenario>("fall");
   const [uploadName, setUploadName] = useState("");
-  const [prompt, setPrompt] = useState(PRINTER_PROMPT);
+  const [prompt, setPrompt] = useState(FALL_PROMPT);
   const [intervalSeconds, setIntervalSeconds] = useState(5);
   const [confirmationCount, setConfirmationCount] = useState(1);
   const [scanMode, setScanMode] = useState("quick");
@@ -130,6 +133,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [checks, setChecks] = useState(0);
   const [nextCheck, setNextCheck] = useState<number | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
+  const [smsAvailable, setSmsAvailable] = useState(false);
+  const [smsEnabled, setSmsEnabled] = useState(false);
+  const [caregiverPhone, setCaregiverPhone] = useState("");
   const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
   const recorded = source !== "webcam";
   const detailed = recorded && scanMode === "detailed";
@@ -162,6 +168,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const timer = window.setTimeout(() => {
       setNotificationState(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
       void loadHistory();
+      void getNotificationCapabilities()
+        .then((value) => setSmsAvailable(value.sms))
+        .catch(() => setSmsAvailable(false));
     }, 0);
     return () => {
       window.clearTimeout(timer);
@@ -174,7 +183,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
   const notify = useCallback((summary: string) => {
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-      new Notification("Artae detected your condition", { body: summary, tag: "artae-visual-match" });
+      new Notification("Artae caregiver review requested", { body: summary, tag: "artae-care-alert" });
     }
   }, []);
 
@@ -187,6 +196,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       id: crypto.randomUUID(), scope: "account", name: prompt.trim().slice(0, 80), job: "custom",
       prompt: prompt.trim(), createdAt: new Date().toISOString(), events: [], clips: [], cloud: true,
       checkIntervalSeconds: intervalSeconds, confirmationCount: recorded ? 1 : confirmationCount,
+      caregiverPhone: smsEnabled ? caregiverPhone.trim() : undefined,
     };
     await createCloudSession(session);
     sessionRef.current = session;
@@ -245,7 +255,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       const fields = cloudEventFields(result.event);
       const event: BrowserEvent = {
         id: result.event.source_event_id, at: matched?.at_seconds ?? frames[0].at_seconds, occurredAt: new Date().toISOString(),
-        title: "Conditions detected", visibility: 0, snapshot: matched?.snapshot, ...fields,
+        title: "Care event needs review", visibility: 0, snapshot: matched?.snapshot, ...fields,
         saved: mode === "account", summary: result.summary,
       };
       setEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 10));
@@ -315,6 +325,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     const conditions = readConditions(prompt);
     if (!conditions.length || conditions.length > 5) {
       setState("error"); setStatus("Enter one to five conditions, each on its own line."); return;
+    }
+    if (smsEnabled && !/^\+[1-9]\d{7,14}$/.test(caregiverPhone.trim())) {
+      setState("error"); setStatus("Enter the caregiver phone in international format, such as +12065550142."); return;
     }
     const runId = ++runIdRef.current;
     try {
@@ -422,9 +435,21 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
     if (next !== "webcam") setConfirmationCount(1);
     if (video) {
-      video.pause(); video.srcObject = null; video.src = next === "sample" ? "/vision/samples/3d-print-failure.mp4" : "";
-      if (next === "sample") setPrompt(PRINTER_PROMPT);
+      video.pause(); video.srcObject = null; video.src = next === "sample" ? `/vision/samples/${sampleScenario === "fall" ? "fall-lateral" : "sitting"}.mp4` : "";
+      if (next === "sample") setPrompt(FALL_PROMPT);
     }
+  }
+
+  function chooseSample(next: SampleScenario) {
+    if (runningRef.current || !videoRef.current) return;
+    setSampleScenario(next);
+    setSource("sample"); setUploadName(""); setLastResult(null); setStage("idle");
+    setConditionResults([]); setScanComplete(false); setEvents([]);
+    setTimeline({}); timelineRef.current = {};
+    setPrompt(FALL_PROMPT);
+    videoRef.current.pause(); videoRef.current.srcObject = null;
+    videoRef.current.src = `/vision/samples/${next === "fall" ? "fall-lateral" : "sitting"}.mp4`;
+    setStatus(next === "fall" ? "Staged fall ready to analyze" : "Normal sitting ready — no fall expected");
   }
 
   function chooseUpload(file?: File) {
@@ -459,25 +484,29 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       </header>
 
       <section className={styles.intro}>
-        <div><p className={styles.eyebrow}>AI VIDEO AGENT</p><h1>Describe it. Artae finds it.</h1></div>
-        <p>Upload a video or connect a camera. Amazon Nova checks your exact request, then a Strands agent prepares the alert and evidence.</p>
+        <div><p className={styles.eyebrow}>AI CAREGIVER ASSISTANT</p><h1>A second set of eyes for senior care.</h1></div>
+        <p>Upload permitted shared-space video or connect a camera. Amazon Nova reviews possible falls, then a Strands agent prepares evidence and asks a caregiver to check.</p>
       </section>
 
       <section className={styles.workbench}>
         <section className={styles.builder} aria-label="Configure visual monitor">
           {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to {detailed ? 32 : 4} checks</span></div>}
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>The example shows an active print. Upload any browser-playable clip to check your own event.</small></div></div>
+            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>Compare a staged fall with normal sitting, or upload a permitted browser-playable clip.</small></div></div>
             <div className={styles.sourceGrid}>
               <button className={source === "sample" ? styles.selected : ""} onClick={() => chooseSource("sample")} disabled={running}><FiPlay />Example</button>
               <label className={source === "upload" ? styles.selected : ""}><FiUpload />{uploadName || "Upload"}<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
               <button className={source === "webcam" ? styles.selected : ""} onClick={() => chooseSource("webcam")} disabled={running}><FiCamera />Webcam</button>
             </div>
+            {source === "sample" && <div className={styles.sampleChoices} aria-label="Choose sample scenario">
+              <button className={sampleScenario === "fall" ? styles.sampleSelected : ""} onClick={() => chooseSample("fall")} disabled={running}><strong>Staged fall</strong><small>Alert expected</small></button>
+              <button className={sampleScenario === "sitting" ? styles.sampleSelected : ""} onClick={() => chooseSample("sitting")} disabled={running}><strong>Normal sitting</strong><small>No fall expected</small></button>
+            </div>}
           </div>
 
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>2</span><div><strong>What should Artae find?</strong><small>Check up to 5 conditions. Put each on a separate line.</small></div></div>
-            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder={"A person wearing blue is visible.\nA person is lying on the floor."} />
+            <div className={styles.stepTitle}><span>2</span><div><strong>What should the care agent watch for?</strong><small>Describe up to 5 visible safety conditions, one per line.</small></div></div>
+            <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder={"Alert me if a person falls and remains on the floor.\nAlert me if the person visibly asks for help."} />
             <small className={styles.conditionCount}>{readConditions(prompt).length} / 5 conditions · 500 characters total</small>
             <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
           </div>
@@ -487,7 +516,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
               {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{[0.5, 1, 2, 5, 10].map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
               <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? "One clearly described subject, fixed camera. Up to 192 samples / 10 minutes, with up to 4 closer boundary checks. May take several minutes. Occlusion and missing boundaries remain unknown. Shorter intervals cost more AWS checks." : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
-              {detailed && <div className={styles.presets}><button disabled={running} onClick={() => setPrompt("How long is the single car stationary in the parking space? Measure from stopping until it moves away.")}>Car parked duration</button><button disabled={running} onClick={() => setPrompt("How long does the single person take to get back up? Measure from first visibly on the ground until standing upright again.")}>Time to stand up</button></div>}
+              {detailed && <div className={styles.presets}><button disabled={running} onClick={() => setPrompt("How long does the single person remain on the floor? Measure from first visibly on the ground until standing upright again.")}>Time on floor</button><button disabled={running} onClick={() => setPrompt("How long does the single person take to get back up? Measure from first visibly on the ground until standing upright again.")}>Time to stand up</button></div>}
             </> : <>
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
@@ -497,9 +526,9 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         </section>
 
         <article className={styles.previewCard}>
-          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Webcam" : source === "upload" ? uploadName || "Uploaded video" : "Active print example"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
+          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : source === "upload" ? uploadName || "Uploaded video" : sampleScenario === "fall" ? "Staged fall example" : "Normal sitting comparison"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
           <div className={styles.videoWrap}>
-            <video ref={videoRef} src="/vision/samples/3d-print-failure.mp4" muted playsInline controls={!running} />
+            <video ref={videoRef} src="/vision/samples/fall-lateral.mp4" muted playsInline controls={!running} />
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>
           <canvas ref={canvasRef} hidden />
@@ -533,17 +562,23 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         </article>
 
         <aside className={styles.alertCard}>
-          <div className={styles.cardHeader}><div><FiBell /><strong>{mode === "public" ? "This run" : "Latest run"}</strong></div><span className={styles.count}>{events.length}</span></div>
+          <div className={styles.cardHeader}><div><FiBell /><strong>Caregiver alerts</strong></div><span className={styles.count}>{events.length}</span></div>
           <div className={styles.notificationRow}>
-            <div><strong>In-app alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Optional browser alerts work while this page is open"}</small></div>
+            <div><strong>Dashboard alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Enable browser alerts while this page is open"}</small></div>
             {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
           </div>
+          <div className={styles.smsSetup}>
+            {mode === "public" ? <p><strong>Text a caregiver</strong><small>Sign in and connect an AWS-verified phone number to send SMS after a confirmed event.</small><Link href="/login?next=app">Sign in to connect</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
+              <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
+              {smsEnabled && <label>Caregiver phone<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>Use international format. AWS sandbox accounts can text verified numbers only.</small></label>}
+            </>}
+          </div>
           <div className={styles.alertList}>
-            {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No match yet</strong><p>When Nova confirms your condition, the matching frame and Strands actions appear here.</p></div> : events.map((event) => (
+            {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No care event detected</strong><p>If Nova confirms a visible safety condition, the matching frame and Strands caregiver actions appear here.</p></div> : events.map((event) => (
               <article className={styles.alertItem} key={event.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {event.snapshot && <img src={event.snapshot} alt="Frame that best supports the detected condition" />}
-                <div><div className={styles.alertMeta}><span>DETECTED</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div><small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review recommended</small></div>
+                <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}</small>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
               </article>
             ))}
           </div>

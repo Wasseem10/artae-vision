@@ -72,9 +72,11 @@ class SessionCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_caregiver_phone(self):
-        if self.caregiver_phone and (self.job != "fall" or not valid_e164(self.caregiver_phone)):
+        if self.caregiver_phone and (
+            self.job not in {"fall", "custom"} or not valid_e164(self.caregiver_phone)
+        ):
             raise ValueError(
-                "Caregiver phone numbers require a fall job and E.164 format, "
+                "Caregiver phone numbers require a visual safety job and E.164 format, "
                 "such as +12065550142"
             )
         return self
@@ -573,6 +575,24 @@ async def analyze_browser_frames(
             **incident_actions(event, run),
             "review": {"status": "open", "outcome": None},
         }
+        encrypted_phone = (rule.spec or {}).get("caregiver_phone_encrypted")
+        if encrypted_phone:
+            try:
+                with anyio.fail_after(12):
+                    sms = await anyio.to_thread.run_sync(
+                        partial(
+                            send_caregiver_sms,
+                            encrypted_phone=encrypted_phone,
+                            event=event,
+                            camera=camera,
+                            settings=settings,
+                            oidc_token=request.headers.get("x-vercel-oidc-token"),
+                        ),
+                        abandon_on_cancel=True,
+                    )
+            except TimeoutError:
+                sms = {"status": "failed", "provider": "aws_sns", "error": "timeout"}
+            event.details = {**event.details, "sms": sms}
         session.add(event)
         await session.flush()
         session.add(Alert(id=new_id(), event_id=event.id, created_at=now, updated_at=now))

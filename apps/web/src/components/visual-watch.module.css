@@ -61,6 +61,11 @@
 .sourceGrid button, .sourceGrid label { min-width: 0; min-height: 43px; padding: 0 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 6px; color: #373737; background: #f7f7f7; border: 1px solid #dadada; cursor: pointer; font: inherit; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .sourceGrid input { display: none; }
 .sourceGrid .selected { color: #2b2b2b; background: #ececec; border-color: #8f8f8f; box-shadow: inset 0 0 0 1px #8f8f8f; }
+.sampleChoices { margin-top: 8px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
+.sampleChoices button { min-width: 0; padding: 9px 10px; display: grid; gap: 2px; text-align: left; color: #555; background: #fafafa; border: 1px solid #ddd; cursor: pointer; font: inherit; }
+.sampleChoices strong { font-size: 11px; }
+.sampleChoices small { color: #858585; font-size: 9px; }
+.sampleChoices .sampleSelected { color: #1f3442; background: #eef4f7; border-color: #7c99a9; box-shadow: inset 0 0 0 1px #7c99a9; }
 .step textarea { box-sizing: border-box; width: 100%; min-height: 108px; padding: 13px 14px; resize: vertical; color: #161616; background: #fafafa; border: 1px solid #d2d2d2; outline: none; font: inherit; font-size: 14px; line-height: 1.45; }
 .step textarea:focus { border-color: #767676; box-shadow: 0 0 0 3px #e6e6e6; }
 .presets { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -106,6 +111,14 @@
 .notificationRow strong { font-size: 11px; }
 .notificationRow small { color: #7d7d7d; font-size: 9px; line-height: 1.3; }
 .notificationRow button { padding: 6px 8px; background: #fff; border: 1px solid #c3c3c3; cursor: pointer; font: inherit; font-size: 10px; }
+.smsSetup { margin: 0 12px 12px; padding: 11px; color: #4f4f4f; background: #f7f7f7; border: 1px solid #e3e3e3; }
+.smsSetup p, .smsSetup label { margin: 0; display: grid; gap: 5px; font-size: 10px; line-height: 1.35; }
+.smsSetup label + label { margin-top: 9px; }
+.smsSetup label:first-child { display: flex; align-items: center; }
+.smsSetup strong { color: #333; font-size: 11px; }
+.smsSetup small { color: #7d7d7d; font-size: 9px; line-height: 1.35; }
+.smsSetup a { width: fit-content; margin-top: 3px; color: #244d63; font-size: 10px; font-weight: 600; }
+.smsSetup input[type="tel"] { box-sizing: border-box; width: 100%; height: 36px; padding: 0 9px; color: #222; background: #fff; border: 1px solid #d5d5d5; font: inherit; }
 .alertList { max-height: 580px; overflow: auto; }
 .empty { min-height: 350px; padding: 28px; display: grid; place-items: center; align-content: center; color: #8d8d8d; text-align: center; }
 .empty svg { margin-bottom: 10px; font-size: 24px; }
