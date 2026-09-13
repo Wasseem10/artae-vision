@@ -19,6 +19,31 @@ def frame():
     return {"at_seconds": 4, "jpeg": base64.b64encode(out.getvalue()).decode()}
 
 
+def test_per_condition_answers_do_not_require_an_aggregate_status():
+    decision = normalize_conditions(
+        {
+            "conditions": [
+                {
+                    "condition_index": 0,
+                    "status": "match",
+                    "summary": "Printer visible.",
+                    "matched_frame_index": 0,
+                },
+                {
+                    "condition_index": 1,
+                    "status": "no_match",
+                    "summary": "No dog visible.",
+                },
+            ]
+        },
+        8,
+        ["A printer is visible", "A dog is visible"],
+    )
+    assert decision.status == "match"
+    assert [item.status for item in decision.conditions] == ["match", "no_match"]
+    assert decision.matched_frame_index == 0
+
+
 def test_conditions_have_separate_answers_and_missing_answers_are_uncertain():
     decision = normalize_conditions(
         {

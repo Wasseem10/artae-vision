@@ -36,6 +36,14 @@ def prompt_conditions(prompt: str) -> list[str]:
 
 
 def normalize_conditions(value: object, frame_count: int, prompts: list[str]) -> VisualDecision:
+    # The aggregate is computed below. Some model responses omit aggregate fields
+    # even though they provide complete per-condition observations.
+    if isinstance(value, dict) and isinstance(value.get("conditions"), list):
+        value = {
+            "status": "uncertain",
+            "summary": "Individual conditions were checked.",
+            **value,
+        }
     decision = normalize_decision(value, frame_count)
     # Missing/duplicate answers are uncertainty, never silently negative.
     answers = []
