@@ -283,6 +283,42 @@
   .analysisPulse { display: none; }
   .analysisStatus small { white-space: normal; }
 }
+.telegramPanel { min-width: 0; }
+.intro { margin-top: 24px; margin-bottom: 22px; }
+.intro h1 { font-size: clamp(36px, 3.3vw, 48px); letter-spacing: -2px; line-height: 1.08; }
+.builder .step { padding: 16px; }
+.builder .stepTitle { margin-bottom: 12px; }
+.builder textarea { min-height: 100px; height: 112px; }
+.builder .stepRow { padding: 14px 16px 16px; gap: 10px; align-content: start; }
+.connectionSummary { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.connectionSummary > div { display: grid; gap: 4px; }
+.connectionSummary strong { font-size: 14px; font-weight: 600; }
+.connectionSummary small, .shareNotice { color: #666; font-size: 12px; line-height: 1.5; }
+.connectionSummary button { flex: 0 0 auto; min-height: 40px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; background: white; color: #333; font: inherit; font-size: 12px; cursor: pointer; }
+.shareNotice { display: block; margin-top: 10px; }
+.telegramPanel .smsSetup { margin-top: 14px; }
+.advancedSettings { font-size: 13px; color: #555; }
+.advancedSettings > summary { min-height: 40px; align-content: center; cursor: pointer; }
+.advancedSettings > summary > span { float: right; font-size: 12px; color: #777; }
+.settingsBody { display: grid; gap: 14px; padding: 12px 0; }
+.technicalDetails { border-bottom: 1px solid #eee; }
+.technicalDetails > summary { padding: 12px 16px; cursor: pointer; color: #666; font-size: 12px; }
+.scanDisclosure { color: #666; font-size: 12px; line-height: 1.5; }
+.videoWrap video { object-fit: contain; }
+.stepTitle small { font-size: 12px; line-height: 1.5; }
+.presets button { font-size: 11px; min-height: 32px; }
+.alertItem { margin: 0 18px; padding: 18px 0; }
+.alertItem img { border-radius: 8px; }
+.alertItem small { font-size: 11px; }
+.alertList { max-height: min(620px, 70vh); }
+.telegramPanel button:focus-visible, .advancedSettings summary:focus-visible, .technicalDetails summary:focus-visible { outline: 2px solid #596479; outline-offset: 3px; }
+@media (min-width: 901px) and (max-width: 1180px) {
+  .workbench { grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; }
+  .builder { grid-column: 1 / -1; grid-row: auto; display: grid; grid-template-columns: 1fr 1.2fr 1fr; }
+  .builder .step { border-bottom: 0; border-right: 1px solid #eee; }
+  .previewCard { grid-column: 1; }
+  .alertCard { grid-column: 2; }
+}
 .conditionCount { display: block; margin-top: 8px; color: #666; font-size: 11px; }
 .lastDecision h3 { margin: 8px 0 0; font-size: 13px; font-weight: 500; }
 .momentButton { margin-top: 9px; padding: 5px 8px; background: white; color: #333; border: 1px solid #ccc; cursor: pointer; font: inherit; font-size: 11px; }

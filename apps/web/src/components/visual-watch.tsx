@@ -565,7 +565,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
       <section className={styles.intro}>
         <div><p className={styles.eyebrow}>AI CAREGIVER ASSISTANT</p><h1>A second set of eyes for senior care.</h1></div>
-        <p>Upload permitted shared-space video or connect a camera. Amazon Nova reviews possible falls, then a Strands agent prepares evidence and asks a caregiver to check.</p>
+        <p>Choose a video, describe what to watch for, and review possible care events. Send a caregiver the moment that needs their attention.</p>
       </section>
 
       <section className={styles.workbench}>
@@ -584,14 +584,14 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           </div>
 
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>2</span><div><strong>What should the care agent watch for?</strong><small>Describe up to 5 visible safety conditions, one per line.</small></div></div>
+            <div className={styles.stepTitle}><span>2</span><div><strong>What should we watch for?</strong><small>Describe a visible event, such as someone falling.</small></div></div>
             <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} disabled={running} maxLength={500} rows={5} aria-label="Conditions to watch for" placeholder="Type the visible condition Artae should watch for…" />
             <small className={styles.conditionCount}>{readConditions(prompt).length} / 5 conditions · 500 characters total</small>
             <div className={styles.presets}>{PRESETS.map((preset) => <button key={preset.label} onClick={() => setPrompt(preset.prompt)} disabled={running}>{preset.label}</button>)}</div>
           </div>
 
           <div className={styles.stepRow}>
-            <div className={styles.stepTitle}><span>3</span><div><strong>{recorded ? "Choose how to scan" : "Set the monitoring cadence"}</strong><small>{recorded ? "Quickly check conditions or estimate when an event happened." : "Choose how often the care camera should check the scene."}</small></div></div>
+            <details className={styles.advancedSettings}><summary>{recorded ? "Scan settings" : "Monitoring settings"}<span>{recorded ? detailed ? "Detailed" : "Quick scan" : `Every ${intervalSeconds}s`}</span></summary><div className={styles.settingsBody}>
             {recorded ? <>
               <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
               {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{DETAILED_INTERVALS.map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
@@ -601,6 +601,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
+            </div></details>
+            <small className={styles.scanDisclosure}>{recorded ? `Checks up to ${detailed ? 192 : 32} sampled moments. Brief events may be missed.` : "Keep this tab open while monitoring."}</small>
             {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{!hasVideoSource ? "Upload a video to continue" : !sourceReady ? "Preparing video…" : !readConditions(prompt).length ? "Describe what to watch for" : recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
           </div>
         </section>
@@ -630,14 +632,15 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <img src={frame.snapshot} alt={`Sampled frame at ${timeLabel(frame.at_seconds)}`} /><span>{timeLabel(frame.at_seconds)}</span>
             </button>)}</div> : uploadState === "preparing" || running ? <div className={styles.timelineSkeleton} aria-label="Preparing evidence timeline">{Array.from({ length: 7 }, (_, index) => <i key={index} />)}</div> : <div className={styles.timelineEmpty}><FiClock />Upload a video and select Analyze video to create its evidence timeline.</div>}
           </section>
-          <div className={styles.pipeline} aria-label="Analysis progress">
+          <details className={styles.technicalDetails}><summary>Analysis details</summary><div className={styles.pipeline} aria-label="Analysis progress">
             {steps.map((item) => {
               const done = isStepDone(stage, item.stage, events.some((event) => event.coordinator === "completed"));
               const active = !done && ((item.stage === "video" && uploadState === "preparing") || (item.stage === "frames" && state === "sampling") || (item.stage === "nova" && state === "checking"));
               return <div className={done ? styles.pipelineDone : active ? styles.pipelineActive : ""} key={item.stage}><i />{item.label}</div>;
             })}
           </div>
-          <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} AWS check${checks === 1 ? "" : "s"} completed` : "No AWS checks yet"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
+          </details>
+          <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} checks completed` : "Ready when you are"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
           {conditionResults.map((item) => <div className={`${styles.lastDecision} ${item.status === "match" ? styles.matchDecision : ""}`} key={item.condition_index}>
             <span>Condition {item.condition_index + 1}</span>
             <strong>{item.status === "match" ? "Detected" : item.status === "no_match" ? scanComplete ? "Not detected in sampled frames" : "Not seen yet" : item.status === "uncertain" ? "Uncertain" : "Unsupported"}</strong>
@@ -666,17 +669,19 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         <aside className={styles.alertCard}>
           <div className={styles.cardHeader}><div><FiBell /><strong>Caregiver event log</strong><span className={styles.cardDescription}>Detected conditions and agent actions appear here.</span></div><span className={styles.count}>{events.length}</span></div>
           <div className={styles.alertControls}>
+            <TelegramSetup account={mode === "account"} disabled={running} selected={telegramConnectorId} onChange={setTelegramConnectorId} />
+            <details className={styles.advancedSettings}><summary>Other notification settings</summary>
             <div className={styles.notificationRow}>
               <div><strong>Dashboard alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Enable browser alerts while this page is open"}</small></div>
               {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
             </div>
-            <TelegramSetup account={mode === "account"} disabled={running} selected={telegramConnectorId} onChange={setTelegramConnectorId} />
             <details><summary>SMS settings (AWS registration required)</summary><div className={styles.smsSetup}>
               {mode === "public" ? <p><strong>Text me what happened</strong><small>Sign in to add your phone. A detected event sends its description and video timestamp by text.</small><Link href="/login?next=demo">Sign in for text alerts</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
                 <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
                 {smsEnabled && <><label>Your phone number<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running || testingSms} onChange={(event) => { setCaregiverPhone(event.target.value); setTestReceipt(undefined); }} /><small>Include your country code. We text what was detected and where it happened in the video.</small></label><button type="button" disabled={running || testingSms || !caregiverPhone.trim()} onClick={() => void testText()}>{testingSms ? "Sending test…" : "Send test text"}</button><small>Texting currently requires an AWS-verified destination.</small>{testReceipt && <p role="status">{testReceipt.status === "accepted" ? "AWS accepted the test text. Check your phone to confirm it arrived." : testReceipt.message || "The test failed. Check your number and AWS text messaging setup."}</p>}</>}
               </>}
             </div></details>
+            </details>
           </div>
           <div className={styles.alertList}>
             {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No care event detected</strong><p>If Nova confirms a visible safety condition, the matching frame and Strands caregiver actions appear here.</p></div> : events.map((event) => (

@@ -15,6 +15,7 @@ export function TelegramSetup({ account, disabled, selected, onChange }: {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [adding, setAdding] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     if (!account) return;
     void api.listConnectors().then((items) => setConnections(items.filter((item) => item.connector_type === "telegram" && item.enabled)))
@@ -25,8 +26,10 @@ export function TelegramSetup({ account, disabled, selected, onChange }: {
     try { await action(); } catch (error) { setMessage(error instanceof Error ? error.message : "Connection failed."); }
     finally { setBusy(false); }
   }
-  return <div className={styles.smsSetup}>
-    <strong>Telegram alerts + event clip</strong>
+  return <div className={styles.telegramPanel}>
+    <div className={styles.connectionSummary}><div><strong>{selected ? "Telegram alerts on" : "Send alerts to your phone"}</strong><small>{selected ? "Event summary + private clip link" : "Connect a caregiver on Telegram"}</small></div><button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? "Done" : selected ? "Manage" : "Set up"}</button></div>
+    {selected && <small className={styles.shareNotice}>Anyone with a clip link can view it for 24 hours.</small>}
+    {expanded && <div className={styles.smsSetup}>
     {!account ? <p><small>Sign in to connect a caregiver’s Telegram chat and send private clip links.</small><Link href="/login?next=demo">Sign in to connect Telegram</Link></p> : <>
       <label>Send alerts to<select value={selected} disabled={disabled || busy} onChange={(e) => onChange(e.target.value)}>
         <option value="">Dashboard only</option>{connections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
@@ -49,11 +52,12 @@ export function TelegramSetup({ account, disabled, selected, onChange }: {
           <button disabled={busy || !/^-?\d+$/.test(chat) || !token.trim()} onClick={() => void run(async () => {
             const result = await api.createConnector({ name: `Caregiver — ${chats.find((item) => item.chat_id === chat)?.title || "Telegram"}`.slice(0, 110),
               connector_type: "telegram", credential: token.trim(), configuration: { chat_id: chat }, scopes: ["notifications:write"] });
-            setConnections((items) => [...items, result]); onChange(result.id); setToken(""); setChats([]); setAdding(false);
+            setConnections((items) => [...items, result]); onChange(result.id); setToken(""); setChats([]); setAdding(false); setExpanded(false);
             setMessage("Connected. Send a test to confirm it arrives on your phone.");
           })}>Save caregiver connection</button>
       </>}
       {message && <p role="status">{message}</p>}
     </>}
+    </div>}
   </div>;
 }
