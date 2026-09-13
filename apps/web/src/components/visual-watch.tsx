@@ -483,6 +483,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="Artae home">artae<span>VISION</span></Link>
         <div className={styles.headerMeta}>
+          {mode === "public" && <Link className={styles.modeLink} href="/live"><FiCamera />Continuous fall monitor</Link>}
           {mode === "public" && <><strong>Live AWS demo</strong><span>No account required · up to {detailed ? 32 : 4} checks</span></>}
           <div className={styles.headerStatus}><i className={running ? styles.liveDot : styles.dot} />{running ? "Analysis running" : "Ready"}</div>
         </div>

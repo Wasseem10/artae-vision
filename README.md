@@ -1,11 +1,12 @@
 # AI Video Intelligence Platform
 
-> **Current status:** `/demo` keeps the compact upload-and-prompt workflow: choose
-> a sample, upload a permitted video, or use a webcam; describe the visible condition;
+> **Current status:** `/demo` keeps the compact upload-and-prompt workflow: upload
+> a permitted video or use a webcam; describe the visible condition;
 > then run the AWS-backed analysis. Amazon Nova 2 Lite reviews sampled frames through
 > Bedrock, and confirmed matches invoke a Strands agent to prepare evidence, an
-> in-app notification, and human review. The separate browser-monitor foundation
-> also supports on-device MediaPipe fall candidates and optional AWS caregiver SMS.
+> in-app notification, and human review. `/live` exposes continuous on-device
+> MediaPipe pose sensing, a real skeleton overlay, ten-second evidence segments,
+> Nova fall-candidate review, and Strands caregiver actions.
 > This is a hackathon prototype, not a validated medical, emergency-response, or
 > unattended monitoring product. See [tested scope](docs/browser-demo.md).
 
@@ -18,12 +19,16 @@ and search the resulting evidence. The revised completion phases are in
 ## No-install demo
 
 Open `/demo` for the compact, rate-limited, no-account AWS-backed workflow. The
-default staged-fall clip and normal-sitting negative control make the caregiver
-scenario testable without asking a judge to appear on camera. A judge can also
-upload a permitted browser-playable clip or use a webcam, describe one or more
+judge uploads a permitted browser-playable clip or uses a webcam, describes one or more
 visible safety conditions, and start analysis. Recorded clips are sampled across
 the full video, and the result panel shows Nova's decision and the Strands actions
 prepared for a confirmed match.
+
+Open `/live` for the repeatable continuous-monitoring demonstration. A licensed
+staged-fall clip, negative controls, an uploaded video, or a webcam can drive the
+real MediaPipe pose loop. A temporal upright-to-descent-to-floor candidate creates
+an event, keeps recorded evidence, and asks Nova and Strands to prepare a caregiver
+response. The local candidate remains visible if cloud review is unavailable.
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers
@@ -32,19 +37,18 @@ only after a fall event is created; an accepted AWS request is not proof of carr
 delivery. New AWS SMS accounts can send only to verified sandbox destinations until
 production access and any required origination registration are approved.
 
-Nova reports match, no match, uncertainty, or an unsupported request. With two or
-three confirmations selected, the server requires that many consecutive matches
-before creating an alert. The right-hand alert list loads recent account incidents
-and stays visible after stopping. Browser notifications are optional and work only
-while the page is open. `/app/native` preserves the installed-camera engineering UI.
+Nova reports match, no match, uncertainty, or an unsupported request. The right-hand
+alert list loads recent account incidents and stays visible after stopping. Browser
+notifications are optional and work only while the page is open. `/app/native`
+preserves the installed-camera engineering UI.
 
 ### Recorded video: conditions and timing
 
 - **Quick:** up to 32 sampled moments in four image batches. All conditions are
   checked, even after an early match. This is not frame-by-frame video analysis.
-- **Detailed:** choose 0.5, 1, 2, 5, or 10 seconds between samples. Maximum 192
-  base samples and 10 minutes of video; incompatible duration/cadence combinations
-  are rejected before opening the AWS session, not silently downsampled.
+- **Detailed:** choose 0.5, 1, 2, 5, 10, 15, or 30 seconds between samples. Maximum
+  192 base samples and 20 minutes of video. For a long clip, the UI visibly adapts
+  to the nearest supported cadence that stays inside the sample budget.
 - Each batch overlaps its neighbor by one frame. Nova returns active/inactive/
   uncertain observations for each condition and timestamp. Up to four transition
   windows are resampled with eight images each. The browser computes estimated

@@ -18,25 +18,27 @@
   Bedrock is our selected provider; AgentCore deployment is optional.
 - See [AWS's quota request process](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-runtime.html).
 
-The no-install `/demo` already performs browser MediaPipe inference and saves
-account alerts/recordings. Account-connected Strands is now verified separately
-from guest inference. Use licensed recorded fall samples, not a person falling live.
+The no-install `/demo` provides upload-and-prompt Nova/Strands analysis. The
+`/live` route exposes continuous browser MediaPipe pose inference, ten-second
+evidence segments, Nova candidate review, and Strands caregiver actions. Use
+licensed recorded fall samples, not a person falling live.
 
 ## Submission identity
 
-- **Track:** Professional Agents
-- **Working title:** Artae — the safety agent for every camera
-- **Audience:** Small safety and operations teams that cannot continuously watch
-  every camera feed.
-- **Problem:** Important incidents are buried in hours of ordinary footage, and
-  a person usually notices too late.
-- **Promise demonstrated:** Connect a camera, select fall detection, run the
-  agent on a licensed recorded fall sample, and receive a persistent alert with evidence.
+- **Track:** Good Neighbor Agents
+- **Working title:** Artae — a second set of eyes for senior care
+- **Audience:** Families, volunteer caregivers, senior-community staff, and small
+  community care organizations that cannot continuously watch every shared space.
+- **Problem:** Watching a camera continuously is repetitive and exhausting, but a
+  possible fall may still require a fast human decision.
+- **Promise demonstrated:** Run continuous on-device fall-candidate sensing or
+  analyze permitted recorded footage, ask Nova to review the visual evidence, and
+  let a Strands agent preserve the moment and request a caregiver check.
 
 ## One-sentence pitch
 
-Artae gives an existing camera one job, detects a safety incident locally, and
-uses a Strands agent to preserve the evidence and notify the person who can help.
+Artae quietly watches permitted shared spaces for a possible fall, then uses a
+Strands agent to preserve the evidence and ask a caregiver to check the person.
 
 ## What makes the agent real
 

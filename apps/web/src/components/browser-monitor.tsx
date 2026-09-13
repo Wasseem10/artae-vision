@@ -836,6 +836,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           artae.
         </Link>
         <div>
+          {seniorSafety && <Link href="/demo">Upload analysis</Link>}
           <Link href="#saved-agents">My agents</Link>
           <Link href="#history">Past footage</Link>
           {scope === "guest" ? <Link href="/login?next=demo">Sign in to save</Link> :

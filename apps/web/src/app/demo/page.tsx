@@ -4,7 +4,7 @@ import { VisualWatch } from "@/components/visual-watch";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
-  description: "Try Artae's AI caregiver assistant with a staged fall, uploaded video, or webcam.",
+  description: "Upload permitted video or connect a webcam and let Nova and Strands review a visible care condition.",
 };
 
 export default function DemoPage() {

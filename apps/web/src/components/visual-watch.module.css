@@ -26,6 +26,8 @@
 .brand { color: #131313; text-decoration: none; font-size: 23px; font-weight: 700; letter-spacing: -1.5px; }
 .brand span { margin-left: 8px; color: #6e6e6e; font-size: 8px; letter-spacing: 2px; }
 .headerMeta { min-width: 0; display: flex; align-items: center; gap: 18px; color: #707070; font-size: 11px; }
+.modeLink { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; color: #202020; background: #fff; border: 1px solid #d3d3d3; border-radius: 7px; font-size: 11px; font-weight: 600; text-decoration: none; }
+.modeLink:hover { border-color: #888; }
 .headerMeta strong { color: #292929; font-size: 12px; }
 .headerStatus { display: flex; align-items: center; gap: 8px; color: #6b6b6b; font-size: 13px; }
 .dot, .liveDot, .errorDot { width: 8px; height: 8px; border-radius: 50%; background: #adadad; display: inline-block; flex: 0 0 auto; }
@@ -199,6 +201,8 @@
   .sourceGrid { gap: 6px; }
   .sourceGrid button, .sourceGrid label { min-height: 44px; padding: 0 5px; font-size: 10px; }
   .headerMeta > span { display: none; }
+  .modeLink { padding: 7px 8px; font-size: 0; }
+  .modeLink svg { font-size: 14px; }
   .headerMeta { gap: 10px; }
   .headerMeta strong { display: none; }
   .videoWrap { aspect-ratio: 16 / 9; }
