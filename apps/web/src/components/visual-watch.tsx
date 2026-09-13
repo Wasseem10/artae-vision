@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FiBell, FiCamera, FiCheck, FiClock, FiPlay, FiSquare, FiUpload, FiVideo } from "react-icons/fi";
+import { FiBell, FiCamera, FiCheck, FiClock, FiLoader, FiPlay, FiSquare, FiUpload, FiVideo } from "react-icons/fi";
 
 import {
   analyzeCloudFrames,
@@ -26,6 +26,7 @@ import styles from "./visual-watch.module.css";
 type Source = "upload" | "webcam";
 type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "stopped" | "error";
 type Stage = "idle" | "video" | "frames" | "nova" | "strands" | "complete";
+type UploadState = "empty" | "preparing" | "ready" | "error";
 type CapturedFrame = { at_seconds: number; jpeg: string; snapshot: string };
 
 const FALL_PROMPT = "Alert me if the person transitions from upright to the floor and appears to remain down. Distinguish this from normal sitting, kneeling, or bending.";
@@ -115,6 +116,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
 
   const [source, setSource] = useState<Source>("upload");
   const [uploadName, setUploadName] = useState("");
+  const [uploadState, setUploadState] = useState<UploadState>("empty");
   const [prompt, setPrompt] = useState("");
   const [intervalSeconds, setIntervalSeconds] = useState(5);
   const [confirmationCount, setConfirmationCount] = useState(1);
@@ -439,7 +441,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   function chooseSource(next: Source) {
     if (runningRef.current) return;
     const video = videoRef.current;
-    setSource(next); setUploadName(""); setVideoDuration(0); setLastResult(null); setStage("idle");
+    setSource(next); setUploadName(""); setUploadState("empty"); setVideoDuration(0); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
     setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     setStatus(next === "webcam" ? "Ready to monitor" : "Ready to analyze");
@@ -456,11 +458,12 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     videoRef.current.srcObject = null;
     videoRef.current.src = uploadUrlRef.current;
     videoRef.current.loop = false;
-    setSource("upload"); setUploadName(file.name); setVideoDuration(0); setLastResult(null); setStage("idle");
+    videoRef.current.load();
+    setSource("upload"); setUploadName(file.name); setUploadState("preparing"); setVideoDuration(0); setLastResult(null); setStage("idle");
     setConditionResults([]); setScanComplete(false);
     setTimeline({}); timelineRef.current = {}; setStoryboardFrames([]);
     if (mode === "public") setEvents([]);
-    setStatus("Video ready — describe what to find");
+    setStatus("Preparing video preview…");
   }
 
   async function enableNotifications() {
@@ -476,7 +479,8 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     ? storyboardFrames
     : Array.from({ length: 7 }, (_, index) => storyboardFrames[Math.round(index * (storyboardFrames.length - 1) / 6)]);
   const hasVideoSource = source === "webcam" || Boolean(uploadName);
-  const canStart = hasVideoSource && readConditions(prompt).length > 0;
+  const sourceReady = source === "webcam" || uploadState === "ready";
+  const canStart = hasVideoSource && sourceReady && readConditions(prompt).length > 0;
 
   return (
     <main className={styles.page}>
@@ -502,7 +506,11 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <label className={source === "upload" ? styles.selected : ""}><FiUpload />Upload video<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
               <button className={source === "webcam" ? styles.selected : ""} onClick={() => chooseSource("webcam")} disabled={running}><FiCamera />Webcam</button>
             </div>
-            {uploadName && <div className={styles.uploadedFile}><FiCheck /><span>{uploadName}</span><small>Ready to analyze</small></div>}
+            {uploadName && <div className={`${styles.uploadedFile} ${uploadState === "preparing" ? styles.uploadPreparingFile : uploadState === "error" ? styles.uploadErrorFile : ""}`}>
+              {uploadState === "preparing" ? <FiLoader className={styles.spinner} /> : <FiCheck />}
+              <span>{uploadName}</span>
+              <small>{uploadState === "preparing" ? "Preparing preview" : uploadState === "error" ? "Could not open" : "Ready to analyze"}</small>
+            </div>}
           </div>
 
           <div className={styles.step}>
@@ -523,15 +531,25 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
               <div className={styles.compactStep}><label htmlFor="confirmations"><FiCheck /> Confirm after</label><select id="confirmations" value={confirmationCount} onChange={(event) => setConfirmationCount(Number(event.target.value))} disabled={running}><option value={1}>1 match</option><option value={2}>2 matches</option><option value={3}>3 matches</option></select></div>
             </>}
-            {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{!hasVideoSource ? "Upload a video to continue" : !readConditions(prompt).length ? "Describe what to watch for" : recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
+            {!running ? <button className={styles.startButton} onClick={() => void start()} disabled={!canStart}><FiPlay />{!hasVideoSource ? "Upload a video to continue" : !sourceReady ? "Preparing video…" : !readConditions(prompt).length ? "Describe what to watch for" : recorded ? "Analyze video" : "Start monitor"}</button> : <button className={styles.stopButton} onClick={() => stop()}><FiSquare />Stop</button>}
           </div>
         </section>
 
         <article className={styles.previewCard}>
           <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : uploadName || "Uploaded care footage"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : uploadName || source === "webcam" ? "READY" : "WAITING"}</span></div>
-          <div className={styles.videoWrap}>
-            <video ref={videoRef} muted playsInline controls={hasVideoSource && !running} onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)} />
+          <div className={`${styles.videoWrap} ${uploadState === "ready" ? styles.videoReady : ""} ${running ? styles.videoProcessing : ""}`} aria-busy={uploadState === "preparing" || running}>
+            <video ref={videoRef} muted playsInline controls={hasVideoSource && !running} onLoadedMetadata={(event) => {
+              setVideoDuration(event.currentTarget.duration);
+              setUploadState("ready");
+              if (!runningRef.current) setStatus("Video ready — describe what to find");
+            }} onError={() => {
+              if (source !== "upload") return;
+              setUploadState("error");
+              if (!runningRef.current) setStatus("This browser could not open the selected video. Try MP4 (H.264) or WebM.");
+            }} />
             {!uploadName && source === "upload" && <label className={styles.videoEmpty}><FiUpload /><strong>Upload footage to begin</strong><span>MP4, WebM, or another browser-playable video · up to 4 hours</span><input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>}
+            {uploadState === "preparing" && <div className={styles.uploadOverlay}><div className={styles.processingOrb}><FiVideo /></div><strong>Preparing your footage</strong><span>Reading the video securely in this browser</span><div className={styles.loadingBar}><i /></div></div>}
+            {running && <div className={styles.analysisOverlay}><div className={styles.analysisStatus}><span className={styles.processingOrb}><FiLoader /></span><div><strong>{state === "sampling" ? "Building the evidence timeline" : state === "checking" ? "Amazon Nova is reviewing the evidence" : "Care monitor is active"}</strong><small>{state === "sampling" ? "Sampling moments across the full recording" : state === "checking" ? "The video remains on this device; sampled frames are being checked" : "Artae will surface only a possible care event"}</small></div></div><div className={styles.analysisPulse}><i /><i /><i /></div></div>}
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>
           <canvas ref={canvasRef} hidden />
@@ -540,10 +558,14 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             {evidenceFrames.length ? <div className={styles.frameTrack}>{evidenceFrames.map((frame) => <button key={frame.at_seconds} disabled={running || !recorded} onClick={() => { if (videoRef.current) videoRef.current.currentTime = frame.at_seconds; }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={frame.snapshot} alt={`Sampled frame at ${timeLabel(frame.at_seconds)}`} /><span>{timeLabel(frame.at_seconds)}</span>
-            </button>)}</div> : <div className={styles.timelineEmpty}><FiClock />Upload a video and select Analyze video to create its evidence timeline.</div>}
+            </button>)}</div> : uploadState === "preparing" || running ? <div className={styles.timelineSkeleton} aria-label="Preparing evidence timeline">{Array.from({ length: 7 }, (_, index) => <i key={index} />)}</div> : <div className={styles.timelineEmpty}><FiClock />Upload a video and select Analyze video to create its evidence timeline.</div>}
           </section>
           <div className={styles.pipeline} aria-label="Analysis progress">
-            {steps.map((item) => <div className={isStepDone(stage, item.stage, events.some((event) => event.coordinator === "completed")) ? styles.pipelineDone : ""} key={item.stage}><i />{item.label}</div>)}
+            {steps.map((item) => {
+              const done = isStepDone(stage, item.stage, events.some((event) => event.coordinator === "completed"));
+              const active = !done && ((item.stage === "video" && uploadState === "preparing") || (item.stage === "frames" && state === "sampling") || (item.stage === "nova" && state === "checking"));
+              return <div className={done ? styles.pipelineDone : active ? styles.pipelineActive : ""} key={item.stage}><i />{item.label}</div>;
+            })}
           </div>
           <div className={styles.runStatus} role="status"><i className={state === "error" ? styles.errorDot : running ? styles.liveDot : styles.dot} /><div><strong>{status}</strong><small>{checks ? `${checks} AWS check${checks === 1 ? "" : "s"} completed` : "No AWS checks yet"}{nextCheck ? ` · next at ${clock(nextCheck)}` : ""}</small></div></div>
           {conditionResults.map((item) => <div className={`${styles.lastDecision} ${item.status === "match" ? styles.matchDecision : ""}`} key={item.condition_index}>
@@ -590,7 +612,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <article className={styles.alertItem} key={event.id}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {event.snapshot && <img src={event.snapshot} alt="Frame that best supports the detected condition" />}
-                <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}</small>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
+                <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <div className={`${styles.deliveryReceipt} ${event.sms.status === "accepted" ? styles.deliveryAccepted : styles.deliveryFailed}`}><FiBell /><div><strong>{event.sms.status === "accepted" ? "Caregiver text accepted by AWS" : "Caregiver text needs attention"}</strong><small>{event.sms.destination ? `Sent toward ${event.sms.destination}` : event.sms.error ? `Delivery error: ${event.sms.error.replaceAll("_", " ")}` : "Check the AWS SMS configuration"}</small></div></div>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
               </article>
             ))}
           </div>
