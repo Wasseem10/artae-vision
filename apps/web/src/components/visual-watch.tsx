@@ -24,9 +24,10 @@ type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "st
 type Stage = "idle" | "video" | "frames" | "nova" | "strands" | "complete";
 type CapturedFrame = { at_seconds: number; jpeg: string; snapshot: string };
 
-const PRINTER_PROMPT = "Alert me if this 3D print shows visible stringing, spaghetti-like filament, or has detached from the print bed.";
+const PRINTER_PROMPT = "Alert me when this 3D printer is actively extruding green filament onto the print bed.";
 const PRESETS = [
-  { label: "3D print failure", prompt: PRINTER_PROMPT },
+  { label: "Printer running", prompt: PRINTER_PROMPT },
+  { label: "Print failure", prompt: "Alert me if this 3D print shows visible stringing, loose filament, or has detached from the print bed." },
   { label: "Person waiting", prompt: "Alert me when a person is visibly waiting at the counter." },
   { label: "Empty station", prompt: "Alert me when this work station is visibly empty." },
 ];
@@ -322,7 +323,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         <section className={styles.builder} aria-label="Configure visual monitor">
           {mode === "public" && <div className={styles.demoNote}><strong>Live AWS demo</strong><span>No account required · up to 4 checks</span></div>}
           <div className={styles.step}>
-            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>Try the example, upload your own, or use a webcam.</small></div></div>
+            <div className={styles.stepTitle}><span>1</span><div><strong>Choose a video</strong><small>The example shows an active print. Upload any browser-playable clip to check your own event.</small></div></div>
             <div className={styles.sourceGrid}>
               <button className={source === "sample" ? styles.selected : ""} onClick={() => chooseSource("sample")} disabled={running}><FiPlay />Example</button>
               <label className={source === "upload" ? styles.selected : ""}><FiUpload />{uploadName || "Upload"}<input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>
@@ -346,7 +347,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
         </section>
 
         <article className={styles.previewCard}>
-          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Webcam" : source === "upload" ? uploadName || "Uploaded video" : "Printer example"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
+          <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Webcam" : source === "upload" ? uploadName || "Uploaded video" : "Active print example"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : "READY"}</span></div>
           <div className={styles.videoWrap}>
             <video ref={videoRef} src="/vision/samples/3d-print-failure.mp4" muted playsInline controls={!running} />
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
