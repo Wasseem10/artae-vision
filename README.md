@@ -1,8 +1,9 @@
 # AI Video Intelligence Platform
 
 > **Current status:** `/app` and `/demo` now expose one focused visual-monitor
-> workflow: choose a sample, upload, or webcam; describe one visible condition;
-> choose a check interval and confirmation count; then start or stop monitoring.
+> workflow: choose a sample, upload, or webcam; describe up to five visible conditions
+> (one per line); then start or stop analysis. Recorded videos also support detailed
+> timing with adjustable sampling, event intervals, and boundary refinement.
 > Signed-in runs send the unchanged condition and sampled frame to Amazon Nova 2
 > Lite through Bedrock. Confirmed matches invoke Strands, create an account alert,
 > and remain visible after the monitor stops. Live Nova and Strands calls were last
@@ -17,9 +18,9 @@ and search the resulting evidence. The revised completion phases are in
 
 ## No-install demo
 
-Open `/demo` to inspect the workflow, then sign in to run the real AWS-backed
-monitor. The included, attributed 3D-printer failure sequence provides an immediate
-test condition. You can also upload another recorded clip or use a webcam, enter a condition such as
+Open `/demo` for a rate-limited, no-account AWS-backed test; `/app` uses account-owned
+monitoring. The included, attributed video shows an active 3D printer, not a guaranteed
+failure. You can also upload another recorded clip or use a webcam, enter a condition such as
 “alert me if this print shows stringing,” select a 5-second demo interval, and press
 **Start monitoring**. The first check runs immediately. **Stop monitor** always
 remains visible while a run is active.
@@ -29,6 +30,32 @@ three confirmations selected, the server requires that many consecutive matches
 before creating an alert. The right-hand alert list loads recent account incidents
 and stays visible after stopping. Browser notifications are optional and work only
 while the page is open. `/app/native` preserves the installed-camera engineering UI.
+
+### Recorded video: conditions and timing
+
+- **Quick:** up to 32 sampled moments in four image batches. All conditions are
+  checked, even after an early match. This is not frame-by-frame video analysis.
+- **Detailed:** choose 0.5, 1, 2, 5, or 10 seconds between samples. Maximum 192
+  base samples and 10 minutes of video; incompatible duration/cadence combinations
+  are rejected before opening the AWS session, not silently downsampled.
+- Each batch overlaps its neighbor by one frame. Nova returns active/inactive/
+  uncertain observations for each condition and timestamp. Up to four transition
+  windows are resampled with eight images each. The browser computes estimated
+  duration ranges from those timestamps, not model-generated time guesses.
+- Public detailed sessions allow up to 32 AWS checks and expire after 30 minutes.
+  Detailed scans can take several minutes. Boundary-only rechecks do not create
+  extra notifications. The run must remain open; this is not an unattended cloud job.
+- Review start/end links and individual sampled observations. An event active at
+  the clip boundary, an occluded subject, or conflicting judgments leaves the full
+  duration unknown. Duration ranges assume one continuous event and the same subject
+  between samples; they are not statistically calibrated confidence intervals.
+- This browser path does **not** run the legacy YOLO tracker described below.
+  Use a fixed camera and one clearly described subject. Crowded scenes, rapid events,
+  identity continuity, car-parking accuracy, and fall-recovery accuracy are not validated.
+  Standing up is not proof that someone is medically safe.
+- Cumulative timing results remain in the page after Stop but are not a saved,
+  cross-device timeline report. Account incident records and guest temporary results
+  retain their existing behavior.
 
 ## Working AWS browser path
 
