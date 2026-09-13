@@ -197,6 +197,7 @@
 .smsSetup > strong + label { margin-top: 12px; }
 .smsSetup select, .smsSetup input[type="password"] { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px; border: 1px solid #bbb; border-radius: 7px; background: #fff; color: #222; font: inherit; font-size: 14px; }
 .smsSetup > small { margin-top: 10px; }
+.smsSetup input[inputmode="numeric"] { box-sizing: border-box; width: 100%; min-height: 44px; padding: 10px; font: inherit; border: 1px solid #bbb; border-radius: 7px; }
 .deliveryReceipt a { display: block; margin-top: 8px; color: #244d63; font-size: 13px; overflow-wrap: anywhere; }
 .smsSetup p[role="status"] { margin-top: 12px; padding: 12px; background: #fff; border: 1px solid #dedede; border-radius: 7px; font-size: 13px; overflow-wrap: anywhere; }
 .alertList { min-height: 0; max-height: 440px; flex: 1; overflow: auto; }

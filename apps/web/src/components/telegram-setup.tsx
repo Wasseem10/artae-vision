@@ -44,13 +44,14 @@ export function TelegramSetup({ account, disabled, selected, onChange }: {
           const found = await api.discoverTelegramChats(token.trim()); setChats(found);
           setMessage(found.length ? "Choose the caregiver chat below." : "No chats found. Send Start to your bot in Telegram, then try again.");
         })}>Find my Telegram chat</button>
-        {!!chats.length && <><label>Caregiver chat<select value={chat} onChange={(e) => setChat(e.target.value)}><option value="">Choose a chat</option>{chats.map((item) => <option key={item.chat_id} value={item.chat_id}>{item.title}</option>)}</select></label>
-          <button disabled={busy || !chat} onClick={() => void run(async () => {
+        {!!chats.length && <label>Caregiver chat<select value={chat} onChange={(e) => setChat(e.target.value)}><option value="">Choose a chat</option>{chats.map((item) => <option key={item.chat_id} value={item.chat_id}>{item.title}</option>)}</select></label>}
+        <details><summary>Chat not listed? Use a known chat ID</summary><small>If another integration consumes this bot’s updates, use your own verified Telegram chat ID.</small><label>Telegram chat ID<input inputMode="numeric" value={chat} onChange={(e) => setChat(e.target.value)} placeholder="Your numeric chat ID" /></label></details>
+          <button disabled={busy || !/^-?\d+$/.test(chat) || !token.trim()} onClick={() => void run(async () => {
             const result = await api.createConnector({ name: `Caregiver — ${chats.find((item) => item.chat_id === chat)?.title || "Telegram"}`.slice(0, 110),
               connector_type: "telegram", credential: token.trim(), configuration: { chat_id: chat }, scopes: ["notifications:write"] });
             setConnections((items) => [...items, result]); onChange(result.id); setToken(""); setChats([]); setAdding(false);
             setMessage("Connected. Send a test to confirm it arrives on your phone.");
-          })}>Save caregiver connection</button></>}
+          })}>Save caregiver connection</button>
       </>}
       {message && <p role="status">{message}</p>}
     </>}
