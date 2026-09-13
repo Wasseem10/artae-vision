@@ -14,6 +14,11 @@
 - Production run September 9 at 13:05:39: real browser person detection, completed
   Strands/Nova coordination, saved in-app alert, and uploaded recording segments.
   Evidence requests now link actual account recording IDs as uploads complete.
+- Production `/live` run September 13: the licensed lateral-fall clip produced a
+  MediaPipe temporal candidate at seven seconds after 53 locally analyzed frames.
+  Nova reviewed eight candidate frames, confirmed the upright-to-floor sequence,
+  and the Strands coordinator completed the evidence, notification, and human-review
+  actions. The event and review controls remained visible after the clip stopped.
 - Strands is required by the [official rules](https://agentsforhumans.devpost.com/rules).
   Bedrock is our selected provider; AgentCore deployment is optional.
 - See [AWS's quota request process](https://docs.aws.amazon.com/bedrock/latest/userguide/quotas-runtime.html).
@@ -72,7 +77,7 @@ tool calls, token counts, completion state, and safe fallback state.
 - [x] GitHub-rendered architecture diagram
 - [x] MIT license
 - [x] Enable Amazon Bedrock credentials and run the live Strands path
-- [ ] Capture a repeatable end-to-end fall-detection demonstration
+- [x] Capture a repeatable end-to-end fall-detection demonstration
 - [x] Add a no-login judging path (`/demo`; AWS requires an account)
 - [ ] Make the submission repository public
 - [ ] Put the MIT license in the GitHub About panel
