@@ -46,8 +46,8 @@ preserves the installed-camera engineering UI.
 
 - **Quick:** up to 32 sampled moments in four image batches. All conditions are
   checked, even after an early match. This is not frame-by-frame video analysis.
-- **Detailed:** choose 0.5, 1, 2, 5, 10, 15, or 30 seconds between samples. Maximum
-  192 base samples and 20 minutes of video. For a long clip, the UI visibly adapts
+- **Detailed:** choose a sampling cadence from 0.5 seconds through five minutes. Maximum
+  192 base samples and four hours of video. For a long clip, the UI visibly adapts
   to the nearest supported cadence that stays inside the sample budget.
 - Each batch overlaps its neighbor by one frame. Nova returns active/inactive/
   uncertain observations for each condition and timestamp. Up to four transition

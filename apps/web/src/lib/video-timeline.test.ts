@@ -7,12 +7,16 @@ describe("detailed video timeline", () => {
     expect(detailedTimes(300, 2)).toHaveLength(151);
     expect(() => detailedTimes(300, 0.5)).toThrow("192");
     expect(detailedTimes(1200, 10)).toHaveLength(121);
-    expect(() => detailedTimes(1201, 10)).toThrow("20 minutes");
+    expect(detailedTimes(1201, 10)).toHaveLength(122);
+    expect(detailedTimes(14400, 90)).toHaveLength(161);
+    expect(() => detailedTimes(14401, 90)).toThrow("4 hours");
     expect(() => detailedTimes(Infinity, 2)).toThrow();
   });
   it("recommends a supported cadence that keeps long clips inside the sample budget", () => {
     expect(recommendedDetailedInterval(300, 2)).toBe(2);
     expect(recommendedDetailedInterval(1200, 2)).toBe(10);
+    expect(recommendedDetailedInterval(1205, 5)).toBe(10);
+    expect(recommendedDetailedInterval(14400, 5)).toBe(90);
   });
   it("computes sample-bounded durations across batches", () => {
     const first: Observation[] = [{ at: 0, state: "inactive" }, { at: 2, state: "active" }];

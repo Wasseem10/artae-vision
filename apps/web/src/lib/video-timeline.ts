@@ -7,18 +7,20 @@ export type Episode = {
   minDuration: number; maxDuration: number | null;
 };
 
-export const DETAILED_INTERVALS = [0.5, 1, 2, 5, 10, 15, 30] as const;
+export const MAX_VIDEO_DURATION_SECONDS = 4 * 60 * 60;
+export const MAX_DETAILED_SAMPLES = 192;
+export const DETAILED_INTERVALS = [0.5, 1, 2, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300] as const;
 
 export function recommendedDetailedInterval(duration: number, requested: number): number {
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 1200) {
-    throw new Error("Detailed timing supports clips up to 20 minutes.");
+  if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_DURATION_SECONDS) {
+    throw new Error("Video analysis supports clips up to 4 hours.");
   }
   if (!DETAILED_INTERVALS.includes(requested as (typeof DETAILED_INTERVALS)[number])) {
     throw new Error("Choose a supported sampling interval.");
   }
   const end = Math.max(0, duration - 0.05);
-  const minimum = end / 190;
-  return DETAILED_INTERVALS.find((interval) => interval >= requested && interval >= minimum) ?? 30;
+  const minimum = end / (MAX_DETAILED_SAMPLES - 2);
+  return DETAILED_INTERVALS.find((interval) => interval >= requested && interval >= minimum) ?? 300;
 }
 
 export function timelineStatus(points: Observation[]): "match" | "no_match" | "uncertain" {
@@ -28,12 +30,12 @@ export function timelineStatus(points: Observation[]): "match" | "no_match" | "u
 }
 
 export function detailedTimes(duration: number, interval: number): number[] {
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 1200) throw new Error("Detailed timing supports clips up to 20 minutes.");
+  if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_VIDEO_DURATION_SECONDS) throw new Error("Video analysis supports clips up to 4 hours.");
   if (!DETAILED_INTERVALS.includes(interval as (typeof DETAILED_INTERVALS)[number])) throw new Error("Choose a supported sampling interval.");
   const end = Math.max(0, duration - 0.05);
   const times = Array.from({ length: Math.floor(end / interval) + 1 }, (_, i) => i * interval);
   if (end > times[times.length - 1]) times.push(end);
-  if (times.length > 192) throw new Error("This interval needs more than 192 samples. Choose a longer interval or trim the video; coverage will not be silently reduced.");
+  if (times.length > MAX_DETAILED_SAMPLES) throw new Error(`This interval needs more than ${MAX_DETAILED_SAMPLES} samples. Choose a longer interval or trim the video; coverage will not be silently reduced.`);
   return times;
 }
 

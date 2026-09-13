@@ -20,7 +20,7 @@ import {
   type ConditionResult,
 } from "@/lib/browser-sessions";
 import { mergeConditions, readConditions } from "@/lib/condition-results";
-import { DETAILED_INTERVALS, detailedTimes, episodes, mergeObservations, recommendedDetailedInterval, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
+import { DETAILED_INTERVALS, MAX_VIDEO_DURATION_SECONDS, detailedTimes, episodes, mergeObservations, recommendedDetailedInterval, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
 
 type Source = "upload" | "webcam";
@@ -76,7 +76,7 @@ async function captureStoryboard(
 ) {
   await waitForVideo(video);
   if (!Number.isFinite(video.duration) || video.duration <= 0) throw new Error("This video does not expose a readable duration.");
-  if (video.duration > 7200) throw new Error("For this demo, choose a video shorter than two hours.");
+  if (video.duration > MAX_VIDEO_DURATION_SECONDS) throw new Error("For this demo, choose a video up to four hours long.");
   video.pause();
   // Four public AWS checks × eight images gives recorded clips much denser
   // coverage than the original single eight-frame request.
@@ -139,7 +139,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const running = state === "starting" || state === "sampling" || state === "checking" || state === "watching";
   const recorded = source !== "webcam";
   const detailed = recorded && scanMode === "detailed";
-  const effectiveSampleInterval = detailed && videoDuration > 0 && videoDuration <= 1200
+  const effectiveSampleInterval = detailed && videoDuration > 0 && videoDuration <= MAX_VIDEO_DURATION_SECONDS
     ? recommendedDetailedInterval(videoDuration, sampleInterval)
     : sampleInterval;
 
@@ -517,7 +517,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
             {recorded ? <>
               <div className={styles.compactStep}><label htmlFor="scan-mode">Scan mode</label><select id="scan-mode" value={scanMode} onChange={(event) => setScanMode(event.target.value)} disabled={running}><option value="quick">Quick — check conditions</option><option value="detailed">Detailed — event timeline & duration</option></select></div>
               {detailed && <div className={styles.compactStep}><label htmlFor="sample-interval">Sample video every</label><select id="sample-interval" value={sampleInterval} onChange={(event) => setSampleInterval(Number(event.target.value))} disabled={running}>{DETAILED_INTERVALS.map((value) => <option key={value} value={value}>{value} seconds</option>)}</select></div>}
-              <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? `Up to 192 samples across clips up to 20 minutes. ${effectiveSampleInterval !== sampleInterval ? `For this video, Artae will sample about every ${effectiveSampleInterval}s to stay within that limit. ` : ""}Up to 4 closer boundary checks refine detected events.` : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
+              <div className={styles.storyboardHint}><FiClock /><div><strong>{detailed ? "Timing estimates, not exact measurements" : "Multi-pass video scan"}</strong><small>{detailed ? `Up to 192 samples across clips up to 4 hours. ${effectiveSampleInterval !== sampleInterval ? `For this video, Artae will automatically sample about every ${effectiveSampleInterval}s to stay within that limit. ` : ""}Up to 4 closer boundary checks refine detected events; brief events between samples can be missed.` : "Up to 32 moments are checked across the clip in four Nova batches."}</small></div></div>
               {detailed && <div className={styles.presets}><button disabled={running} onClick={() => setPrompt("How long does the single person remain on the floor? Measure from first visibly on the ground until standing upright again.")}>Time on floor</button><button disabled={running} onClick={() => setPrompt("How long does the single person take to get back up? Measure from first visibly on the ground until standing upright again.")}>Time to stand up</button></div>}
             </> : <>
               <div className={styles.compactStep}><label htmlFor="interval"><FiClock /> Check every</label><select id="interval" value={intervalSeconds} onChange={(event) => setIntervalSeconds(Number(event.target.value))} disabled={running}><option value={5}>5 seconds</option><option value={15}>15 seconds</option><option value={30}>30 seconds</option><option value={60}>1 minute</option></select></div>
@@ -531,7 +531,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
           <div className={styles.cardHeader}><div><FiVideo /><strong>{source === "webcam" ? "Care camera" : uploadName || "Uploaded care footage"}</strong></div><span className={running ? styles.livePill : styles.offPill}>{running ? "RUNNING" : uploadName || source === "webcam" ? "READY" : "WAITING"}</span></div>
           <div className={styles.videoWrap}>
             <video ref={videoRef} muted playsInline controls={hasVideoSource && !running} onLoadedMetadata={(event) => setVideoDuration(event.currentTarget.duration)} />
-            {!uploadName && source === "upload" && <label className={styles.videoEmpty}><FiUpload /><strong>Upload footage to begin</strong><span>MP4, WebM, or another browser-playable video · up to 2 hours</span><input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>}
+            {!uploadName && source === "upload" && <label className={styles.videoEmpty}><FiUpload /><strong>Upload footage to begin</strong><span>MP4, WebM, or another browser-playable video · up to 4 hours</span><input type="file" accept="video/*" onChange={(event) => chooseUpload(event.target.files?.[0])} disabled={running} /></label>}
             {running && <div className={styles.videoBadge}>{state === "sampling" ? "SAMPLING VIDEO" : state === "checking" ? "NOVA ANALYZING" : "MONITORING"}</div>}
           </div>
           <canvas ref={canvasRef} hidden />
