@@ -14,6 +14,7 @@ import {
   analyzePublicDemo,
   cloudEventFields,
   formatTime,
+  getNotificationCapabilities,
   loadBrowserWorkspace,
   saveBrowserJob,
   loadCloudSession,
@@ -90,6 +91,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   const [visualFrames, setVisualFrames] = useState(0);
   const [caregiverPhone, setCaregiverPhone] = useState("");
   const [smsEnabled, setSmsEnabled] = useState(false);
+  const [smsAvailable, setSmsAvailable] = useState(false);
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
 
   function notifyCaregiver(summary: string) {
@@ -157,6 +159,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       () => setNotificationState(typeof Notification === "undefined" ? "unsupported" : Notification.permission),
       0,
     );
+    if (seniorSafety) {
+      void getNotificationCapabilities()
+        .then((value) => { if (mounted.current) setSmsAvailable(value.sms); })
+        .catch(() => { if (mounted.current) setSmsAvailable(false); });
+    }
     let unsubscribe = () => {};
     if (isSupabaseConfigured()) {
       const {
@@ -205,7 +212,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       stopRef.current();
       void audio.current?.close();
     };
-  }, []);
+  }, [seniorSafety]);
   useEffect(() => {
     let cancelled = false;
     if (!authReady) return;
@@ -927,7 +934,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           <button type="button" onClick={() => void enableBrowserNotifications()} disabled={notificationState === "granted" || notificationState === "unsupported"}>
             {notificationState === "granted" ? "Browser alert enabled" : notificationState === "unsupported" ? "Browser alerts unavailable" : "Enable browser alert"}
           </button>
-          {scope === "guest" ? <span className={styles.smsNotice}>Sign in to connect a verified caregiver phone for AWS SMS.</span> : <>
+          {scope === "guest" ? <span className={styles.smsNotice}>Sign in to connect a verified caregiver phone for AWS SMS.</span> : !smsAvailable ? <span className={styles.smsNotice}>AWS SMS needs one-time deployment setup. Dashboard, sound, and browser alerts work now.</span> : <>
             <label className={styles.smsToggle}><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Send AWS SMS on a possible fall</label>
             {smsEnabled && <label className={styles.phoneField}>Caregiver phone in international format<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running} onChange={(event) => setCaregiverPhone(event.target.value)} /><small>AWS sandbox accounts can text verified numbers only.</small></label>}
           </>}

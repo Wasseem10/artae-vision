@@ -48,6 +48,9 @@ export function cloudEventFields(result: CloudEventResult) {
     sms: result.details.sms,
   };
 }
+export async function getNotificationCapabilities(): Promise<{ sms: boolean }> {
+  return request<{ sms: boolean }>("/browser-sessions/notification-capabilities");
+}
 export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
   return request<CloudEventResult>(`/browser-sessions/${s.id}/events/${event.id}/review`, {
     method: "PATCH", body: JSON.stringify({ outcome }),

@@ -107,6 +107,9 @@ def test_browser_session_keeps_recording_time_origin_across_devices(api_client):
 
 def test_caregiver_sms_fails_closed_when_provider_is_disabled(api_client):
     api_client.app.state.settings.sms_enabled = False
+    assert api_client.get("/api/v1/browser-sessions/notification-capabilities").json() == {
+        "sms": False
+    }
     response = api_client.post(
         "/api/v1/browser-sessions",
         json={

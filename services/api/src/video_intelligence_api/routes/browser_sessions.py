@@ -112,6 +112,12 @@ async def list_saved_jobs(session: SessionDependency, actor: ActorDependency):
     ]
 
 
+@router.get("/notification-capabilities")
+async def notification_capabilities(settings: SettingsDependency):
+    """Expose delivery availability without revealing provider credentials."""
+    return {"sms": settings.sms_enabled}
+
+
 @router.post("/jobs")
 async def save_browser_job(
     payload: SavedJobCreate, session: SessionDependency, actor: EditorDependency
