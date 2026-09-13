@@ -8,6 +8,49 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+async def send_telegram_alert(
+    bot_token: str,
+    chat_id: str,
+    text: str,
+    *,
+    clip_url: str | None = None,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> dict:
+    """Send once; a network timeout is unknown, never silently retried."""
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    body = {"chat_id": chat_id, "text": text[:4000], "link_preview_options": {"is_disabled": True}}
+    if clip_url:
+        body["reply_markup"] = {
+            "inline_keyboard": [[{"text": "Watch event clip", "url": clip_url}]]
+        }
+    try:
+        async with httpx.AsyncClient(timeout=12, transport=transport) as client:
+            response = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage", json=body
+            )
+        result = response.json()
+        if response.is_success and result.get("ok") is True:
+            return {
+                "status": "sent",
+                "provider": "telegram",
+                "message_id": result["result"]["message_id"],
+                "clip_url": clip_url,
+                "message": "Telegram accepted the alert. Check your chat.",
+            }
+        return {
+            "status": "failed",
+            "provider": "telegram",
+            "message": "Telegram rejected the alert. Open the bot, tap Start, "
+            "and check the connected chat.",
+        }
+    except (httpx.HTTPError, ValueError, KeyError):
+        return {
+            "status": "unknown",
+            "provider": "telegram",
+            "message": "Telegram delivery could not be confirmed. Check your chat before retrying.",
+        }
+
+
 class TelegramDiscoveryError(RuntimeError):
     """A safe operator-facing Telegram discovery failure."""
 

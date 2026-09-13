@@ -20,17 +20,26 @@ from pydantic import AwareDatetime, BaseModel, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from video_intelligence_api.alert_secrets import AlertSecretError, encrypt_alert_secret
+from video_intelligence_api.alert_secrets import (
+    AlertSecretError,
+    decrypt_alert_secret,
+    encrypt_alert_secret,
+)
 from video_intelligence_api.auth import ActorDependency, EditorDependency
 from video_intelligence_api.browser_incidents import incident_actions, reconcile_browser_evidence
 from video_intelligence_api.browser_vision import decode_frame, inspect_frames, prompt_conditions
 from video_intelligence_api.dependencies import SessionDependency, SettingsDependency
+from video_intelligence_api.media_access import signed_recording_url
 from video_intelligence_api.models import (
     Alert,
     AlertStatus,
     Camera,
+    ConnectorType,
     Event,
+    IntegrationConnector,
     Organization,
+    RecordingSegment,
+    RecordingSegmentStatus,
     Rule,
     RuleStatus,
     SourceType,
@@ -47,6 +56,7 @@ from video_intelligence_api.schemas import EventRead, RecordingSegmentReport
 from video_intelligence_api.security import EdgePrincipal
 from video_intelligence_api.sms_alerts import send_caregiver_sms, valid_e164
 from video_intelligence_api.strands_orchestrator import coordinate_incident
+from video_intelligence_api.telegram import send_telegram_alert
 from video_intelligence_api.tenancy import tenant_camera
 
 router = APIRouter(prefix="/browser-sessions", tags=["browser monitoring"])
@@ -60,6 +70,138 @@ _public_demo_checks: dict[str, int] = {}
 _public_demo_matches: dict[str, set[int]] = {}
 
 
+async def owned_telegram(connector_id, session, actor):
+    connector = await session.scalar(
+        select(IntegrationConnector)
+        .where(
+            IntegrationConnector.id == connector_id,
+            IntegrationConnector.organization_id == actor.organization_id,
+            IntegrationConnector.connector_type == ConnectorType.TELEGRAM,
+            IntegrationConnector.enabled.is_(True),
+        )
+        .with_for_update()
+    )
+    if connector is None or "notifications:write" not in connector.scopes:
+        raise HTTPException(404, "Connected Telegram chat not found")
+    return connector
+
+
+@router.post("/telegram/{connector_id}/test")
+async def test_telegram_connection(
+    connector_id: str,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    actor: EditorDependency,
+):
+    connector = await owned_telegram(connector_id, session, actor)
+    configuration = dict(connector.configuration or {})
+    last = configuration.get("last_test_at")
+    if last and datetime.fromisoformat(last) > utc_now() - timedelta(minutes=1):
+        raise HTTPException(429, "Wait one minute before another test message")
+    configuration["last_test_at"] = utc_now().isoformat()
+    connector.configuration = configuration
+    await session.commit()
+    return await send_telegram_alert(
+        decrypt_alert_secret(connector.credential_encrypted, settings),
+        str(configuration["chat_id"]),
+        "Artae connection test. Caregiver alerts will arrive in this chat. "
+        "No fall was detected by this test.",
+    )
+
+
+class TelegramEventDelivery(BaseModel):
+    recording_id: UUID | None = None
+
+
+@router.post("/{camera_id}/events/{source_event_id}/telegram")
+async def deliver_telegram_event(
+    camera_id: str,
+    source_event_id: str,
+    payload: TelegramEventDelivery,
+    request: Request,
+    session: SessionDependency,
+    settings: SettingsDependency,
+    actor: EditorDependency,
+):
+    camera, rule = await owned_session(camera_id, session, actor)
+    event = await session.scalar(
+        select(Event)
+        .where(
+            Event.camera_id == camera.id,
+            Event.source_event_id == source_event_id,
+            Event.event_type == "visual_match",
+        )
+        .with_for_update()
+    )
+    if event is None:
+        raise HTTPException(404, "Analyzed event not found")
+    if (event.details or {}).get("telegram"):
+        return event.details["telegram"]
+    connector = await owned_telegram((rule.spec or {}).get("telegram_connector_id"), session, actor)
+    clip_url = None
+    if payload.recording_id:
+        segment = await session.get(RecordingSegment, str(payload.recording_id))
+        if (
+            segment is None
+            or segment.camera_id != camera.id
+            or segment.organization_id != actor.organization_id
+            or segment.status != RecordingSegmentStatus.READY
+            or not segment.storage_uri
+        ):
+            raise HTTPException(409, "The event clip has not finished uploading")
+        start = (
+            datetime.fromisoformat(rule.spec["browser_started_at"])
+            if rule.spec.get("browser_started_at")
+            else camera.created_at
+        )
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=utc_now().tzinfo)
+        segment_start = segment.started_at
+        if segment_start.tzinfo is None:
+            segment_start = segment_start.replace(tzinfo=start.tzinfo)
+        offset = (segment_start - start).total_seconds()
+        if not offset - 1 <= event.occurred_at_seconds <= offset + segment.duration_seconds + 1:
+            raise HTTPException(422, "The clip does not cover this event")
+        relative = signed_recording_url(
+            segment.id, actor.organization_id, settings, ttl_seconds=86400
+        )
+        if not relative:
+            raise HTTPException(503, "Private clip links are not configured")
+        clip_url = str(request.base_url).rstrip("/") + relative
+    # Commit a reservation before external delivery: retries cannot double-send.
+    event.details = {
+        **event.details,
+        "telegram": {
+            "status": "pending",
+            "provider": "telegram",
+            "message": "Delivery started; check your chat.",
+        },
+    }
+    await session.commit()
+    seconds = int(event.occurred_at_seconds)
+    timestamp = f"{seconds // 3600:02}:{seconds // 60 % 60:02}:{seconds % 60:02}"
+    text = (
+        "Artae — caregiver review requested\n\n"
+        f"{str(event.details.get('summary', 'Possible care event'))[:1500]}"
+        f"\n\nVideo time: {timestamp}\nPlease review the footage and check whether help is needed. "
+        "This is an AI observation, not a confirmed emergency."
+    )
+    text += (
+        f"\n\nWatch the event clip (link expires in 24 hours):\n{clip_url}"
+        if clip_url
+        else "\n\nVideo clip unavailable. Review the original footage in Artae."
+    )
+    receipt = await send_telegram_alert(
+        decrypt_alert_secret(connector.credential_encrypted, settings),
+        str(connector.configuration["chat_id"]),
+        text,
+        clip_url=clip_url,
+    )
+    event.details = {**event.details, "telegram": receipt}
+    await session.commit()
+    return receipt
+
+
 class SessionCreate(BaseModel):
     id: UUID
     job: Literal["presence", "fall", "custom"]
@@ -70,6 +212,7 @@ class SessionCreate(BaseModel):
     check_interval_seconds: int = Field(default=60, ge=5, le=3600)
     confirmation_count: int = Field(default=1, ge=1, le=3)
     caregiver_phone: str | None = Field(default=None, max_length=16)
+    telegram_connector_id: UUID | None = None
 
     @model_validator(mode="after")
     def validate_caregiver_phone(self):
@@ -550,7 +693,8 @@ async def analyze_browser_frames(
             occurred_at_seconds=(
                 payload.frames[decision.matched_frame_index].at_seconds
                 if decision.matched_frame_index is not None
-                and 0 <= decision.matched_frame_index < len(payload.frames) else at
+                and 0 <= decision.matched_frame_index < len(payload.frames)
+                else at
             ),
             dwell_seconds=max(0, at - payload.frames[0].at_seconds),
             confidence=0,
@@ -628,11 +772,16 @@ async def owned_session(camera_id: str, session, actor):
 
 @router.post("/{camera_id}/test-sms")
 async def test_browser_sms(
-    camera_id: str, request: Request, session: SessionDependency, actor: EditorDependency,
+    camera_id: str,
+    request: Request,
+    session: SessionDependency,
+    actor: EditorDependency,
 ):
     """One explicit test per session, at most three tests per workspace per hour."""
     camera, rule = await owned_session(camera_id, session, actor)
-    await session.scalar(select(Organization).where(Organization.id == actor.organization_id).with_for_update())
+    await session.scalar(
+        select(Organization).where(Organization.id == actor.organization_id).with_for_update()
+    )
     await session.refresh(rule)
     spec = dict(rule.spec or {})
     if not spec.get("caregiver_phone_encrypted"):
@@ -643,25 +792,41 @@ async def test_browser_sms(
         raise HTTPException(409, "This test text was already requested. Check your phone.")
     cutoff = (utc_now() - timedelta(hours=1)).isoformat()
     count = await session.scalar(
-        select(func.count()).select_from(Rule).join(Camera, Camera.id == Rule.camera_id).where(
+        select(func.count())
+        .select_from(Rule)
+        .join(Camera, Camera.id == Rule.camera_id)
+        .where(
             Camera.organization_id == actor.organization_id,
             Rule.spec["sms_test_at"].as_string() >= cutoff,
         )
     )
     if count >= 3:
-        raise HTTPException(429, "Three test texts were already requested this hour. Please try later.")
+        raise HTTPException(
+            429, "Three test texts were already requested this hour. Please try later."
+        )
     rule.spec = {**spec, "sms_test_at": utc_now().isoformat()}
     await session.commit()
     try:
         with anyio.fail_after(12):
-            receipt = await anyio.to_thread.run_sync(partial(
-                send_caregiver_sms, encrypted_phone=spec["caregiver_phone_encrypted"],
-                event=None, camera=camera, settings=request.app.state.settings,
-                oidc_token=request.headers.get("x-vercel-oidc-token"), test=True,
-            ), abandon_on_cancel=True)
+            receipt = await anyio.to_thread.run_sync(
+                partial(
+                    send_caregiver_sms,
+                    encrypted_phone=spec["caregiver_phone_encrypted"],
+                    event=None,
+                    camera=camera,
+                    settings=request.app.state.settings,
+                    oidc_token=request.headers.get("x-vercel-oidc-token"),
+                    test=True,
+                ),
+                abandon_on_cancel=True,
+            )
     except TimeoutError:
-        receipt = {"status": "failed", "provider": "aws_sns", "error": "timeout",
-                   "message": "AWS did not respond in time. Check your phone before retrying."}
+        receipt = {
+            "status": "failed",
+            "provider": "aws_sns",
+            "error": "timeout",
+            "message": "AWS did not respond in time. Check your phone before retrying.",
+        }
     rule.spec = {**rule.spec, "sms_test_receipt": receipt}
     await session.commit()
     return receipt
@@ -705,6 +870,8 @@ async def create_session(
     settings: SettingsDependency,
     actor: EditorDependency,
 ):
+    if payload.telegram_connector_id:
+        await owned_telegram(str(payload.telegram_connector_id), session, actor)
     if payload.job == "custom":
         try:
             prompt_conditions(payload.prompt)
@@ -794,6 +961,9 @@ async def create_session(
             "confirmation_count": payload.confirmation_count,
             "visual_match_streak": 0,
             "caregiver_phone_encrypted": encrypted_phone,
+            "telegram_connector_id": str(payload.telegram_connector_id)
+            if payload.telegram_connector_id
+            else None,
         },
     )
     # These models use FK IDs, not ORM relationships. Flush parents explicitly;

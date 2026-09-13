@@ -18,6 +18,7 @@ export type BrowserEvent = {
   evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
   notification?: { channel: string; status: string; message: string; priority: string };
   sms?: { status: string; provider: string; destination?: string; error?: string; message?: string };
+  telegram?: { status: string; provider: string; message?: string; clip_url?: string };
   snapshot?: string;
 };
 export type ReviewOutcome = "acknowledged" | "resolved" | "false_alarm";
@@ -34,6 +35,7 @@ export type CloudEventResult = {
     evidence?: BrowserEvent["evidence"];
     notification?: BrowserEvent["notification"];
     sms?: BrowserEvent["sms"];
+    telegram?: BrowserEvent["telegram"];
   };
 };
 export function cloudEventFields(result: CloudEventResult) {
@@ -46,6 +48,7 @@ export function cloudEventFields(result: CloudEventResult) {
     evidence: result.details.evidence,
     notification: result.details.notification,
     sms: result.details.sms,
+    telegram: result.details.telegram,
   };
 }
 export async function getNotificationCapabilities(): Promise<{ sms: boolean }> {
@@ -83,6 +86,7 @@ export type BrowserSession = {
   checkIntervalSeconds?: number;
   confirmationCount?: number;
   caregiverPhone?: string;
+  telegramConnectorId?: string;
 };
 export const sessionMetadata = (s: BrowserSession): BrowserSession => ({
   ...s, clips: s.clips.map((clip) => ({ ...clip, blob: undefined })),
@@ -205,6 +209,7 @@ export async function createCloudSession(s: BrowserSession) {
       check_interval_seconds: s.checkIntervalSeconds ?? 60,
       confirmation_count: s.confirmationCount ?? 1,
       caregiver_phone: s.caregiverPhone || null,
+      telegram_connector_id: s.telegramConnectorId || null,
     }),
   });
 }
@@ -301,6 +306,11 @@ export async function saveCloudClip(s: BrowserSession, clip: BrowserClip) {
   );
   clip.saved = true;
   if (result.content_url) clip.url = new URL(result.content_url, API_URL).href;
+}
+export async function deliverTelegramEvent(s: BrowserSession, eventId: string, recordingId?: string) {
+  return request<NonNullable<BrowserEvent["telegram"]>>(`/browser-sessions/${s.id}/events/${eventId}/telegram`, {
+    method: "POST", body: JSON.stringify({ recording_id: recordingId || null }),
+  });
 }
 export async function listCloudSessions(
   scope: string,

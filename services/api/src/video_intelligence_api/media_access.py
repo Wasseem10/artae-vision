@@ -39,11 +39,15 @@ def evidence_signature_is_valid(
 
 
 def signed_recording_url(
-    recording_id: str, organization_id: str, settings: ApiSettings
+    recording_id: str,
+    organization_id: str,
+    settings: ApiSettings,
+    *,
+    ttl_seconds: int | None = None,
 ) -> str | None:
     if settings.media_signing_key is None:
         return None
-    expires = int(time.time()) + settings.media_url_ttl_seconds
+    expires = int(time.time()) + (ttl_seconds or settings.media_url_ttl_seconds)
     message = f"recording.{recording_id}.{organization_id}.{expires}".encode()
     signature = hmac.new(
         settings.media_signing_key.get_secret_value().encode(), message, hashlib.sha256

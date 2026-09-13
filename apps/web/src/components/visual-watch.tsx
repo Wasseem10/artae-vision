@@ -12,6 +12,8 @@ import {
   createPublicDemo,
   getNotificationCapabilities,
   sendTestSms,
+  saveCloudClip,
+  deliverTelegramEvent,
   listCloudSessions,
   loadCloudSession,
   type BrowserEvent,
@@ -23,6 +25,8 @@ import {
 import { mergeConditions, readConditions } from "@/lib/condition-results";
 import { DETAILED_INTERVALS, MAX_VIDEO_DURATION_SECONDS, detailedTimes, episodes, mergeObservations, recommendedDetailedInterval, refinementWindows, timeLabel, timelineStatus, type Timeline } from "@/lib/video-timeline";
 import styles from "./visual-watch.module.css";
+import { TelegramSetup } from "./telegram-setup";
+import { extractEventClip } from "@/lib/event-clip";
 
 type Source = "upload" | "webcam";
 type RunState = "idle" | "starting" | "sampling" | "checking" | "watching" | "stopped" | "error";
@@ -114,6 +118,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const publicSessionRef = useRef<PublicDemoSession | null>(null);
   const startedAtRef = useRef(0);
   const uploadUrlRef = useRef<string | null>(null);
+  const clipAbortRef = useRef<AbortController | null>(null);
 
   const [source, setSource] = useState<Source>("upload");
   const [uploadName, setUploadName] = useState("");
@@ -137,6 +142,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
   const [nextCheck, setNextCheck] = useState<number | null>(null);
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
   const [smsAvailable, setSmsAvailable] = useState(false);
+  const [telegramConnectorId, setTelegramConnectorId] = useState("");
   const [smsEnabled, setSmsEnabled] = useState(false);
   const [caregiverPhone, setCaregiverPhone] = useState("");
   const [testingSms, setTestingSms] = useState(false);
@@ -149,6 +155,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     : sampleInterval;
 
   const stop = useCallback((message = "Monitor stopped") => {
+    clipAbortRef.current?.abort();
     runIdRef.current += 1;
     runningRef.current = false;
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
@@ -183,6 +190,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
     return () => {
       window.clearTimeout(timer);
       runningRef.current = false;
+      clipAbortRef.current?.abort();
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
       streamRef.current?.getTracks().forEach((track) => track.stop());
       if (uploadUrlRef.current) URL.revokeObjectURL(uploadUrlRef.current);
@@ -205,6 +213,7 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       prompt: prompt.trim(), createdAt: new Date().toISOString(), events: [], clips: [], cloud: true,
       checkIntervalSeconds: intervalSeconds, confirmationCount: recorded ? 1 : confirmationCount,
       caregiverPhone: smsEnabled ? caregiverPhone.trim() : undefined,
+      telegramConnectorId: telegramConnectorId || undefined,
     };
     await createCloudSession(session);
     sessionRef.current = session;
@@ -290,6 +299,43 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
       setEvents((current) => [event, ...current.filter((item) => item.id !== event.id)].slice(0, 10));
       notify(result.summary);
       setStatus(mode === "account" ? "Condition detected — alert saved" : "Condition detected — Strands prepared the response");
+      if (mode === "account" && sessionRef.current?.telegramConnectorId) {
+        const session = sessionRef.current;
+        let recordingId: string | undefined;
+        let clipError = "";
+        const updateDelivery = (telegram: NonNullable<BrowserEvent["telegram"]>) => {
+          setEvents((items) => items.map((item) => item.id === event.id ? { ...item, telegram } : item));
+        };
+        updateDelivery({ status: "pending", provider: "telegram", message: recorded ? "Preparing a short event clip…" : "Sending Telegram alert (live clip unavailable)…" });
+        if (recorded && uploadUrlRef.current) {
+          setStatus("Event detected — preparing a 12-second clip for the caregiver. Keep this tab visible…");
+          clipAbortRef.current = new AbortController();
+          try {
+            const clip = await extractEventClip(uploadUrlRef.current, event.at, clipAbortRef.current.signal);
+            if (!runningRef.current || runId !== runIdRef.current) return result;
+            updateDelivery({ status: "pending", provider: "telegram", message: "Uploading the private event clip…" });
+            await saveCloudClip(session, clip);
+            if (!runningRef.current || runId !== runIdRef.current) {
+              updateDelivery({ status: "failed", provider: "telegram", message: "Stopped before Telegram delivery. The clip is saved." });
+              return result;
+            }
+            recordingId = clip.id;
+          } catch (error) {
+            if (!runningRef.current || runId !== runIdRef.current) {
+              updateDelivery({ status: "failed", provider: "telegram", message: "Stopped before Telegram delivery. The dashboard event is saved." });
+              return result;
+            }
+            clipError = error instanceof Error ? error.message : "Clip preparation failed.";
+          }
+        }
+        try {
+          const receipt = await deliverTelegramEvent(session, event.id, recordingId);
+          updateDelivery({ ...receipt, message: `${receipt.message || ""}${clipError ? ` Clip unavailable: ${clipError}` : ""}` });
+          setStatus(receipt.status === "sent" ? "Telegram alert sent — check your caregiver chat" : "Event saved — Telegram delivery needs attention");
+        } catch (error) {
+          updateDelivery({ status: "unknown", provider: "telegram", message: error instanceof Error ? error.message : "Check your Telegram chat; delivery was not confirmed." });
+        }
+      }
     } else if (result.status === "no_match") {
       setStatus(recorded
         ? batch && batch.current < batch.total
@@ -624,16 +670,18 @@ export function VisualWatch({ mode = "account" }: { mode?: "account" | "public" 
               <div><strong>Dashboard alerts are on</strong><small>{notificationState === "granted" ? "Browser notifications also enabled" : "Enable browser alerts while this page is open"}</small></div>
               {notificationState === "default" && <button onClick={() => void enableNotifications()}>Enable</button>}
             </div>
-            <div className={styles.smsSetup}>
+            <TelegramSetup account={mode === "account"} disabled={running} selected={telegramConnectorId} onChange={setTelegramConnectorId} />
+            <details><summary>SMS settings (AWS registration required)</summary><div className={styles.smsSetup}>
               {mode === "public" ? <p><strong>Text me what happened</strong><small>Sign in to add your phone. A detected event sends its description and video timestamp by text.</small><Link href="/login?next=demo">Sign in for text alerts</Link></p> : !smsAvailable ? <p><strong>SMS needs deployment setup</strong><small>Dashboard and browser alerts work now. AWS SMS is not enabled on this deployment.</small></p> : <>
                 <label><input type="checkbox" checked={smsEnabled} disabled={running} onChange={(event) => setSmsEnabled(event.target.checked)} /> Text a caregiver after a confirmed event</label>
                 {smsEnabled && <><label>Your phone number<input type="tel" inputMode="tel" placeholder="+12065550142" value={caregiverPhone} disabled={running || testingSms} onChange={(event) => { setCaregiverPhone(event.target.value); setTestReceipt(undefined); }} /><small>Include your country code. We text what was detected and where it happened in the video.</small></label><button type="button" disabled={running || testingSms || !caregiverPhone.trim()} onClick={() => void testText()}>{testingSms ? "Sending test…" : "Send test text"}</button><small>Texting currently requires an AWS-verified destination.</small>{testReceipt && <p role="status">{testReceipt.status === "accepted" ? "AWS accepted the test text. Check your phone to confirm it arrived." : testReceipt.message || "The test failed. Check your number and AWS text messaging setup."}</p>}</>}
               </>}
-            </div>
+            </div></details>
           </div>
           <div className={styles.alertList}>
             {events.length === 0 ? <div className={styles.empty}><FiBell /><strong>No care event detected</strong><p>If Nova confirms a visible safety condition, the matching frame and Strands caregiver actions appear here.</p></div> : events.map((event) => (
               <article className={styles.alertItem} key={event.id}>
+                {event.telegram && <div className={styles.deliveryReceipt}><FiBell /><div><strong>{event.telegram.status === "sent" ? "Telegram alert sent" : event.telegram.status === "pending" ? "Preparing Telegram alert" : "Telegram needs attention"}</strong><small>{event.telegram.message}</small>{event.telegram.clip_url && <a href={event.telegram.clip_url} target="_blank" rel="noopener noreferrer">Watch event clip · expires after 24 hours</a>}</div></div>}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {event.snapshot && <img src={event.snapshot} alt="Frame that best supports the detected condition" />}
                 <div><div className={styles.alertMeta}><span>CAREGIVER REVIEW</span><time>{clock(event.occurredAt || event.at)}</time></div><h3>{event.title}</h3><p>{event.summary}</p><div className={styles.actionTags}>{(event.actions || []).map((action) => <span key={action}>{action.replaceAll("_", " ")}</span>)}</div>{event.sms && <div className={`${styles.deliveryReceipt} ${event.sms.status === "accepted" ? styles.deliveryAccepted : styles.deliveryFailed}`}><FiBell /><div><strong>{event.sms.status === "accepted" ? "Caregiver text accepted by AWS" : "Caregiver text needs attention"}</strong><small>{event.sms.status === "accepted" ? `Submitted for delivery to ${event.sms.destination || "your phone"}` : event.sms.message || (event.sms.error ? `Delivery error: ${event.sms.error.replaceAll("_", " ")}` : "Check the AWS SMS configuration")}</small></div></div>}<small>{event.saved ? "Saved to your account" : "Temporary demo result"} · human review required</small></div>
