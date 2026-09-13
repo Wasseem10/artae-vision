@@ -167,11 +167,24 @@ def inspect_frames(prompt, frames, settings, oidc_token, detailed=False):
             "Return a concise interval_definition specifying the start and end criteria. "
             "Use sequential images to judge motion; one image cannot prove a car is stationary. "
             "Keep the same described subject. If several subjects make the target ambiguous, "
-            "set subject_ambiguous true and all frame_states uncertain. An occluded, off-screen, "
-            "or indistinguishable subject is uncertain, NOT inactive. Never infer arrivals "
+            "set subject_ambiguous true and all frame_states uncertain. For subject-specific "
+            "duration questions, an occluded or indistinguishable subject is uncertain. "
+            "For ordinary visible conditions, clear absence in an unobstructed image is inactive. "
+            "Evaluate EACH indexed image separately. Do NOT carry an active state forward "
+            "after the visible condition disappears. Recheck the FIRST and LAST image explicitly. "
+            "Only use neighboring images as context; they cannot override the actual image. "
+            "Never infer arrivals "
             "before the clip, unseen events, injuries, or safety. Never invent durations. "
             "Return match if a frame is active, otherwise uncertain if any are uncertain, "
             "otherwise no_match. For unsupported requests return all states uncertain."
+        )
+    schema = VisualDecision.model_json_schema()
+    if detailed:
+        schema["required"] = ["conditions"]
+        condition_schema = schema["$defs"]["ConditionDecision"]
+        condition_schema["required"] += ["frame_states", "subject_ambiguous", "interval_definition"]
+        condition_schema["properties"]["frame_states"].update(
+            minItems=len(frames), maxItems=len(frames)
         )
     result = client.converse(
         modelId=settings.strands_model_id,
@@ -186,7 +199,7 @@ def inspect_frames(prompt, frames, settings, oidc_token, detailed=False):
                         "description": (
                             "Report the visible condition without performing external actions."
                         ),
-                        "inputSchema": {"json": VisualDecision.model_json_schema()},
+                        "inputSchema": {"json": schema},
                     }
                 }
             ],
