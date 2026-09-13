@@ -53,7 +53,7 @@
   max-width: 1380px;
   margin: auto;
   display: grid;
-  grid-template-columns: minmax(280px, 300px) minmax(0, 1fr) minmax(250px, 280px);
+  grid-template-columns: minmax(280px, 300px) minmax(0, 1fr) minmax(310px, 340px);
   align-items: start;
   justify-content: center;
   gap: 14px;
@@ -176,23 +176,25 @@
 .lastDecision strong { margin-left: 7px; font-size: 11px; text-transform: capitalize; }
 .lastDecision p { margin: 7px 0 0; color: #555555; font-size: 12px; line-height: 1.4; }
 
-.alertControls { padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border-bottom: 1px solid #e4e4e4; }
+.alertControls { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; border-bottom: 1px solid #e4e4e4; }
 .notificationRow { margin: 0; padding: 11px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #f3f3f3; border: 1px solid #e4e4e4; border-radius: 7px; }
 .notificationRow > div { display: grid; gap: 2px; }
-.notificationRow strong { font-size: 11px; }
-.notificationRow small { color: #7d7d7d; font-size: 9px; line-height: 1.3; }
+.notificationRow strong { font-size: 13px; }
+.notificationRow small { color: #686868; font-size: 12px; line-height: 1.4; }
 .notificationRow button { padding: 6px 8px; background: #fff; border: 1px solid #c3c3c3; cursor: pointer; font: inherit; font-size: 10px; }
-.smsSetup { margin: 0; padding: 11px; color: #4f4f4f; background: #f7f7f7; border: 1px solid #e3e3e3; border-radius: 7px; }
-.smsSetup p, .smsSetup label { margin: 0; display: grid; gap: 5px; font-size: 10px; line-height: 1.35; }
-.smsSetup label + label { margin-top: 9px; }
-.smsSetup label:first-child { display: flex; align-items: center; }
-.smsSetup strong { color: #333; font-size: 11px; }
-.smsSetup small { color: #7d7d7d; font-size: 9px; line-height: 1.35; }
-.smsSetup a { width: fit-content; margin-top: 3px; color: #244d63; font-size: 10px; font-weight: 600; }
-.smsSetup input[type="tel"] { box-sizing: border-box; width: 100%; height: 36px; padding: 0 9px; color: #222; background: #fff; border: 1px solid #d5d5d5; font: inherit; }
-.smsSetup button { width: 100%; margin: 10px 0 6px; padding: 9px; border: 1px solid #ccc; border-radius: 5px; background: #fff; color: #222; font: inherit; font-size: 11px; cursor: pointer; }
+.smsSetup { min-width: 0; margin: 0; padding: 16px; color: #414141; background: #fafafa; border: 1px solid #dedede; border-radius: 9px; }
+.smsSetup p, .smsSetup label { margin: 0; display: grid; gap: 8px; font-size: 14px; font-weight: 400; line-height: 1.5; text-transform: none; letter-spacing: normal; }
+.smsSetup label + label { margin-top: 16px; }
+.smsSetup label:first-child { display: flex; align-items: flex-start; gap: 10px; font-weight: 500; }
+.smsSetup input[type="checkbox"] { appearance: auto; width: 19px; height: 19px; min-height: 0; flex: 0 0 19px; margin: 2px 0 0; padding: 0; accent-color: #333; }
+.smsSetup strong { color: #333; font-size: 15px; }
+.smsSetup small { display: block; color: #686868; font-size: 12px; font-weight: 400; line-height: 1.5; text-transform: none; letter-spacing: normal; }
+.smsSetup a { width: fit-content; margin-top: 5px; color: #244d63; font-size: 14px; font-weight: 600; }
+.smsSetup input[type="tel"] { box-sizing: border-box; width: 100%; height: 48px; padding: 0 12px; color: #222; background: #fff; border: 1px solid #bbb; border-radius: 7px; font: inherit; font-size: 16px; letter-spacing: .02em; }
+.smsSetup input:focus-visible, .smsSetup button:focus-visible { outline: 2px solid #596479; outline-offset: 3px; }
+.smsSetup button { width: 100%; min-height: 44px; margin: 14px 0 8px; padding: 10px 12px; border: 1px solid #333; border-radius: 7px; background: #242424; color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
 .smsSetup button:disabled { opacity: .5; cursor: wait; }
-.smsSetup p[role="status"] { margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; }
+.smsSetup p[role="status"] { margin-top: 12px; padding: 12px; background: #fff; border: 1px solid #dedede; border-radius: 7px; font-size: 13px; overflow-wrap: anywhere; }
 .alertList { min-height: 0; max-height: 440px; flex: 1; overflow: auto; }
 .empty { min-height: 150px; padding: 24px; display: grid; place-items: center; align-content: center; color: #8d8d8d; text-align: center; }
 .empty svg { margin-bottom: 10px; font-size: 24px; }
@@ -201,16 +203,16 @@
 .alertItem { margin: 0 12px; padding: 13px 0; display: grid; gap: 10px; border-top: 1px solid #e5e5e5; }
 .alertItem img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .alertMeta { display: flex; justify-content: space-between; gap: 8px; color: #555555; font-size: 9px; font-weight: 700; letter-spacing: 1px; }
-.alertItem h3 { margin: 8px 0 4px; font-size: 14px; }
-.alertItem p { margin: 0 0 9px; font-size: 11px; line-height: 1.45; }
+.alertItem h3 { margin: 8px 0 4px; font-size: 16px; }
+.alertItem p { margin: 0 0 9px; font-size: 13px; line-height: 1.5; }
 .alertItem small { color: #858585; font-size: 9px; }
 .actionTags { margin: 0 0 9px; display: flex; flex-wrap: wrap; gap: 5px; }
 .actionTags span { padding: 4px 6px; color: #494949; background: #f1f1f1; border: 1px solid #dcdcdc; border-radius: 999px; font-size: 8px; text-transform: capitalize; }
 .deliveryReceipt { margin: 0 0 9px; padding: 9px; display: flex; align-items: center; gap: 8px; border: 1px solid #dedee5; border-radius: 7px; }
 .deliveryReceipt > svg { flex: 0 0 auto; color: #686b83; }
 .deliveryReceipt > div { display: grid; gap: 1px; }
-.deliveryReceipt strong { margin: 0; font-size: 10px; text-transform: none; }
-.deliveryReceipt small { color: #747687; }
+.deliveryReceipt strong { margin: 0; font-size: 12px; text-transform: none; }
+.deliveryReceipt small { color: #686a7b; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .deliveryAccepted { background: #f3f3f8; border-color: #d4d5e2; }
 .deliveryFailed { background: #fff7f7; border-color: #e9cccc; }
 

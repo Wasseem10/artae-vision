@@ -101,6 +101,7 @@ def send_caregiver_sms(
         code = getattr(exc, "response", {}).get("Error", {}).get("Code", type(exc).__name__)
         explanations = {
             "AuthorizationError": "AWS has not granted this app permission to send texts (sns:Publish).",
+            "AuthorizationErrorException": "AWS has not granted this app permission to send texts (sns:Publish).",
             "AccessDenied": "AWS has not granted this app permission to send texts (sns:Publish).",
             "AccessDeniedException": "AWS has not granted this app permission to send texts (sns:Publish).",
             "InvalidParameter": "AWS rejected this destination. Check the phone format and verify the number in the AWS SMS sandbox.",
