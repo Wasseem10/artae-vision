@@ -40,6 +40,50 @@ import {
 } from "@/lib/supabase";
 import styles from "./instant-demo.module.css";
 
+import { buildIncidentReport, renderIncidentReportHtml } from "@/lib/incident-report";
+
+function IncidentReviewPanel({
+  event,
+  busy,
+  onReview,
+  onExport,
+}: {
+  event: BrowserEvent;
+  busy: boolean;
+  onReview: (outcome: ReviewOutcome, reviewerNote: string, responseChecklist: string) => void;
+  onExport: () => void;
+}) {
+  const [reviewerNote, setReviewerNote] = useState(event.review?.reviewer_note ?? "");
+  const [responseChecklist, setResponseChecklist] = useState(event.review?.response_checklist ?? "");
+  const savedNote = event.review?.reviewer_note ?? "";
+  const savedChecklist = event.review?.response_checklist ?? "";
+  const detailsChanged = reviewerNote.trim() !== savedNote || responseChecklist.trim() !== savedChecklist;
+
+  return <div className={styles.incidentReview}>
+    <details>
+      <summary>Reviewer note and response steps</summary>
+      <p>Record what the caregiver observed. Add your organization’s steps as reference; Artae does not verify that they were completed.</p>
+      <label>Reviewer note (optional)
+        <textarea value={reviewerNote} maxLength={2000} rows={3} placeholder="What did the reviewer observe or do?" onChange={(e) => setReviewerNote(e.target.value)} />
+      </label>
+      <label>Organization response steps (optional)
+        <textarea value={responseChecklist} maxLength={4000} rows={4} placeholder="Paste the steps your organization uses for this type of alert." onChange={(e) => setResponseChecklist(e.target.value)} />
+      </label>
+    </details>
+    <div className={styles.reviewActions}>
+      {event.review?.status !== "resolved" && <>
+        {event.review?.status !== "acknowledged" && <button type="button" disabled={busy} onClick={() => onReview("acknowledged", reviewerNote, responseChecklist)}>Acknowledge</button>}
+        <button type="button" disabled={busy} onClick={() => onReview("resolved", reviewerNote, responseChecklist)}>Mark reviewed</button>
+        <button type="button" disabled={busy} onClick={() => onReview("false_alarm", reviewerNote, responseChecklist)}>False alarm</button>
+      </>}
+      {event.review?.outcome && detailsChanged && <button type="button" disabled={busy} onClick={() => onReview(event.review!.outcome!, reviewerNote, responseChecklist)}>Save review details</button>}
+      {event.review?.status === "resolved" && <button type="button" disabled={busy || detailsChanged} onClick={onExport}>Download incident report</button>}
+    </div>
+    {event.review?.status === "resolved" && detailsChanged && <small>Save the updated details before downloading the report.</small>}
+    {event.review?.status === "resolved" && <small>The report is an HTML file you can print to PDF. Download the footage segment separately if needed.</small>}
+  </div>;
+}
+
 export function BrowserMonitor({ workspace = false, experience = "general" }: { workspace?: boolean; experience?: "general" | "senior-safety" }) {
   const seniorSafety = experience === "senior-safety";
   const videoRef = useRef<HTMLVideoElement>(null),
@@ -123,23 +167,29 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     } finally { setSavingJob(false); }
   }
 
-  async function reviewIncident(event: BrowserEvent, outcome: ReviewOutcome) {
+  async function reviewIncident(event: BrowserEvent, outcome: ReviewOutcome, reviewerNote: string, responseChecklist: string) {
     const s = current.current;
     if (!s || reviewing || s.scope !== accountScope.current) return;
     const previousReview = event.review;
+    const details = {
+      reviewer_note: reviewerNote.trim(),
+      response_checklist: responseChecklist.trim(),
+    };
     setReviewing(event.id);
+    setSaveProblem(null);
     try {
       if (s.scope === "guest") {
         event.review = {
           status: outcome === "acknowledged" ? "acknowledged" : "resolved",
           outcome, reviewed_at: new Date().toISOString(),
+          ...details,
         };
       } else {
         // Wait for the account's create/event queue; never claim a remote save optimistically.
         await cloudQueue.current;
         if (!event.saved || s.scope !== accountScope.current)
           throw new Error("Save this alert to your account before reviewing it.");
-        Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome)));
+        Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome, details)));
       }
       // Guest reviews require a committed device copy before success. Account
       // reviews were already committed remotely; local storage is optional.
@@ -151,6 +201,25 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     } finally {
       setReviewing(null);
     }
+  }
+
+  function downloadIncidentReport(event: BrowserEvent) {
+    const s = current.current;
+    if (!s || s.scope !== accountScope.current || !s.events.some((item) => item.id === event.id) || event.review?.status !== "resolved") return;
+    const report = buildIncidentReport(s, event, {
+      reviewerNote: event.review.reviewer_note,
+      checklistText: event.review.response_checklist,
+      generatedAt: new Date().toISOString(),
+    });
+    const html = renderIncidentReportHtml(report);
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `artae-incident-${event.id}.html`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   useEffect(() => {
@@ -253,7 +322,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   }, [replay]);
   function persist(s: BrowserSession) {
     if (mounted.current && accountScope.current === s.scope) {
-      setSession({ ...s, events: [...s.events], clips: [...s.clips] });
+      if (current.current === s)
+        setSession({ ...s, events: [...s.events], clips: [...s.clips] });
       setHistory((rows) => [sessionMetadata(s), ...rows.filter((r) => r.id !== s.id)]);
     }
     void saveLocal(s).catch(() => {
@@ -374,7 +444,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
     const fallVisualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let lastFallVisualSample = -1;
-    let publicFallSession: PublicDemoSession | null = null;
+    let publicFallSessionPromise: Promise<PublicDemoSession | null> | null = null;
     const now = () =>
       source === "webcam"
         ? (performance.now() - startTime) / 1000
@@ -411,10 +481,16 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         await audio.current.resume();
       }
       if (scope === "guest" && job === "fall") {
-        setVisualStatus("Opening the AWS fall-review agent…");
-        publicFallSession = await createPublicDemo(
+        setVisualStatus("Checking optional AWS review. On-device detection can run without it.");
+        publicFallSessionPromise = createPublicDemo(
           "A person transitions from upright to the floor and remains down. Distinguish this from normal sitting, kneeling, or bending.",
-        );
+        ).then((publicSession) => {
+          if (mounted.current && current.current === s) setVisualStatus("AWS review is ready for a possible fall.");
+          return publicSession;
+        }).catch(() => {
+          if (mounted.current && current.current === s) setVisualStatus("AWS review is unavailable. On-device detection and local evidence will continue.");
+          return null;
+        });
       }
       worker = new Worker("/vision/pose-worker.js");
       await new Promise<void>((resolve, reject) => {
@@ -593,21 +669,45 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           persist(s);
           beep();
           notifyCaregiver(event.title);
-          if (scope === "guest" && job === "fall" && publicFallSession && fallVisualBuffer.length) {
-            visualPending = true;
-            setVisualStatus("Amazon Nova is reviewing the possible fall sequence…");
+          if (scope === "guest" && job === "fall") {
             const batch = fallVisualBuffer.slice(-8);
-            void analyzePublicDemo(publicFallSession, batch).then((result) => {
-              setVisualFrames((n) => n + result.frames_analyzed);
-              event.title = result.status === "match" ? "Possible fall — caregiver check requested" : "Possible fall candidate — human review required";
-              Object.assign(event, result.event ? cloudEventFields(result.event) : { summary: result.summary });
-              setVisualStatus(result.event
-                ? "Nova confirmed the visible sequence and Strands prepared the caregiver response."
-                : `Nova result: ${result.summary} The local candidate remains available for human review.`);
-              persist(s);
-            }).catch((error) => {
-              setVisualStatus(error instanceof Error ? `AWS review unavailable: ${error.message}` : "AWS review unavailable; local alert kept.");
-            }).finally(() => { visualPending = false; });
+            if (!publicFallSessionPromise || !batch.length) {
+              setVisualStatus("Local possible fall saved. AWS review was unavailable for this event.");
+            } else {
+              visualPending = true;
+              setVisualStatus("Local possible fall saved. Checking AWS review availability…");
+              void publicFallSessionPromise.then((publicSession) => {
+                if (!publicSession) {
+                  if (mounted.current && current.current === s)
+                    setVisualStatus("Local possible fall saved. AWS review is unavailable for this event.");
+                  return null;
+                }
+                if (mounted.current && current.current === s)
+                  setVisualStatus("Amazon Nova is reviewing the possible fall sequence…");
+                return analyzePublicDemo(publicSession, batch);
+              }).then((result) => {
+                if (!result) return;
+                if (mounted.current && current.current === s)
+                  setVisualFrames((n) => n + result.frames_analyzed);
+                event.title = result.status === "match" ? "Possible fall — caregiver check requested" : "Possible fall candidate — human review required";
+                const existingReview = event.review;
+                const enrichment = result.event ? cloudEventFields(result.event) : { summary: result.summary };
+                Object.assign(event, enrichment, {
+                  // Public demo analysis enriches a guest incident; it does not save an account copy.
+                  saved: false,
+                  // A late AWS result must not reopen an incident that a caregiver already reviewed.
+                  review: existingReview?.outcome ? existingReview : result.event?.details.review ?? existingReview,
+                });
+                if (mounted.current && current.current === s)
+                  setVisualStatus(result.event
+                    ? "Nova confirmed the visible sequence and Strands prepared the caregiver response."
+                    : `Nova result: ${result.summary} The local candidate remains available for human review.`);
+                persist(s);
+              }).catch((error) => {
+                if (mounted.current && current.current === s)
+                  setVisualStatus(error instanceof Error ? `AWS review unavailable: ${error.message}` : "AWS review unavailable; local alert kept.");
+              }).finally(() => { visualPending = false; });
+            }
           } else {
             queueCloud(s, async () => {
               await createCloudSession(s);
@@ -874,7 +974,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <option value="custom" disabled={scope === "guest"}>Describe a visual condition · AWS · sign-in required</option>
             </select>
           </label>}
-          {seniorSafety && <div className={styles.fixedJob}><small>1. CARE JOB</small><strong>Possible fall in a shared room</strong><span>On-device pose candidate + AWS review + caregiver response</span></div>}
+          {seniorSafety && <div className={styles.fixedJob}><small>1. CARE JOB</small><strong>Possible fall in a shared room</strong><span>On-device pose detection, recorded evidence, and caregiver review. Optional AWS review is available for guest runs.</span></div>}
           <label>
             2. Connect video
             <select
@@ -1000,7 +1100,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <span>{metrics.state}</span>
             </div>
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
-            {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS will review a sequence when the local pose detector finds a candidate." : "Collecting the first four frames…")}</p>}
+            {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS review is optional; local detection and evidence run in this browser." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
               <p>
@@ -1093,7 +1193,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                               event.at >= c.start &&
                               event.at <= c.start + c.duration,
                           );
-                          if (clip) playClip(clip, event.at);
+                          if (clip) playClip(clip, Math.max(clip.start, event.at - 3));
                         }}
                         disabled={
                           !session.clips.some(
@@ -1105,15 +1205,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                       >
                         Review footage
                       </button>
-                      <div className={styles.reviewActions}>
-                        {event.review?.status !== "resolved" && (
-                          <>
-                            {event.review?.status !== "acknowledged" && <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "acknowledged")}>Acknowledge</button>}
-                            <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "resolved")}>Mark reviewed</button>
-                            <button disabled={reviewing !== null} onClick={() => void reviewIncident(event, "false_alarm")}>False alarm</button>
-                          </>
-                        )}
-                      </div>
+                      <IncidentReviewPanel
+                        key={`${event.id}:${event.review?.reviewed_at ?? "open"}`}
+                        event={event}
+                        busy={reviewing !== null}
+                        onReview={(outcome, reviewerNote, responseChecklist) => void reviewIncident(event, outcome, reviewerNote, responseChecklist)}
+                        onExport={() => downloadIncidentReport(event)}
+                      />
                       {event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}{event.sms.error ? ` · ${event.sms.error}` : ""}</small>}
                       <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" ? "on this device" : "to account"}` : event.sms?.status === "accepted" ? "AWS accepted the caregiver text; carrier delivery is not guaranteed." : "Awaiting caregiver review."}</small>
                     </div>
@@ -1226,7 +1324,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <strong>{s.name}</strong>
               <span>
                 {new Date(s.createdAt).toLocaleString()} ·{" "}
-                {s.job === "custom" ? "Custom visual job" : s.job === "fall" ? "Possible fall" : "Person detection"} ·{" "}
+                {s.events.length ? `${s.events.length} ${s.events.length === 1 ? "alert" : "alerts"}` : "No alerts"} ·{" "}
                 {s.cloud ? "Account" : "This device"}
               </span>
             </button>

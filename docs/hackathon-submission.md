@@ -79,7 +79,7 @@ tool calls, token counts, completion state, and safe fallback state.
 - [x] Enable Amazon Bedrock credentials and run the live Strands path
 - [x] Capture a repeatable end-to-end fall-detection demonstration
 - [x] Add a no-login judging path (`/demo`; AWS requires an account)
-- [ ] Make the submission repository public
+- [x] Make the submission repository public (`Wasseem10/artae-vision`, verified September 26)
 - [ ] Put the MIT license in the GitHub About panel
 - [ ] Record and publish a maximum five-minute YouTube or Vimeo video
 - [ ] Create AWS Builder ID and complete the Devpost entry
