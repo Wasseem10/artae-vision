@@ -437,12 +437,10 @@ export const api = {
   acknowledgeAlert: (alertId: string) =>
     request<AlertIncident>(`/alerts/${alertId}/acknowledge`, {
       method: "POST",
-      body: JSON.stringify({ actor: "dashboard-operator" }),
     }),
   resolveAlert: (alertId: string) =>
     request<AlertIncident>(`/alerts/${alertId}/resolve`, {
       method: "POST",
-      body: JSON.stringify({ actor: "dashboard-operator" }),
     }),
   listEvidence: () => request<EvidenceAsset[]>("/evidence?limit=100"),
   createEvidenceSearch: (query: string, cameraId: string | null) =>

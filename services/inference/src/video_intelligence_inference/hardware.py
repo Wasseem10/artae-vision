@@ -26,10 +26,16 @@ def _memory_mb() -> int:
     return 0
 
 
-def collect_edge_profile(outbox_path: Path) -> dict[str, object]:
+def collect_edge_profile(
+    outbox_path: Path, evidence_outbox_path: Path | None = None
+) -> dict[str, object]:
     outbox = DurableJsonOutbox(outbox_path)
     storage_mb = shutil.disk_usage(outbox_path.parent).free // (1024 * 1024)
-    queue_depth = outbox.count()
+    event_queue_depth = outbox.count()
+    evidence_queue_depth = (
+        DurableJsonOutbox(evidence_outbox_path).count() if evidence_outbox_path is not None else 0
+    )
+    queue_depth = event_queue_depth + evidence_queue_depth
     try:
         cuda_devices = cv2.cuda.getCudaEnabledDeviceCount()
     except (AttributeError, cv2.error):
@@ -50,5 +56,9 @@ def collect_edge_profile(outbox_path: Path) -> dict[str, object]:
         "health_status": health,
         "offline_queue_depth": queue_depth,
         "last_sync_at": datetime.now(UTC).isoformat() if queue_depth == 0 else None,
-        "details": {"python": platform.python_version()},
+        "details": {
+            "python": platform.python_version(),
+            "event_queue_depth": event_queue_depth,
+            "evidence_queue_depth": evidence_queue_depth,
+        },
     }

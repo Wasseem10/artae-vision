@@ -1672,10 +1672,6 @@ class AlertRead(ApiModel):
     deliveries: list[AlertDeliveryRead]
 
 
-class AlertActor(ApiModel):
-    actor: str = Field(default="operator", min_length=1, max_length=120)
-
-
 class TestAlertCreate(ApiModel):
     """Create an unmistakably synthetic incident for operator workflow testing."""
 

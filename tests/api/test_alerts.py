@@ -153,6 +153,7 @@ def test_acknowledging_alert_cancels_delayed_escalation(api_client: TestClient) 
     )
     assert acknowledged.status_code == 200
     assert acknowledged.json()["status"] == "acknowledged"
+    assert acknowledged.json()["acknowledged_by"] == "local-dashboard-operator"
     assert acknowledged.json()["deliveries"][0]["status"] == "suppressed"
     claim = api_client.post(
         "/api/v1/agent/alert-deliveries/claim",
@@ -160,6 +161,46 @@ def test_acknowledging_alert_cancels_delayed_escalation(api_client: TestClient) 
         json={"worker_id": "alerts-1"},
     )
     assert claim.status_code == 204
+
+
+def test_alert_transition_actor_cannot_be_spoofed(api_client: TestClient) -> None:
+    create_rule(api_client)
+    api_client.post("/api/v1/agent/events", headers=AGENT_HEADERS, json=event_payload())
+    alert = api_client.get("/api/v1/alerts", headers=DASHBOARD_HEADERS).json()[0]
+
+    acknowledged = api_client.post(
+        f"/api/v1/alerts/{alert['id']}/acknowledge",
+        headers=DASHBOARD_HEADERS,
+        json={"actor": "someone-else"},
+    )
+    assert acknowledged.status_code == 200
+    assert acknowledged.json()["acknowledged_by"] == "local-dashboard-operator"
+
+    resolved = api_client.post(
+        f"/api/v1/alerts/{alert['id']}/resolve",
+        headers=DASHBOARD_HEADERS,
+        json={"actor": "another-person"},
+    )
+    assert resolved.status_code == 200
+    assert resolved.json()["resolved_by"] == "local-dashboard-operator"
+    persisted = api_client.get("/api/v1/alerts", headers=DASHBOARD_HEADERS).json()[0]
+    assert persisted["acknowledged_by"] == "local-dashboard-operator"
+    assert persisted["resolved_by"] == "local-dashboard-operator"
+
+
+def test_alert_transition_accepts_empty_body(api_client: TestClient) -> None:
+    create_rule(api_client)
+    api_client.post("/api/v1/agent/events", headers=AGENT_HEADERS, json=event_payload())
+    alert = api_client.get("/api/v1/alerts", headers=DASHBOARD_HEADERS).json()[0]
+
+    acknowledged = api_client.post(
+        f"/api/v1/alerts/{alert['id']}/acknowledge", headers=DASHBOARD_HEADERS
+    )
+    assert acknowledged.status_code == 200
+    resolved = api_client.post(
+        f"/api/v1/alerts/{alert['id']}/resolve", headers=DASHBOARD_HEADERS
+    )
+    assert resolved.status_code == 200
 
 
 def test_operator_can_create_safe_dashboard_only_test_alert(

@@ -1,6 +1,7 @@
 import hashlib
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -159,7 +160,9 @@ def test_event_from_draft_rule_is_rejected(api_client: TestClient) -> None:
     assert response.json()["detail"] == "Rule is not active"
 
 
-def test_evidence_upload_index_lifecycle_and_search(api_client: TestClient) -> None:
+def test_evidence_upload_index_lifecycle_and_search(
+    api_client: TestClient, tmp_path: Path
+) -> None:
     camera, _, _ = create_active_rule(api_client)
     payload = event_payload()
     event = api_client.post(
@@ -216,6 +219,35 @@ def test_evidence_upload_index_lifecycle_and_search(api_client: TestClient) -> N
     )
     assert indexed.status_code == 200
     assert indexed.json()["status"] == "ready"
+
+    # A lost upload response can cause the edge device to repeat the PUT after
+    # indexing has finished. Identical bytes preserve the ready asset; different
+    # bytes cannot silently replace incident evidence.
+    retry = api_client.put(
+        f"/api/v1/agent/events/{payload['id']}/clip",
+        content=clip,
+        headers={
+            "X-Agent-Key": AGENT_KEY,
+            "Content-Type": "video/mp4",
+            "X-Evidence-Duration-Seconds": "99",
+        },
+    )
+    assert retry.status_code == 200
+    assert retry.json()["status"] == "ready"
+    assert retry.json()["duration_seconds"] == 7.5
+    assert retry.json()["external_video_id"] == "video-1"
+
+    conflict = api_client.put(
+        f"/api/v1/agent/events/{payload['id']}/clip",
+        content=b"different-video",
+        headers={"X-Agent-Key": AGENT_KEY, "Content-Type": "video/mp4"},
+    )
+    assert conflict.status_code == 409
+    assert (
+        conflict.json()["detail"] == "A different clip is already stored for this event"
+    )
+    assert api_client.get(asset["content_url"]).content == clip
+    assert not list((tmp_path / "evidence").glob("*.part"))
 
     created_search = api_client.post(
         "/api/v1/evidence/searches",

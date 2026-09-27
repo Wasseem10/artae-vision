@@ -597,17 +597,25 @@ def run_worker(
 
     try:
         with httpx.Client(timeout=settings.webhook_timeout_seconds, transport=transport) as client:
-            if settings.control_plane_device_token is not None:
-                try:
-                    profile_response = client.post(
-                        base_url.rstrip("/") + "/api/v1/agent/fleet/profile",
-                        json=collect_edge_profile(settings.offline_outbox_path),
-                        headers=auth_headers,
-                    )
-                    profile_response.raise_for_status()
-                except httpx.HTTPError as exc:
-                    logger.warning("Could not report edge hardware profile: %s", exc)
+            last_profile_at = float("-inf")
             while True:
+                if (
+                    settings.control_plane_device_token is not None
+                    and time.monotonic() - last_profile_at >= 30.0
+                ):
+                    try:
+                        profile_response = client.post(
+                            base_url.rstrip("/") + "/api/v1/agent/fleet/profile",
+                            json=collect_edge_profile(
+                                settings.offline_outbox_path, settings.evidence_outbox_path
+                            ),
+                            headers=auth_headers,
+                        )
+                        profile_response.raise_for_status()
+                    except httpx.HTTPError as exc:
+                        logger.warning("Could not report edge hardware profile: %s", exc)
+                    finally:
+                        last_profile_at = time.monotonic()
                 for camera_id, task in list(active.items()):
                     if not task.future.done():
                         continue

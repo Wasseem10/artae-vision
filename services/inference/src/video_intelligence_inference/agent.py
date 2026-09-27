@@ -537,6 +537,7 @@ def run(
                 control_plane_api_base,
                 headers=control_headers,
                 timeout_seconds=settings.webhook_timeout_seconds,
+                outbox_path=settings.evidence_outbox_path if control_plane_api_base else None,
             ) as evidence_uploads,
         ):
             evidence = EvidenceRecorder(

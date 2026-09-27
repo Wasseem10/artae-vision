@@ -31,6 +31,12 @@ Completed evidence clips follow a second background path. The uploader converts
 OpenCV's development MP4 into seekable H.264 using the packaged FFmpeg binary,
 then streams it to FastAPI with the source event ID. This encoding and network work
 never runs in the frame-processing thread.
+When connected to the control plane, completed incident clips are queued in
+`VIDEO_INTEL_EVIDENCE_OUTBOX_PATH` (default
+`artifacts/offline/evidence-outbox.db`) before upload. Keep that database and the
+files under `VIDEO_INTEL_EVENTS_DIRECTORY` on persistent storage. A running camera
+agent retries queued clips after an API outage or restart; the fleet profile
+reports pending event and evidence counts every 30 seconds.
 
 Milestone 9 assignments contain every active dwell job for one camera. The service
 decodes and tracks each frame once, then fans those detections into independent
