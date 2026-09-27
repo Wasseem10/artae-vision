@@ -3,15 +3,18 @@ import hmac
 import json
 
 import httpx
+import pytest
 from video_intelligence_alerts.config import AlertWorkerSettings
 from video_intelligence_alerts.worker import (
     ActionAssignment,
     AlertAssignment,
+    HealthAssignment,
     action_headers,
     adapt_action_payload,
     canonical_body,
     classify_response,
     deliver_assignment,
+    deliver_health_assignment,
     evaluate_operational_health,
     execute_action,
     run_worker,
@@ -67,6 +70,161 @@ def test_delivery_sends_signed_body_and_classifies_retryable_response() -> None:
     assert classify_response(204) == "delivered"
     assert classify_response(400) == "permanent_failure"
     assert classify_response(429) == "retryable"
+
+
+def test_health_delivery_uses_distinct_signed_event_and_stable_idempotency_key() -> (
+    None
+):
+    assignment = HealthAssignment(
+        delivery_id="health-delivery-1",
+        incident_id="incident-1",
+        webhook_url="https://receiver.test/outage",
+        signing_secret="health-signing-secret",
+        timeout_seconds=5,
+        payload={
+            "type": "video.monitoring.unavailable",
+            "incident": {"id": "incident-1"},
+        },
+    )
+    received: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        received["body"] = request.content
+        received["headers"] = dict(request.headers)
+        return httpx.Response(200)
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = deliver_health_assignment(assignment, client)
+
+    headers = received["headers"]
+    assert isinstance(headers, dict)
+    assert headers["x-artae-event"] == "video.monitoring.unavailable"
+    assert headers["idempotency-key"] == "health-delivery-1"
+    timestamp = headers["x-artae-timestamp"]
+    body = received["body"]
+    assert isinstance(body, bytes)
+    expected = hmac.new(
+        b"health-signing-secret", str(timestamp).encode() + b"." + body, hashlib.sha256
+    ).hexdigest()
+    assert headers["x-artae-signature"] == f"v1={expected}"
+    assert result == {"outcome": "delivered", "status_code": 200, "error": None}
+
+
+def test_idle_worker_claims_and_reports_health_delivery() -> None:
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path.endswith("/operational-health/evaluate"):
+            return httpx.Response(
+                200,
+                json={
+                    "evaluated_resources": 1,
+                    "active_incidents": 1,
+                    "opened_incidents": 0,
+                    "resolved_incidents": 0,
+                },
+            )
+        if request.url.path.endswith("/operational-health/deliveries/claim"):
+            return httpx.Response(
+                200,
+                json={
+                    "delivery_id": "delivery-1",
+                    "incident_id": "incident-1",
+                    "webhook_url": "https://responder.test/outage",
+                    "signing_secret": "pilot-signing-secret",
+                    "timeout_seconds": 5,
+                    "payload": {"type": "video.monitoring.unavailable"},
+                },
+            )
+        if request.url.path == "/outage":
+            return httpx.Response(200)
+        if request.url.path.endswith(
+            "/operational-health/deliveries/delivery-1/result"
+        ):
+            assert request.headers["X-Agent-Key"] == "test-agent-key-123456"
+            assert json.loads(request.content)["outcome"] == "delivered"
+            return httpx.Response(200)
+        return httpx.Response(204)
+
+    result = run_worker(
+        AlertWorkerSettings(
+            control_plane_url="http://control.test",
+            agent_key="test-agent-key-123456",
+            worker_id="pilot-worker",
+        ),
+        once=True,
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert result == 0
+    assert "/api/v1/agent/operational-health/deliveries/claim" in paths
+    assert "/outage" in paths
+    assert "/api/v1/agent/operational-health/deliveries/delivery-1/result" in paths
+
+
+def test_continuous_fall_delivery_backlog_cannot_starve_outage_delivery() -> None:
+    completed: list[str] = []
+
+    class StopWorker(Exception):
+        pass
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/operational-health/evaluate"):
+            return httpx.Response(
+                200,
+                json={
+                    "evaluated_resources": 1,
+                    "active_incidents": 1,
+                    "opened_incidents": 0,
+                    "resolved_incidents": 0,
+                },
+            )
+        if path.endswith("/alert-deliveries/claim"):
+            return httpx.Response(
+                200,
+                json={
+                    "delivery_id": "fall-delivery",
+                    "alert_id": "fall-alert",
+                    "event_id": "fall-event",
+                    "webhook_url": "https://receiver.test/fall",
+                    "signing_secret": "fall-signing-secret",
+                    "timeout_seconds": 5,
+                    "payload": {"type": "video.alert.created"},
+                },
+            )
+        if path.endswith("/operational-health/deliveries/claim"):
+            return httpx.Response(
+                200,
+                json={
+                    "delivery_id": "outage-delivery",
+                    "incident_id": "outage-incident",
+                    "webhook_url": "https://receiver.test/outage",
+                    "signing_secret": "outage-signing-secret",
+                    "timeout_seconds": 5,
+                    "payload": {"type": "video.monitoring.unavailable"},
+                },
+            )
+        if path in {"/fall", "/outage"}:
+            return httpx.Response(200)
+        if path.endswith("/result"):
+            completed.append("health" if "operational-health" in path else "alert")
+            if len(completed) == 4:
+                raise StopWorker()
+            return httpx.Response(200)
+        return httpx.Response(204)
+
+    with pytest.raises(StopWorker):
+        run_worker(
+            AlertWorkerSettings(
+                control_plane_url="http://control.test",
+                agent_key="test-agent-key-123456",
+                worker_id="pilot-worker",
+            ),
+            transport=httpx.MockTransport(handler),
+        )
+    assert completed == ["alert", "health", "alert", "health"]
 
 
 def action_assignment(connector_type: str = "generic_webhook") -> ActionAssignment:

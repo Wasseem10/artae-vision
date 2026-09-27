@@ -285,10 +285,32 @@ export interface OperationalHealthIncident {
   last_detected_at: string;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
+  deliveries: OperationalHealthDelivery[];
   resolved_at: string | null;
   resolved_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface OperationalHealthDelivery {
+  id: string;
+  channel_id: string;
+  channel_name: string;
+  status: "queued" | "delivering" | "retrying" | "delivered" | "failed" | "suppressed";
+  attempt_count: number;
+  next_attempt_at: string;
+  last_status_code: number | null;
+  last_error: string | null;
+  delivered_at: string | null;
+}
+
+export interface HealthAlertRoute {
+  id: string;
+  camera_id: string;
+  channel_id: string;
+  channel_name: string;
+  outage_after_seconds: number;
+  created_at: string;
 }
 
 export interface PlatformCapabilities {

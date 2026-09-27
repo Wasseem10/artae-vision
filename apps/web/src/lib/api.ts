@@ -17,6 +17,7 @@ import type {
   CreateCameraOnboardingInput,
   CreateCameraCommissioningInput,
   OperationalHealthIncident,
+  HealthAlertRoute,
   CreateReplaySuiteInput,
   CreateRuleInput,
   CreateZoneInput,
@@ -151,6 +152,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (response.status === 401) requireFreshLogin();
     throw new ApiError(message ?? `Request failed with HTTP ${response.status}.`, response.status);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -247,6 +249,15 @@ export const api = {
     }),
   listOperationalHealthIncidents: () =>
     request<OperationalHealthIncident[]>("/operational-health/incidents"),
+  listHealthAlertRoutes: (cameraId: string) =>
+    request<HealthAlertRoute[]>(`/cameras/${cameraId}/health-alert-routes`),
+  createHealthAlertRoute: (cameraId: string, channelId: string, outageAfterSeconds: number) =>
+    request<HealthAlertRoute>(`/cameras/${cameraId}/health-alert-routes`, {
+      method: "POST",
+      body: JSON.stringify({ channel_id: channelId, outage_after_seconds: outageAfterSeconds }),
+    }),
+  deleteHealthAlertRoute: (cameraId: string, routeId: string) =>
+    request<void>(`/cameras/${cameraId}/health-alert-routes/${routeId}`, { method: "DELETE" }),
   acknowledgeOperationalHealthIncident: (incidentId: string) =>
     request<OperationalHealthIncident>(
       `/operational-health/incidents/${incidentId}/acknowledge`,

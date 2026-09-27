@@ -1018,7 +1018,7 @@ export function Dashboard() {
       case "devices":
         return <EdgeDevicesPanel busy={busy} canAdminister={canAdminister} devices={edgeDevices} fleet={edgeFleet} onCreate={createEdgeDevice} onDemoProfile={createDemoFleetProfile} onRevoke={revokeEdgeDevice} onRotate={rotateEdgeDevice} />;
       case "health":
-        return <OperationalHealthPanel busy={busy} canOperate={canOperate} incidents={operationalHealthIncidents} onAcknowledge={acknowledgeOperationalHealth} onRefresh={loadOperationalHealthIncidents} />;
+        return <OperationalHealthPanel busy={busy} camera={selectedCamera} channels={alertChannels} canAdminister={canAdminister} canOperate={canOperate} incidents={operationalHealthIncidents} key={selectedCameraId ?? "no-camera"} onAcknowledge={acknowledgeOperationalHealth} onRefresh={loadOperationalHealthIncidents} />;
       case "discovery":
         return <CameraDiscoveryPanel busy={busy} canAdminister={canAdminister} devices={edgeDevices} onboardingRuns={onboardingRuns} onConnect={startCameraOnboarding} onRefresh={async () => { await Promise.all([loadDiscoveryRuns(), loadOnboardingRuns()]); }} onScan={startCameraDiscovery} runs={discoveryRuns} />;
       case "commissioning":
@@ -1357,8 +1357,12 @@ export function Dashboard() {
 
         <OperationalHealthPanel
           busy={busy}
+          camera={selectedCamera}
+          channels={alertChannels}
+          canAdminister={canAdminister}
           canOperate={canOperate}
           incidents={operationalHealthIncidents}
+          key={selectedCameraId ?? "no-camera"}
           onAcknowledge={acknowledgeOperationalHealth}
           onRefresh={loadOperationalHealthIncidents}
         />

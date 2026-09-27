@@ -73,6 +73,15 @@ storage, capacity/retention controls, backlog monitoring, and remote playback
 verification after recovery. The continuous-recording archive uses a separate
 upload spool.
 
+The edge health profile now reports free space for its outbox and incident-clip
+volumes separately, plus the pending evidence queue depth. Its top-level free
+space is the lower value; either volume below the existing 1 GiB reserve, or a
+missing clip directory, marks the edge degraded. This is capacity visibility,
+not a retention or deletion policy. Before a private-home pilot, agree on how
+long incident clips are kept and implement bounded cleanup that never removes
+pending evidence; the existing continuous-recording retention setting does not
+cover incident clips.
+
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers
 can optionally provide an E.164 phone number for AWS transactional SMS. SMS is sent

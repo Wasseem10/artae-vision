@@ -1,8 +1,10 @@
 import json
+import sqlite3
 import threading
 
 import httpx
 import numpy as np
+from video_intelligence_inference import worker as worker_module
 from video_intelligence_inference.camera_diagnostics import (
     CameraDiagnosticMetrics,
     CameraDiagnosticOutput,
@@ -230,6 +232,37 @@ def test_worker_runs_two_camera_assignments_concurrently() -> None:
 
     assert result == 0
     assert set(running_together) == {"camera-1", "camera-2"}
+
+
+def test_worker_continues_when_local_profile_sampling_fails(monkeypatch) -> None:
+    claims = 0
+
+    def broken_profile(*args: object) -> dict[str, object]:
+        raise sqlite3.OperationalError("database is locked")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal claims
+        if request.url.path.endswith("/assignments/claim"):
+            claims += 1
+            return httpx.Response(200, json=assignment_payload())
+        return httpx.Response(200, json={"desired_status": "running"})
+
+    monkeypatch.setattr(worker_module, "collect_edge_profile", broken_profile)
+
+    result = run_worker(
+        Settings(
+            control_plane_url="http://control.test",
+            control_plane_device_token="vid1.device.test-secret",
+            worker_id="edge-1",
+            worker_poll_seconds=0.25,
+        ),
+        max_assignments=1,
+        transport=httpx.MockTransport(handler),
+        run_camera=lambda *args, **kwargs: 0,
+    )
+
+    assert result == 0
+    assert claims == 1
 
 
 def test_idle_worker_claims_and_reports_replay_evaluation() -> None:
