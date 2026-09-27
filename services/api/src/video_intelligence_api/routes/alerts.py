@@ -36,7 +36,6 @@ from video_intelligence_api.models import (
     utc_now,
 )
 from video_intelligence_api.schemas import (
-    AlertActor,
     AlertChannelCreate,
     AlertChannelRead,
     AlertChannelUpdate,
@@ -383,7 +382,6 @@ async def list_alerts(
 
 async def transition_alert(
     alert_id: str,
-    payload: AlertActor,
     session: SessionDependency,
     actor: Actor,
     target: AlertStatus,
@@ -397,11 +395,11 @@ async def transition_alert(
             raise HTTPException(status_code=409, detail="Resolved alerts cannot be acknowledged")
         alert.status = target
         alert.acknowledged_at = now
-        alert.acknowledged_by = payload.actor
+        alert.acknowledged_by = actor.subject
     else:
         alert.status = target
         alert.resolved_at = now
-        alert.resolved_by = payload.actor
+        alert.resolved_by = actor.subject
     pending = (
         await session.scalars(
             select(AlertDelivery).where(
@@ -441,21 +439,19 @@ async def transition_alert(
 @router.post("/alerts/{alert_id}/acknowledge", response_model=AlertRead)
 async def acknowledge_alert(
     alert_id: str,
-    payload: AlertActor,
     session: SessionDependency,
     actor: EditorDependency,
 ) -> AlertRead:
-    return await transition_alert(alert_id, payload, session, actor, AlertStatus.ACKNOWLEDGED)
+    return await transition_alert(alert_id, session, actor, AlertStatus.ACKNOWLEDGED)
 
 
 @router.post("/alerts/{alert_id}/resolve", response_model=AlertRead)
 async def resolve_alert(
     alert_id: str,
-    payload: AlertActor,
     session: SessionDependency,
     actor: EditorDependency,
 ) -> AlertRead:
-    return await transition_alert(alert_id, payload, session, actor, AlertStatus.RESOLVED)
+    return await transition_alert(alert_id, session, actor, AlertStatus.RESOLVED)
 
 
 @router.post(

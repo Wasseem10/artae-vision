@@ -8,14 +8,43 @@ every fall will be detected. No live alert becomes an emergency-response trigger
 until field performance, delivery, staffing, and the intended use have been
 reviewed together.
 
-## Decisions before selecting a site
+## Chosen first pilot configuration
 
-Record these in a dated pilot protocol with the site owner:
+Use **one private home** with an older adult who can give informed written
+consent. This is a supervised engineering pilot, not a 24-hour monitoring offer.
+Start with one fixed camera covering a living-area floor, with audio disabled;
+exclude bedrooms, bathrooms, and other private care areas. Schedule monitored
+sessions when the resident and one designated family caregiver know the camera
+is active. Pause capture when a visitor or other unconsented person enters.
+
+The **designated caregiver** is the primary reviewer; a second named adult is
+the backup. Give each a separate OIDC-backed account; do not use the shared
+development dashboard key for the pilot. Agree on staffed
+hours before recording. Begin with two-hour daytime sessions and a ten-minute
+*test acknowledgment target* during those sessions, then extend only after
+reviewing actual workload and delivery. Outside those hours, mark Artae as
+unmonitored. The household's existing check-in and emergency procedures remain
+primary throughout shadow mode. Acknowledgments document the pilot review;
+they are not proof that help was dispatched.
+
+Start with in-app dashboard review and controlled notification tests. The native
+camera requires an explicit outbound route and a running alert worker; the
+browser-session SMS feature is a separate path. A webhook or provider 2xx means
+the provider accepted a request, not that the caregiver saw it. Before an
+assisted trial, configure and test a real caregiver-device route, independently
+log receipt and acknowledgment, verify that the stored identity matches the
+authenticated caregiver, and notify the backup when the camera or edge host
+stays offline. Device receipt and offline escalation are open product gates,
+not capabilities of this first shadow pilot.
+
+## Site-specific decisions before live video
+
+Record these in a dated protocol with the home owner, resident, and caregivers:
 
 | Decision | Must be specified before live video |
 | --- | --- |
-| Setting and participants | Private home, assisted living, nursing home, or another setting; who is in view, including staff, roommates, and visitors. |
-| Human responder | Named role, staffed hours, expected acknowledgment time, backup, and the site's existing fall-response procedure. In shadow mode, Artae alerts are reviewed for measurement and cannot replace that procedure. |
+| Participants | Identify the consenting resident and everyone else who could be in view, including visitors and support workers. |
+| Human responder | Record the primary and backup caregiver's names, staffed session schedule, contact method, and the household's existing fall-response procedure. In shadow mode, Artae alerts are reviewed for measurement and cannot replace that procedure. |
 | Camera boundary | Exact rooms and fields of view, audio on/off, private areas excluded, installation/lighting plan, and how monitoring is visibly disclosed. |
 | Data boundary | Who can see live video, clips, reports, and labels; whether bytes leave the site; vendors/regions; retention and deletion schedule; incident access log. |
 | Edge isolation | Use one enrolled organization and credential set per edge host/outbox, with persistent local clip and SQLite paths. Do not share those paths across tenants. |
@@ -131,5 +160,6 @@ Artae as a medical device or determine legal compliance:
 - [HHS covered entities and business associates](https://www.hhs.gov/hipaa/for-professionals/covered-entities/index.html) and [business-associate guidance](https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/business-associates/index.html): HIPAA depends on who provides the service and on whose behalf identifiable health information is handled. A covered care-provider deployment may require agreements and HIPAA safeguards for Artae and cloud processors before live patient data.
 - [CMS nursing-home recording guidance](https://www.cms.gov/medicare/provider-enrollment-and-certification/surveycertificationgeninfo/downloads/survey-and-cert-letter-16-33.pdf): resident/private-space recording without resident or representative written consent violates the privacy rights CMS describes. Other settings and state recording rules need their own review.
 - [FTC health-products claims guidance](https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance): objective health and safety claims need adequate evidence before use in marketing. Do not describe the five-clip demo or an unvalidated pilot as reliable fall prevention or emergency coverage.
+- [FTC mobile health app practices](https://www.ftc.gov/business-guidance/resources/mobile-health-app-developers-ftc-best-practices): minimize sensitive data, limit access, use privacy-protective defaults, and give clear notice before collection.
 - [Ultralytics licensing](https://www.ultralytics.com/license): its YOLO code and model weights are offered under AGPL-3.0 or Enterprise terms. Review the planned commercial and source-disclosure model before distributing the installed-camera product.
 - If the pilot is designed as generalizable human-subjects research or a device clinical investigation, obtain the applicable [institutional determination](https://www.hhs.gov/ohrp/education-and-outreach/online-education/human-research-protection-training/lesson-2-what-is-human-subjects-research/index.html) and [FDA study-risk assessment](https://www.fda.gov/medical-devices/investigational-device-exemption-ide/ide-approval-process) before enrollment.

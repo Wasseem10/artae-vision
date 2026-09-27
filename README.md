@@ -58,9 +58,10 @@ The installed-camera path has a separate
 and its temporal rule. The current development host blocks the needed
 `torchvision` extension, so that procedure has no successful candidate result
 yet; neither the browser benchmark nor an unlabeled native replay establishes
-field accuracy. The [pilot plan](docs/fall-pilot-plan.md) sets the held-out,
-shadow-mode, delivery, and human-review gates. Its setting and responder remain
-to be chosen with a pilot partner.
+field accuracy. The [pilot plan](docs/fall-pilot-plan.md) selects a one-camera
+private-home shadow pilot with a designated family caregiver and backup, and
+sets the held-out, delivery, and human-review gates. A real participant, site,
+and caregiver roster still need to be enrolled before live recording.
 
 Installed-camera alert-triggered evidence uploads now use a SQLite outbox that
 keeps pending jobs across API outages and edge-process restarts, retrying the
