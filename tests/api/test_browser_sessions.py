@@ -243,6 +243,64 @@ def test_incident_review_survives_reload_and_closes_existing_alert(api_client):
     assert api_client.get("/api/v1/alerts").json()[0]["status"] == "resolved"
 
 
+def test_review_details_are_bounded_editable_and_audited_after_closure(api_client):
+    s = create(api_client, "fall")
+    event_id = str(uuid.uuid4())
+    api_client.post(f"/api/v1/browser-sessions/{s['id']}/events", json={
+        "id": event_id, "at_seconds": 6.6, "landmark_visibility": .8,
+    })
+    review_path = f"/api/v1/browser-sessions/{s['id']}/events/{event_id}/review"
+    initial = {
+        "outcome": "acknowledged",
+        "reviewer_note": "Operator called the on-site lead.",
+        "response_checklist": "Use the facility's approved incident procedure.",
+    }
+    first = api_client.patch(review_path, json=initial)
+    assert first.status_code == 200, first.text
+    first_details = first.json()["details"]
+    assert first_details["review"]["reviewer_note"] == initial["reviewer_note"]
+    assert first_details["review"]["response_checklist"] == initial["response_checklist"]
+    assert first_details["review_history"][0]["change_type"] == "decision"
+    assert api_client.patch(review_path, json=initial).json()["details"] == first_details
+
+    edited = api_client.patch(review_path, json={
+        "outcome": "acknowledged", "reviewer_note": "Lead confirmed receipt.",
+    })
+    assert edited.status_code == 200, edited.text
+    edited_details = edited.json()["details"]
+    assert edited_details["review"]["reviewer_note"] == "Lead confirmed receipt."
+    assert edited_details["review"]["response_checklist"] == initial["response_checklist"]
+    assert len(edited_details["review_history"]) == 2
+    assert edited_details["review_history"][-1]["change_type"] == "details_updated"
+
+    closed = api_client.patch(review_path, json={"outcome": "false_alarm"})
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["details"]["review"]["reviewer_note"] == "Lead confirmed receipt."
+    cleared = api_client.patch(review_path, json={
+        "outcome": "false_alarm", "response_checklist": "",
+    })
+    assert cleared.status_code == 200, cleared.text
+    details = cleared.json()["details"]
+    assert details["review"]["status"] == "resolved"
+    assert details["review"]["response_checklist"] == ""
+    assert len(details["review_history"]) == 4
+    assert details["review_history"][-1]["change_type"] == "details_updated"
+    assert api_client.patch(review_path, json={
+        "outcome": "false_alarm", "response_checklist": "",
+    }).json()["details"] == details
+    assert api_client.patch(review_path, json={"outcome": "resolved"}).status_code == 409
+
+    assert api_client.patch(review_path, json={
+        "outcome": "false_alarm", "reviewer_note": "x" * 2001,
+    }).status_code == 422
+    assert api_client.patch(review_path, json={
+        "outcome": "false_alarm", "response_checklist": "x" * 4001,
+    }).status_code == 422
+    reloaded = api_client.get(f"/api/v1/events?camera_id={s['id']}").json()[0]
+    assert reloaded["details"]["review"] == details["review"]
+    assert reloaded["details"]["review_history"] == details["review_history"]
+
+
 def test_review_rejects_other_session_tenant_and_invalid_outcome(api_client):
     s, other_session = create(api_client), create(api_client)
     event_id = str(uuid.uuid4())

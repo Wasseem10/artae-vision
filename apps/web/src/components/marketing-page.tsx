@@ -84,7 +84,7 @@ export function MarketingPage() {
           <button type="button" aria-expanded={exploreOpen} onClick={() => setExploreOpen((value) => !value)}>Explore <FiChevronDown /></button>
           <a href="#use-cases">Use cases</a><a href="#features">Pricing</a><a href="#features">Enterprise</a><a href="#faq">Security</a>
         </nav>
-        <div className={styles.headerActions}><Link href="/demo">Try demo</Link><Link href="/login">Sign in</Link><Link className={styles.downloadButton} href="/login"><FiDownload /> Open Artae</Link></div>
+        <div className={styles.headerActions}><Link href="/live">Try fall demo</Link><Link href="/login">Sign in</Link><Link className={styles.downloadButton} href="/login"><FiDownload /> Open Artae</Link></div>
         <button className={styles.menuButton} type="button" aria-label="Toggle menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <FiX /> : <FiMenu />}</button>
         {exploreOpen && <div className={styles.megaMenu}>
           <div className={styles.megaIntro}><strong>Explore Artae</strong><p>Connect video, find what matters, and give every camera a job.</p></div>
@@ -98,7 +98,7 @@ export function MarketingPage() {
       {mobileOpen && <nav className={styles.mobileNav} aria-label="Mobile navigation">
         <button type="button" aria-expanded={mobileExploreOpen} onClick={() => setMobileExploreOpen((value) => !value)}><span>Explore</span><b>{mobileExploreOpen ? "−" : "+"}</b></button>
         {mobileExploreOpen && <div className={styles.mobileExplore}><a href="#agents">Visual agents</a><a href="#remember">Video search</a><a href="#features">Operations workflows</a><a href="#faq">Security and privacy</a></div>}
-        <Link href="/demo">Try the demo <FiArrowRight /></Link><a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
+        <Link href="/live">Try fall demo <FiArrowRight /></Link><Link href="/demo">Upload & prompt <FiArrowRight /></Link><a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
       </nav>}
 
       <aside className={styles.saleBar}><span>● &nbsp; LIVE + RECORDED VIDEO</span><strong>Describe the event. Artae watches for it.</strong><code>SEE IT WORK</code><span>SAVE EVIDENCE · SEND ALERTS · RUN ACTIONS <FiArrowRight /></span></aside>
@@ -107,7 +107,7 @@ export function MarketingPage() {
         <div className={styles.heroEyebrow}><i /> AI video agents for safety and operations</div>
         <h1>Tell your cameras what to watch for.<br /><span>Artae alerts you and takes action.</span></h1>
         <p>Connect a live camera or upload video, then describe the event in plain language. Artae watches for it, saves the evidence, and sends an alert or triggers the action you choose.</p>
-        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/demo"><FiVideo /> Start a camera agent</Link><Link className={styles.heroSecondary} href="/login?next=demo"><FiEye /> Sign in & save your footage <b>→</b></Link></div>
+        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/live"><FiVideo /> Run the staged fall demo</Link><Link className={styles.heroSecondary} href="/demo"><FiEye /> Upload & prompt analysis <b>→</b></Link></div>
         <div className={styles.heroSteps} aria-label="How Artae works">
           <span><b>01</b> Connect video</span><FiArrowRight /><span><b>02</b> Describe the event</span><FiArrowRight /><span><b>03</b> Get alerts and actions</span>
         </div>
@@ -212,7 +212,7 @@ export function MarketingPage() {
         </div>
       </section>
 
-      <section className={styles.downloadCta} id="use-cases"><h2>See the complete camera-agent flow.</h2><p>Known sample video · visible detection · event log · in-app alert</p><Link className={styles.heroPrimary} href="/demo"><FiVideo /> Run the no-install demo</Link></section>
+      <section className={styles.downloadCta} id="use-cases"><h2>See the complete camera-agent flow.</h2><p>Known sample video · visible detection · event log · in-app alert</p><Link className={styles.heroPrimary} href="/live"><FiVideo /> Run the staged fall demo</Link></section>
 
       <section className={styles.faqSection} id="faq">
         <header className={`${styles.sectionIntro} ${styles.faqIntro}`}><span className={styles.sectionNumber}>04</span><div><small>FAQ</small><p>Clear answers</p></div><div><h2>Questions before you give a camera a job.</h2><p>How Artae handles cameras, footage, alerts, actions, accounts, and team access.</p></div></header>
@@ -221,7 +221,7 @@ export function MarketingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <section className={styles.footerCta}><p>No installation needed</p><h2>Run a camera agent from start to alert.</h2><span>Try person detection or experimental fall detection with a sample, an uploaded video, or your webcam. See the body-pose overlay, replay footage, and review the event log.</span><div><Link className={styles.heroPrimary} href="/demo">Try real detection</Link><Link href="/login?next=demo">Sign in to save</Link></div></section>
+        <section className={styles.footerCta}><p>No installation needed</p><h2>Run a camera agent from start to alert.</h2><span>Try experimental fall detection with a staged sample, an uploaded video, or your webcam. See the body-pose overlay, replay footage, and review the event log.</span><div><Link className={styles.heroPrimary} href="/live">Try fall detection</Link><Link href="/demo">Upload & prompt analysis</Link></div></section>
         <div className={styles.footerGrid}><div className={styles.footerBrand}><Link className={styles.brand} href="#top"><span className={styles.brandMark}><FiActivity /></span><strong>artae</strong></Link><p>Visual intelligence powered by everything your cameras have seen.</p><small>Account-saved · live · recorded</small></div>{[
           ["Product", ["Overview", "Agents", "Footage", "Alerts"]], ["Solutions", ["Workplace safety", "Loading docks", "Vehicle access", "Video review"]], ["Company", ["About", "Principles", "Contact", "Sign in"]], ["Trust", ["Security", "Privacy", "Retention", "Evidence review"]]
         ].map(([title, links]) => <nav key={title as string}><h3>{title}</h3>{(links as string[]).map((link) => <a href={link === "Sign in" ? "/login" : "#top"} key={link}>{link}</a>)}</nav>)}</div>

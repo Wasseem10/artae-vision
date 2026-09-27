@@ -1,12 +1,11 @@
 # AI Video Intelligence Platform
 
-> **Current status:** `/demo` keeps the compact upload-and-prompt workflow: upload
-> a permitted video or use a webcam; describe the visible condition;
-> then run the AWS-backed analysis. Amazon Nova 2 Lite reviews sampled frames through
-> Bedrock, and confirmed matches invoke a Strands agent to prepare evidence, an
-> in-app notification, and human review. `/live` exposes continuous on-device
-> MediaPipe pose sensing, a real skeleton overlay, ten-second evidence segments,
-> Nova fall-candidate review, and Strands caregiver actions.
+> **Current status:** `/live` is the one-click fall prototype. Its staged sample
+> runs real on-device MediaPipe pose sensing, records evidence, and lets a person
+> review the resulting incident without an account, API, or AWS setup. When the
+> public demo API is available, guest fall candidates can also receive Nova
+> visual review and Strands incident coordination. `/demo` is a separate
+> AWS-backed upload-and-prompt workflow.
 > This is a hackathon prototype, not a validated medical, emergency-response, or
 > unattended monitoring product. See [tested scope](docs/browser-demo.md).
 
@@ -18,17 +17,40 @@ and search the resulting evidence. The revised completion phases are in
 
 ## No-install demo
 
-Open `/demo` for the compact, rate-limited, no-account AWS-backed workflow. The
-judge uploads a permitted browser-playable clip or uses a webcam, describes one or more
-visible safety conditions, and start analysis. Recorded clips are sampled across
-the full video, and the result panel shows Nova's decision and the Strands actions
-prepared for a confirmed match.
+Run `pnpm --dir apps/web dev`, then open `http://localhost:3000/live` and press
+**Start agent** with the preselected licensed staged-fall clip. The real MediaPipe
+pose loop creates a possible-fall incident, keeps playable recorded evidence, and
+offers human review. Repeat with **Sitting · no fall expected** as a negative
+control. The browser keeps both runs on this device after refresh. Cloud review is
+optional: an unavailable API or AWS service cannot prevent local detection.
+With Chrome installed, `pnpm --dir apps/web test:live` repeats the fall and sitting
+flows with API calls forced to fail, then checks a mocked Nova/Strands enrichment.
 
-Open `/live` for the repeatable continuous-monitoring demonstration. A licensed
-staged-fall clip, negative controls, an uploaded video, or a webcam can drive the
-real MediaPipe pose loop. A temporal upright-to-descent-to-floor candidate creates
-an event, keeps recorded evidence, and asks Nova and Strands to prepare a caregiver
-response. The local candidate remains visible if cloud review is unavailable.
+After a possible fall appears, select **Review footage** and expand **Reviewer note
+and response steps**. You can save what the reviewer observed and paste optional
+response steps supplied by your organization. These steps are reference text; Artae
+does not verify or record their completion. Choose **Acknowledge** if you need to
+keep the incident open, then **Mark reviewed** or **False alarm** to resolve it.
+Resolved incidents offer **Download incident report**. The downloaded, self-contained
+HTML records the review outcome and note, optional response steps, event and session
+times, automated observation, and available evidence metadata (including clip IDs,
+timing, resolution, and storage status). Open the file in a browser and print it to
+PDF if needed. Video is not embedded in the report; inspect or download the footage
+segment separately. Guest review history stays on this device, and the report is
+generated locally when downloaded.
+
+Open `/demo` for the separate, rate-limited, no-account AWS-backed workflow. Upload
+a permitted browser-playable clip or use a webcam, describe one or more visible
+safety conditions, and start analysis. Recorded clips are sampled across the full
+video, and the result panel shows Nova's decision and the Strands actions prepared
+for a confirmed match.
+
+Open `/evaluation/fall` to run the local regression harness against three licensed
+staged-fall clips and two daily-activity negative controls. It uses the same
+MediaPipe worker and temporal rule as `/live`, makes no AWS calls, reports
+clip-level precision and recall, candidate latency, pose coverage, and inference time, and can
+export the run as JSON. The first measured baseline and its limitations are in
+[`docs/fall-evaluation.md`](docs/fall-evaluation.md).
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers

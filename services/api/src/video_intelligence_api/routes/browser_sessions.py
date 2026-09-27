@@ -352,6 +352,8 @@ class BrowserObservation(BaseModel):
 
 class IncidentReview(BaseModel):
     outcome: Literal["acknowledged", "resolved", "false_alarm"]
+    reviewer_note: str | None = Field(default=None, max_length=2000)
+    response_checklist: str | None = Field(default=None, max_length=4000)
 
 
 class VisualFrame(BaseModel):
@@ -1133,29 +1135,50 @@ async def review_browser_incident(
     if alert is None:
         raise HTTPException(409, "Incident alert is not ready")
     previous = (event.details or {}).get("review", {})
-    if previous.get("outcome") == payload.outcome:
+    text_updates = {
+        key: getattr(payload, key)
+        for key in ("reviewer_note", "response_checklist")
+        if key in payload.model_fields_set
+    }
+    same_outcome = previous.get("outcome") == payload.outcome
+    if same_outcome and all(previous.get(key) == value for key, value in text_updates.items()):
         return event
-    if alert.status == AlertStatus.RESOLVED:
+    if alert.status == AlertStatus.RESOLVED and not same_outcome:
         raise HTTPException(409, "This incident has already been closed")
     now = utc_now()
-    alert.acknowledged_at = alert.acknowledged_at or now
-    alert.acknowledged_by = alert.acknowledged_by or actor.subject
-    alert.status = (
-        AlertStatus.ACKNOWLEDGED if payload.outcome == "acknowledged" else AlertStatus.RESOLVED
-    )
-    if alert.status == AlertStatus.RESOLVED:
-        alert.resolved_at, alert.resolved_by = now, actor.subject
+    if not same_outcome:
+        alert.acknowledged_at = alert.acknowledged_at or now
+        alert.acknowledged_by = alert.acknowledged_by or actor.subject
+        alert.status = (
+            AlertStatus.ACKNOWLEDGED if payload.outcome == "acknowledged" else AlertStatus.RESOLVED
+        )
+        if alert.status == AlertStatus.RESOLVED:
+            alert.resolved_at, alert.resolved_by = now, actor.subject
     alert.updated_at = now
+    review_text = {
+        key: previous[key]
+        for key in ("reviewer_note", "response_checklist")
+        if previous.get(key) is not None
+    }
+    for key, value in text_updates.items():
+        if value is None:
+            review_text.pop(key, None)
+        else:
+            review_text[key] = value
     review = {
         "status": alert.status.value,
         "outcome": payload.outcome,
         "reviewed_at": now.isoformat(),
         "reviewed_by": actor.subject,
+        **review_text,
     }
     event.details = {
         **(event.details or {}),
         "review": review,
-        "review_history": [*(event.details or {}).get("review_history", []), review],
+        "review_history": [
+            *(event.details or {}).get("review_history", []),
+            {**review, "change_type": "details_updated" if same_outcome else "decision"},
+        ],
     }
     await session.commit()
     await session.refresh(event)

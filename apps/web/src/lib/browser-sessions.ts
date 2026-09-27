@@ -14,6 +14,7 @@ export type BrowserEvent = {
   coordinator?: string;
   summary?: string;
   review?: IncidentReview;
+  reviewHistory?: IncidentReview[];
   actions?: string[];
   evidence?: { status: string; recording_ids: string[]; start_seconds: number; end_seconds: number };
   notification?: { channel: string; status: string; message: string; priority: string };
@@ -26,12 +27,18 @@ export type IncidentReview = {
   status: "open" | "acknowledged" | "resolved";
   outcome: ReviewOutcome | null;
   reviewed_at?: string;
+  reviewed_by?: string;
+  reviewer_note?: string;
+  response_checklist?: string;
+  change_type?: "decision" | "details_updated";
 };
+export type IncidentReviewDetails = Pick<IncidentReview, "reviewer_note" | "response_checklist">;
 export type CloudEventResult = {
   details: {
     summary?: string;
     strands_agent?: { status: string; summary: string; tools_invoked?: string[] };
     review?: IncidentReview;
+    review_history?: IncidentReview[];
     evidence?: BrowserEvent["evidence"];
     notification?: BrowserEvent["notification"];
     sms?: BrowserEvent["sms"];
@@ -44,6 +51,7 @@ export function cloudEventFields(result: CloudEventResult) {
     coordinator: result.details.strands_agent?.status,
     summary: result.details.summary ?? result.details.strands_agent?.summary,
     review: result.details.review,
+    reviewHistory: result.details.review_history,
     actions: result.details.strands_agent?.tools_invoked,
     evidence: result.details.evidence,
     notification: result.details.notification,
@@ -57,9 +65,14 @@ export async function getNotificationCapabilities(): Promise<{ sms: boolean }> {
 export async function sendTestSms(session: BrowserSession): Promise<NonNullable<BrowserEvent["sms"]>> {
   return request(`/browser-sessions/${session.id}/test-sms`, { method: "POST" });
 }
-export async function reviewCloudEvent(s: BrowserSession, event: BrowserEvent, outcome: ReviewOutcome) {
+export async function reviewCloudEvent(
+  s: BrowserSession,
+  event: BrowserEvent,
+  outcome: ReviewOutcome,
+  details: IncidentReviewDetails = {},
+) {
   return request<CloudEventResult>(`/browser-sessions/${s.id}/events/${event.id}/review`, {
-    method: "PATCH", body: JSON.stringify({ outcome }),
+    method: "PATCH", body: JSON.stringify({ outcome, ...details }),
   });
 }
 export type BrowserClip = {

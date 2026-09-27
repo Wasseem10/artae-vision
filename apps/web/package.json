@@ -12,7 +12,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:live": "node ../../scripts/check-live-fall-demo.cjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
@@ -29,6 +30,7 @@
     "@types/react-dom": "19.2.4",
     "eslint": "9.39.2",
     "eslint-config-next": "16.2.11",
+    "playwright": "^1.63.0",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
   }

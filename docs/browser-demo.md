@@ -2,6 +2,36 @@
 
 ## What runs
 
+### Local-first fall prototype (September 26)
+
+`/live` starts with a licensed staged-fall clip and runs the MediaPipe pose worker
+in the browser. It does not require login, the control-plane API, or AWS to create
+a local possible-fall event, record short playable evidence segments, and save a
+human review on this device. If the public demo API is available, guest fall
+candidates are additionally sent for Nova visual review and Strands coordination.
+Signed-in pose events use the account incident path; they do not receive a separate
+Nova visual review in this route.
+
+The `pnpm --dir apps/web test:live` smoke test first forces every API request to
+return 503. In that state, a staged lateral fall produced a reviewable incident
+and playable clip, and the reviewed result survived page reload. The sitting
+control analyzed frames and produced no fall incident. A third run verifies
+cloud enrichment with mocked Nova and Strands responses; it does not call AWS.
+These clips exercise the prototype flow, not field accuracy.
+
+For each candidate, **Review footage** opens the matching recording when available.
+The incident card accepts an optional reviewer note and organization-supplied
+response steps. The latter are reference text, not a tracked or verified checklist.
+The reviewer may acknowledge the alert, then mark it reviewed or a false alarm.
+Details can be updated and saved after a decision; the **Download incident report**
+button appears for resolved incidents and requires any edited details to be saved
+first. The downloaded self-contained HTML is a snapshot generated in the browser.
+It includes the review outcome and note, supplied steps, event/session timestamps,
+automated summary and recorded actions when available, plus matching clip IDs,
+timing, resolution, and availability. Open the HTML file in a browser and print
+to PDF. The report contains no video; download the footage segment separately.
+It does not record reviewer identity or whether response steps were completed.
+
 ### Focused live AWS visual monitor (September 12)
 
 `/app` and `/demo` use the focused `VisualWatch` interface. It accepts a licensed
@@ -44,10 +74,10 @@ loads metadata first and retrieves video when opening a run. A regression test
 verified migration of a real 904,685-byte v1 clip, saved review, and replay after
 reload without losing the original footage.
 
-Incident cards support Acknowledge, Mark reviewed, and False alarm. Guest reviews
-persist on the device; account reviews update the existing alert and event in
-one tenant-scoped transaction, using the authenticated actor. Closed incidents
-cannot be silently reopened. A human review does not change the detector's
+Guest reviews, including their optional notes and response steps, persist on the
+device; account reviews update the existing alert and event in one tenant-scoped
+transaction, using the authenticated actor. Closed incidents cannot be silently
+reopened. A human review does not change the detector's
 `independently_verified: false` flag. Model summaries appear only when returned
 by the server; fallback status is displayed separately from success.
 
@@ -139,8 +169,8 @@ SHA-256 checked by `apps/web/scripts/prepare-vision.mjs` before dev/build.
 
 ## Not complete
 
-- Complete hackathon submission assets, public-repository approval, and judging
-  account access still need verification independently of the successful AWS run.
+- Complete hackathon submission assets and judging account access still need
+  verification independently of the successful AWS run.
 - Phone/SMS/WhatsApp delivery: not enabled in this route (Twilio work remains on hold).
 - Continuous unattended monitoring, multi-person tracking, unrestricted prompts,
   validated fall accuracy, production support and emergency response.
