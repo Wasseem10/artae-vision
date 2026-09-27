@@ -91,6 +91,8 @@ class Settings(BaseSettings):
     events_directory: Path = Path("artifacts/events")
     offline_outbox_path: Path = Path("artifacts/offline/event-outbox.db")
     evidence_outbox_path: Path = Path("artifacts/offline/evidence-outbox.db")
+    incident_evidence_retention_hours: float | None = Field(default=None, gt=0, le=24 * 365)
+    incident_evidence_minimum_free_mb: int = Field(default=1024, ge=1)
     webhook_url: AnyHttpUrl | None = None
     webhook_timeout_seconds: float = Field(default=10.0, gt=0, le=120)
     control_plane_url: AnyHttpUrl | None = None
@@ -117,6 +119,8 @@ class Settings(BaseSettings):
             raise ValueError("Recording archive upload requires continuous recording")
         if self.continuous_recording_archive_enabled and self.control_plane_url is None:
             raise ValueError("Recording archive upload requires the control-plane URL")
+        if self.incident_evidence_retention_hours is not None and self.control_plane_url is None:
+            raise ValueError("Incident evidence retention requires the control-plane URL")
         if self.observer_overlap_frames >= self.observer_window_frames:
             raise ValueError("observer overlap must be smaller than the window")
         if self.observer_enabled and self.observer_provider == "qwen" and self.qwen_api_key is None:

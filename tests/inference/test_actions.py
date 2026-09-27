@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import subprocess
 import threading
 import time
@@ -124,6 +125,82 @@ def test_durable_evidence_upload_survives_outage_and_restart(tmp_path: Path) -> 
     assert requests == [b"completed-video"]
     assert outbox.count() == 0
     assert clip.read_bytes() == b"completed-video"
+
+
+def test_successful_evidence_upload_records_restart_safe_retention_receipt(
+    tmp_path: Path,
+) -> None:
+    clips = tmp_path / "clips"
+    clips.mkdir()
+    clip = clips / "event-1.mp4"
+    clip.write_bytes(b"accepted-video")
+    outbox_path = tmp_path / "offline" / "evidence.db"
+    uploaded = threading.Event()
+
+    def available(request: httpx.Request) -> httpx.Response:
+        assert request.read() == b"accepted-video"
+        uploaded.set()
+        return httpx.Response(201)
+
+    with BackgroundEvidenceUploader(
+        "https://control.test/api/v1",
+        transport=httpx.MockTransport(available),
+        transcode_clip=False,
+        outbox_path=outbox_path,
+        retry_interval_seconds=0.02,
+    ) as uploader:
+        uploader.submit("event-1", clip, duration_seconds=2.5)
+        assert uploaded.wait(timeout=1)
+
+    restarted = DurableJsonOutbox(outbox_path)
+    assert restarted.count() == 0
+    with sqlite3.connect(outbox_path) as connection:
+        connection.execute(
+            "UPDATE acknowledged_evidence SET acknowledged_at = ?",
+            (time.time() - 7200,),
+        )
+    with BackgroundEvidenceUploader(
+        "https://control.test/api/v1",
+        transcode_clip=False,
+        outbox_path=outbox_path,
+        clips_directory=clips,
+        retention_hours=1,
+        retry_interval_seconds=0.02,
+    ):
+        deadline = time.monotonic() + 1
+        while clip.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+    assert not clip.exists()
+
+
+def test_accepted_upload_with_disappearing_local_source_does_not_retry_forever(
+    tmp_path: Path, monkeypatch
+) -> None:
+    clip = tmp_path / "event-1.mp4"
+    clip.write_bytes(b"accepted-video")
+    outbox_path = tmp_path / "evidence.db"
+    accepted = threading.Event()
+
+    def accept_and_remove(_self, _event_id: str, path: Path, _duration: float) -> None:
+        path.unlink()
+        accepted.set()
+
+    monkeypatch.setattr(BackgroundEvidenceUploader, "_put_clip", accept_and_remove)
+    with BackgroundEvidenceUploader(
+        "https://control.test/api/v1",
+        transcode_clip=False,
+        outbox_path=outbox_path,
+        retry_interval_seconds=0.02,
+    ) as uploader:
+        uploader.submit("event-1", clip, duration_seconds=2.5)
+        assert accepted.wait(timeout=1)
+
+    assert DurableJsonOutbox(outbox_path).count() == 0
+    with sqlite3.connect(outbox_path) as connection:
+        receipt_count = connection.execute(
+            "SELECT COUNT(*) FROM acknowledged_evidence"
+        ).fetchone()[0]
+    assert receipt_count == 0
 
 
 def test_durable_evidence_waits_for_event_after_repeated_404s(tmp_path: Path) -> None:
@@ -290,6 +367,11 @@ def test_evidence_restart_reuses_cached_transcode(tmp_path: Path, monkeypatch) -
     assert DurableJsonOutbox(outbox_path).count() == 0
     assert not cache.exists()
     assert clip.read_bytes() == b"source-video"
+    with sqlite3.connect(outbox_path) as connection:
+        recorded_cache = connection.execute(
+            "SELECT cache_path FROM acknowledged_evidence WHERE record_id = ?", ("event-1",)
+        ).fetchone()[0]
+    assert recorded_cache == str(cache.resolve())
 
 
 def test_lost_success_response_retries_identical_evidence_bytes(tmp_path: Path) -> None:

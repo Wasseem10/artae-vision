@@ -83,6 +83,7 @@ class EvidenceStatus(enum.StrEnum):
     READY = "ready"
     UNAVAILABLE = "unavailable"
     FAILED = "failed"
+    EXPIRED = "expired"
 
 
 class RecordingSegmentStatus(enum.StrEnum):
@@ -471,6 +472,20 @@ class CameraAgent(Base):
     last_error: Mapped[str | None] = mapped_column(String(1000))
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
+class OperationalHealthWatchdog(Base):
+    """Latest successful global health evaluation, including zero-incident runs."""
+
+    __tablename__ = "operational_health_watchdog"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_operational_health_watchdog_singleton"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last_successful_evaluation_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
     )
 
 
@@ -1445,7 +1460,10 @@ class EvidenceAsset(Base):
     """A completed event clip plus its asynchronous intelligence-provider state."""
 
     __tablename__ = "evidence_assets"
-    __table_args__ = (Index("ix_evidence_assets_status_updated", "status", "updated_at"),)
+    __table_args__ = (
+        Index("ix_evidence_assets_status_updated", "status", "updated_at"),
+        Index("ix_evidence_assets_retention", "status", "legal_hold", "expires_at"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     event_id: Mapped[str] = mapped_column(
@@ -1468,6 +1486,12 @@ class EvidenceAsset(Base):
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(String(1000))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    legal_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reviewed_by: Mapped[str | None] = mapped_column(String(255))
+    expired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    retention_error: Mapped[str | None] = mapped_column(String(1000))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utc_now
     )

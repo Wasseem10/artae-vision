@@ -3,10 +3,12 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 import { api } from "@/lib/api";
-import type { AlertChannel, Camera, HealthAlertRoute, OperationalHealthIncident } from "@/lib/types";
+import type { AlertChannel, Camera, HealthAlertRoute, OperationalHealthIncident, OperationalHealthWatchdogStatus } from "@/lib/types";
 
 interface OperationalHealthPanelProps {
   incidents: OperationalHealthIncident[];
+  watchdog: OperationalHealthWatchdogStatus | null;
+  watchdogError: boolean;
   camera: Camera | null;
   channels: AlertChannel[];
   busy: boolean;
@@ -18,6 +20,8 @@ interface OperationalHealthPanelProps {
 
 export function OperationalHealthPanel({
   incidents,
+  watchdog,
+  watchdogError,
   camera,
   channels,
   busy,
@@ -33,6 +37,9 @@ export function OperationalHealthPanel({
   const [routeError, setRouteError] = useState<string | null>(null);
   const active = incidents.filter((incident) => incident.status !== "resolved");
   const recentlyResolved = incidents.filter((incident) => incident.status === "resolved").slice(0, 5);
+  const lastWatchdogCheck = watchdog?.last_successful_evaluation_at
+    ? new Date(watchdog.last_successful_evaluation_at).toLocaleString()
+    : "unknown";
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +107,14 @@ export function OperationalHealthPanel({
           <button disabled={busy} onClick={() => void onRefresh()} type="button">Refresh</button>
         </div>
       </div>
+
+      <p role={watchdogError || (watchdog && watchdog.status !== "fresh") ? "alert" : undefined}>
+        {watchdogError ? "Watchdog status unavailable. Health checks may not be running." :
+          !watchdog ? "Checking watchdog status…" :
+          watchdog.status === "never_run" ? "Watchdog has never completed a health check. Incident silence is unverified." :
+          watchdog.status === "stale" ? `Watchdog is stale. Last successful check: ${lastWatchdogCheck}. Incident silence is unverified.` :
+          `Watchdog checked recently. Last successful check: ${lastWatchdogCheck}. This does not confirm camera coverage.`}
+      </p>
 
       {canAdminister && (
         <div className="healthRouteConfig">

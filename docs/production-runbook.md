@@ -24,10 +24,14 @@ keys, database credentials, or provider secrets.
 
 - `/api/v1/health/live` proves the API process can answer.
 - `/api/v1/health/ready` proves its database can answer.
+- `/api/v1/health/watchdog` confirms the API completed a recent health evaluation call;
+  it requires the separate `X-Health-Monitor-Key` secret and returns `503` if it never
+  ran or became stale.
 - `/api/v1/production/readiness` explains hosted launch blockers to an administrator.
 - `/api/v1/agent/metrics` emits internal Prometheus text and requires the agent key.
 
 The metrics endpoint is for a private service network. Alert on API readiness,
+watchdog readiness from an independent uptime service,
 offline cameras, unhealthy edge stations, growing offline queues, delivery dead
 letters, worker lease churn, and end-to-end incident latency.
 
@@ -44,6 +48,36 @@ finalized, deletes expired segments, and enforces a byte ceiling. Alert on recor
 errors and dropped-frame totals. These local segments are the edge-storage foundation;
 remote retrieval and legal holds use the configured recording-storage backend. Hosted
 deployments must select `s3`, a private bucket, and a tested lifecycle policy.
+
+Incident evidence has a separate local API store. Before the supervised pilot,
+put `VIDEO_INTEL_API_EVIDENCE_DIRECTORY` on a persistent volume, set an approved
+`VIDEO_INTEL_API_EVIDENCE_STORAGE_MAX_BYTES` and
+`VIDEO_INTEL_API_EVIDENCE_MIN_FREE_BYTES`, and verify a backup and restore of
+both its files and database rows. A new clip upload returns HTTP 507 when the
+configured ceiling or reserve is reached; the edge outbox keeps its clip for
+retry. A duplicate upload returns retryable HTTP 503 if the API's supposed copy
+is missing or corrupt. Treat a growing pending outbox or either response as an
+incident requiring operator action. `GET /api/v1/evidence/retention/status`
+reports policy and capacity state to an administrator.
+
+API incident-clip expiry is disabled until both
+`VIDEO_INTEL_API_RETENTION_POLICY_CONFIGURED=true` and
+`VIDEO_INTEL_API_EVIDENCE_RETENTION_HOURS` are set under an approved policy.
+Have an authenticated operator inspect each clip, then use
+`POST /api/v1/evidence/{id}/review`; an administrator can set or release
+`PUT /api/v1/evidence/{id}/legal-hold` with `{"enabled": true}` or
+`{"enabled": false}`.
+Resolve the incident alert only after the care workflow is complete. Run
+`POST /api/v1/evidence/retention/run` first with its default dry run; use
+`?dry_run=false` only after reviewing the candidate count. Queued indexing,
+unresolved alerts, verification/review samples, replay sources, external
+provider copies, and legal holds block deletion. The API commits an expired
+tombstone before unlinking a file, so old signed URLs return 404 and a restart
+can retry interrupted cleanup. Check `cleanup_errors` after every run. The
+original `Event.clip_uri` is an edge-local provenance path, which can become
+stale after acknowledged edge cleanup; use current EvidenceAsset playback for
+remote review. Hosted production still needs private object storage, provider
+deletion, and an approved backup/lifecycle policy for all copies.
 
 The operations worker also reconciles camera, frame, recording, and attached-edge
 signals into durable health incidents. Keep that worker running, monitor

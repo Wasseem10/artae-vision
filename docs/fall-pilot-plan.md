@@ -92,10 +92,23 @@ Record these in a dated protocol with the home owner, resident, and caregivers:
    (`VIDEO_INTEL_EVIDENCE_OUTBOX_PATH`) and clip files **and** the
    API's locally stored evidence on persistent volumes with capacity/retention
    controls and monitor the pending-job backlog. Edge health now checks free
-   space on both the outbox and incident-clip volumes, but it does not prune
-   incident clips or stop capture before a volume fills. Approve a retention
-   policy and implement protected cleanup and a tested disk-pressure response
-   before live capture. Test network loss, API failure,
+   space on both the outbox and incident-clip volumes. Edge capture now fails
+   visibly below a configurable free-space reserve. It records a durable ACK
+   receipt after a successful upload and can prune only old, unchanged,
+   acknowledged clips that no pending or leased job references. Cleanup is
+   disabled until `VIDEO_INTEL_INCIDENT_EVIDENCE_RETENTION_HOURS` is set; approve
+   that policy and verify the configured reserve and cleanup on the pilot host.
+   The API evidence store now has an optional byte ceiling, free-space reserve,
+   reviewed/held clip markers, and a dry-run-first retention endpoint. It returns
+   HTTP 507 if a new upload would exhaust configured capacity; the edge keeps its
+   pending clip and retries. The API does not acknowledge a duplicate upload if
+   its stored file is missing or corrupt. API retention is off until the approved
+   `VIDEO_INTEL_API_RETENTION_POLICY_CONFIGURED=true` and
+   `VIDEO_INTEL_API_EVIDENCE_RETENTION_HOURS` are both set. A sweep protects
+   unreviewed evidence, unresolved alerts, queued index work, verification and
+   review samples, replay sources, legal holds, and provider-indexed clips. The
+   pilot still needs a selected capacity limit, retention period, persistent
+   volume, and backup/restore policy. Test network loss, API failure,
    and process restart using a real camera and verify remote playback from an
    authorized second device. Fail the gate if any incident loses required
    evidence. Unit recovery tests do not replace
@@ -105,6 +118,10 @@ Record these in a dated protocol with the home owner, resident, and caregivers:
    backed-up volume for the pilot and verify clip playback after an API restart;
    the Vercel browser-demo API is not that storage plan. Choose durable object
    storage and a retention/deletion design before a hosted multi-site launch.
+   `Event.clip_uri` records the original edge-local path and can become stale
+   after acknowledged edge cleanup. Review and remote playback must use the
+   current `EvidenceAsset` signed URL; an expired asset or cached search hit
+   cannot expose the deleted clip.
 4. **Run a small, consented shadow pilot.** Start with a few supervised cameras
    and staffed hours. Log every scheduled and actually analyzed minute, every
    candidate, independent fall observation or care record, human label,

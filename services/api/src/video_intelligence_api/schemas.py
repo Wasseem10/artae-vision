@@ -1713,9 +1713,36 @@ class EvidenceRead(ApiModel):
     external_video_id: str | None
     retry_count: int
     last_error: str | None
+    expires_at: datetime | None
+    legal_hold: bool
+    reviewed_at: datetime | None
+    reviewed_by: str | None
+    expired_at: datetime | None
+    retention_error: str | None
     content_url: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class EvidenceLegalHoldUpdate(ApiModel):
+    enabled: bool
+
+
+class EvidenceRetentionStatus(ApiModel):
+    policy_approved: bool
+    retention_hours: int | None
+    capacity_limit_configured: bool
+    free_space_reserve_configured: bool
+    tenant_evidence_bytes: int
+    awaiting_review: int
+
+
+class EvidenceRetentionResult(ApiModel):
+    dry_run: bool
+    candidates: int
+    expired_assets: int
+    deleted_bytes: int
+    cleanup_errors: int
 
 
 class EvidenceSearchCreate(ApiModel):
@@ -1829,6 +1856,13 @@ class AgentCameraConfig(ApiModel):
 
 class HealthResponse(ApiModel):
     status: Literal["ok"] = "ok"
+
+
+class OperationalHealthWatchdogRead(ApiModel):
+    status: Literal["fresh", "stale", "never_run"]
+    last_successful_evaluation_at: datetime | None
+    stale_after_seconds: int
+    server_time: datetime
 
 
 class OperationalHealthIncidentRead(ApiModel):

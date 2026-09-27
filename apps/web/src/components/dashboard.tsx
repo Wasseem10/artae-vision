@@ -61,6 +61,7 @@ import type {
   EdgeFleetDevice,
   PlatformCapabilities,
   OperationalHealthIncident,
+  OperationalHealthWatchdogStatus,
   ProductionReadiness,
   RecordingSegment,
   AccuracyEnvironmentTag,
@@ -130,6 +131,8 @@ export function Dashboard() {
   const [onboardingRuns, setOnboardingRuns] = useState<CameraOnboardingRun[]>([]);
   const [commissioningRuns, setCommissioningRuns] = useState<CameraCommissioningRun[]>([]);
   const [operationalHealthIncidents, setOperationalHealthIncidents] = useState<OperationalHealthIncident[]>([]);
+  const [operationalHealthWatchdog, setOperationalHealthWatchdog] = useState<OperationalHealthWatchdogStatus | null>(null);
+  const [operationalHealthWatchdogError, setOperationalHealthWatchdogError] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
   const selectedCameraIdRef = useRef<string | null>(null);
@@ -302,6 +305,16 @@ export function Dashboard() {
     }
   }, []);
 
+  const loadOperationalHealthWatchdog = useCallback(async () => {
+    try {
+      setOperationalHealthWatchdog(await api.getOperationalHealthWatchdog());
+      setOperationalHealthWatchdogError(false);
+    } catch {
+      setOperationalHealthWatchdog(null);
+      setOperationalHealthWatchdogError(true);
+    }
+  }, []);
+
   const loadCommissioningRuns = useCallback(async (cameraId?: string | null) => {
     const targetCameraId = cameraId ?? selectedCameraIdRef.current;
     if (!targetCameraId) {
@@ -403,6 +416,15 @@ export function Dashboard() {
     const initialLoad = setTimeout(() => void load(), 0);
     return () => clearTimeout(initialLoad);
   }, [load]);
+
+  useEffect(() => {
+    const initialCheck = window.setTimeout(() => void loadOperationalHealthWatchdog(), 0);
+    const interval = window.setInterval(() => void loadOperationalHealthWatchdog(), 15000);
+    return () => {
+      window.clearTimeout(initialCheck);
+      window.clearInterval(interval);
+    };
+  }, [loadOperationalHealthWatchdog]);
 
   useEffect(() => {
     if (!selectedCameraId) return;
@@ -1008,7 +1030,7 @@ export function Dashboard() {
         return (
           <div className="advancedToolStack">
             <EvidenceSearchPanel camera={selectedCamera} key={selectedCameraId ?? "no-camera-search"} onError={reportError} />
-            <EventFeed cameras={cameras} evidence={cameraEvidence} events={cameraEvents} streamStatus={streamStatus} />
+            <EventFeed cameras={cameras} evidence={cameraEvidence} events={cameraEvents} streamStatus={streamStatus} canOperate={canOperate} canAdminister={canAdminister} onRefreshEvidence={loadEvidence} />
           </div>
         );
       case "recordings":
@@ -1018,7 +1040,7 @@ export function Dashboard() {
       case "devices":
         return <EdgeDevicesPanel busy={busy} canAdminister={canAdminister} devices={edgeDevices} fleet={edgeFleet} onCreate={createEdgeDevice} onDemoProfile={createDemoFleetProfile} onRevoke={revokeEdgeDevice} onRotate={rotateEdgeDevice} />;
       case "health":
-        return <OperationalHealthPanel busy={busy} camera={selectedCamera} channels={alertChannels} canAdminister={canAdminister} canOperate={canOperate} incidents={operationalHealthIncidents} key={selectedCameraId ?? "no-camera"} onAcknowledge={acknowledgeOperationalHealth} onRefresh={loadOperationalHealthIncidents} />;
+        return <OperationalHealthPanel busy={busy} camera={selectedCamera} channels={alertChannels} canAdminister={canAdminister} canOperate={canOperate} incidents={operationalHealthIncidents} watchdog={operationalHealthWatchdog} watchdogError={operationalHealthWatchdogError} key={selectedCameraId ?? "no-camera"} onAcknowledge={acknowledgeOperationalHealth} onRefresh={async () => { await Promise.all([loadOperationalHealthIncidents(), loadOperationalHealthWatchdog()]); }} />;
       case "discovery":
         return <CameraDiscoveryPanel busy={busy} canAdminister={canAdminister} devices={edgeDevices} onboardingRuns={onboardingRuns} onConnect={startCameraOnboarding} onRefresh={async () => { await Promise.all([loadDiscoveryRuns(), loadOnboardingRuns()]); }} onScan={startCameraDiscovery} runs={discoveryRuns} />;
       case "commissioning":
@@ -1096,6 +1118,20 @@ export function Dashboard() {
       </aside>
 
       <main>
+        {(operationalHealthWatchdogError || (operationalHealthWatchdog && operationalHealthWatchdog.status !== "fresh")) && (
+          <div className="liveOpsNotice" role="alert">
+            <Icon name="activity" />
+            <span>
+              <strong>Monitoring checks need attention</strong>
+              {operationalHealthWatchdogError
+                ? "Unable to verify when the watchdog last ran."
+                : operationalHealthWatchdog?.status === "never_run"
+                  ? "The watchdog has not completed a health check yet."
+                  : "The watchdog's last successful health check is stale."}
+            </span>
+            <button onClick={() => openAdvancedSection("health")} type="button">System health</button>
+          </div>
+        )}
         {consoleMode === "guided" ? (
           guidedView === "automations" ? (
             <CameraAutomationsWorkspace
@@ -1362,9 +1398,11 @@ export function Dashboard() {
           canAdminister={canAdminister}
           canOperate={canOperate}
           incidents={operationalHealthIncidents}
+          watchdog={operationalHealthWatchdog}
+          watchdogError={operationalHealthWatchdogError}
           key={selectedCameraId ?? "no-camera"}
           onAcknowledge={acknowledgeOperationalHealth}
-          onRefresh={loadOperationalHealthIncidents}
+          onRefresh={async () => { await Promise.all([loadOperationalHealthIncidents(), loadOperationalHealthWatchdog()]); }}
         />
 
         <CameraDiscoveryPanel
@@ -1466,6 +1504,9 @@ export function Dashboard() {
           evidence={cameraEvidence}
           events={cameraEvents}
           streamStatus={streamStatus}
+          canOperate={canOperate}
+          canAdminister={canAdminister}
+          onRefreshEvidence={loadEvidence}
         />
         <AuditLogPanel records={auditLogs} visible={canAdminister} />
         <footer>

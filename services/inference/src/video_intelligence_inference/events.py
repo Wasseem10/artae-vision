@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import shutil
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
@@ -131,6 +132,7 @@ class EvidenceRecorder:
         pre_event_seconds: float,
         post_event_seconds: float,
         jpeg_quality: int = 80,
+        minimum_free_storage_mb: int = 1024,
     ) -> None:
         if fps <= 0:
             raise ValueError("Evidence FPS must be greater than zero.")
@@ -138,9 +140,13 @@ class EvidenceRecorder:
             raise ValueError("Evidence durations cannot be negative.")
         if not 1 <= jpeg_quality <= 100:
             raise ValueError("JPEG quality must be between 1 and 100.")
+        if minimum_free_storage_mb <= 0:
+            raise ValueError("Evidence minimum free storage must be positive.")
 
         self._output_directory = output_directory.expanduser().resolve()
         self._output_directory.mkdir(parents=True, exist_ok=True)
+        self._minimum_free_storage_mb = minimum_free_storage_mb
+        self._require_storage_reserve()
         self._fps = fps
         self._post_event_seconds = post_event_seconds
         self._jpeg_quality = jpeg_quality
@@ -196,6 +202,7 @@ class EvidenceRecorder:
         *,
         deadline_seconds: float,
     ) -> _ActiveClip:
+        self._require_storage_reserve()
         height, width = frame_shape[:2]
         path.parent.mkdir(parents=True, exist_ok=True)
         writer = cv2.VideoWriter(
@@ -235,6 +242,8 @@ class EvidenceRecorder:
     def _finish(self, event_id: str) -> CompletedEvidence:
         active = self._active.pop(event_id)
         active.writer.release()
+        self._require_storage_reserve()
+        self._verify_completed_clip(active.path)
         logger.info(
             "Evidence recording completed: event=%s frames=%d path=%s",
             event_id,
@@ -242,6 +251,39 @@ class EvidenceRecorder:
             active.path,
         )
         return CompletedEvidence(event_id, active.path, active.frame_count)
+
+    @staticmethod
+    def _verify_completed_clip(path: Path) -> None:
+        try:
+            if not path.is_file() or path.stat().st_size == 0:
+                raise EvidenceError(f"Evidence writer produced no clip at {path}.")
+            capture = cv2.VideoCapture(str(path))
+            try:
+                if not capture.isOpened():
+                    raise EvidenceError(f"Evidence clip is not readable at {path}.")
+                readable, frame = capture.read()
+                if not readable or frame is None:
+                    raise EvidenceError(f"Evidence clip has no decodable frame at {path}.")
+            finally:
+                capture.release()
+        except (OSError, cv2.error) as exc:
+            raise EvidenceError(f"Could not verify evidence clip at {path}.") from exc
+
+    def _require_storage_reserve(self) -> None:
+        try:
+            available = shutil.disk_usage(self._output_directory).free
+        except OSError as exc:
+            raise EvidenceError(
+                f"Incident clip storage is unavailable: {self._output_directory}"
+            ) from exc
+        minimum = self._minimum_free_storage_mb * 1024 * 1024
+        if available < minimum:
+            raise EvidenceError(
+                "Incident clip storage below reserve: "
+                f"available={available // (1024 * 1024)} MiB "
+                f"required={self._minimum_free_storage_mb} MiB "
+                f"directory={self._output_directory}"
+            )
 
     def _encode_frame(self, frame: np.ndarray) -> bytes:
         success, encoded = cv2.imencode(

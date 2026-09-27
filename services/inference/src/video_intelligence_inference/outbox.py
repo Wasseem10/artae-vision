@@ -42,6 +42,30 @@ class DurableJsonOutbox:
                 )
                 """
             )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS acknowledged_evidence (
+                    record_id TEXT PRIMARY KEY,
+                    source_path TEXT NOT NULL,
+                    source_size INTEGER NOT NULL,
+                    source_mtime_ns INTEGER NOT NULL,
+                    cache_path TEXT,
+                    cache_size INTEGER,
+                    cache_mtime_ns INTEGER,
+                    acknowledged_at REAL NOT NULL
+                )
+                """
+            )
+            receipt_columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(acknowledged_evidence)")
+            }
+            for column in ("cache_path", "cache_size", "cache_mtime_ns"):
+                if column not in receipt_columns:
+                    column_type = "TEXT" if column == "cache_path" else "INTEGER"
+                    connection.execute(
+                        f"ALTER TABLE acknowledged_evidence ADD COLUMN {column} {column_type}"
+                    )
             columns = {str(row[1]) for row in connection.execute("PRAGMA table_info(event_outbox)")}
             for column, column_type in (
                 ("lease_owner", "TEXT"),
@@ -142,6 +166,141 @@ class DurableJsonOutbox:
                     (record_id, owner_id),
                 )
         return cursor.rowcount == 1
+
+    def acknowledge_evidence(
+        self,
+        record_id: str,
+        source_path: Path,
+        *,
+        owner_id: str,
+        cache_path: Path | None = None,
+    ) -> bool:
+        """Atomically remove a claimed upload and retain proof of its accepted source."""
+        source = source_path.expanduser().resolve()
+        source_stat = source.stat()
+        cache = cache_path.expanduser().resolve() if cache_path is not None else None
+        cache_stat = None
+        if cache is not None:
+            try:
+                cache_stat = cache.stat()
+            except FileNotFoundError:
+                cache = None
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "DELETE FROM event_outbox WHERE record_id = ? AND lease_owner = ?",
+                (record_id, owner_id),
+            )
+            if cursor.rowcount != 1:
+                return False
+            connection.execute(
+                """
+                INSERT INTO acknowledged_evidence (
+                    record_id, source_path, source_size, source_mtime_ns,
+                    cache_path, cache_size, cache_mtime_ns, acknowledged_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(record_id) DO UPDATE SET
+                    source_path = excluded.source_path,
+                    source_size = excluded.source_size,
+                    source_mtime_ns = excluded.source_mtime_ns,
+                    cache_path = excluded.cache_path,
+                    cache_size = excluded.cache_size,
+                    cache_mtime_ns = excluded.cache_mtime_ns,
+                    acknowledged_at = excluded.acknowledged_at
+                """,
+                (
+                    record_id,
+                    str(source),
+                    source_stat.st_size,
+                    source_stat.st_mtime_ns,
+                    str(cache) if cache is not None else None,
+                    cache_stat.st_size if cache_stat is not None else None,
+                    cache_stat.st_mtime_ns if cache_stat is not None else None,
+                    time.time(),
+                ),
+            )
+        return True
+
+    def prune_acknowledged_evidence(
+        self, clips_directory: Path, *, retention_hours: float, now: float | None = None
+    ) -> int:
+        """Delete only old, unchanged ACKed source clips with no queued reference."""
+        if not math.isfinite(retention_hours) or retention_hours <= 0:
+            raise ValueError("Evidence retention must be finite and positive")
+        cutoff = (time.time() if now is None else now) - retention_hours * 3600
+        if not math.isfinite(cutoff):
+            raise ValueError("Evidence retention time must be finite")
+        clips_root = clips_directory.expanduser().resolve()
+        removed = 0
+        with self._lock, self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            # Include every row, regardless of retry time or lease owner.
+            pending_rows = connection.execute("SELECT payload_json FROM event_outbox").fetchall()
+            pending_paths: set[Path] = set()
+            for row in pending_rows:
+                path = json.loads(str(row[0]))["path"]
+                if not isinstance(path, str) or not path or not Path(path).is_absolute():
+                    raise ValueError("Evidence outbox has an invalid pending path")
+                pending_paths.add(Path(path).expanduser().resolve())
+            receipts = connection.execute(
+                """
+                SELECT record_id, source_path, source_size, source_mtime_ns,
+                       cache_path, cache_size, cache_mtime_ns
+                FROM acknowledged_evidence WHERE acknowledged_at <= ?
+                """,
+                (cutoff,),
+            ).fetchall()
+            for (
+                record_id,
+                raw_path,
+                source_size,
+                source_mtime_ns,
+                raw_cache,
+                cache_size,
+                cache_mtime_ns,
+            ) in receipts:
+                source = Path(str(raw_path))
+                if source.is_symlink():
+                    continue
+                resolved = source.resolve()
+                if (
+                    resolved.parent != clips_root
+                    or resolved.name != f"{record_id}.mp4"
+                    or resolved in pending_paths
+                ):
+                    continue
+                paths = [(source, source_size, source_mtime_ns)]
+                if raw_cache is not None:
+                    cache = Path(str(raw_cache))
+                    if cache.is_symlink():
+                        continue
+                    resolved_cache = cache.resolve()
+                    if (
+                        resolved_cache != resolved.with_name(f"{resolved.stem}.upload.mp4")
+                        or resolved_cache in pending_paths
+                    ):
+                        continue
+                    paths.append((cache, cache_size, cache_mtime_ns))
+                existing: list[Path] = []
+                changed = False
+                for path, recorded_size, recorded_mtime_ns in paths:
+                    try:
+                        stat = path.stat()
+                    except FileNotFoundError:
+                        continue
+                    if stat.st_size != recorded_size or stat.st_mtime_ns != recorded_mtime_ns:
+                        changed = True
+                        break
+                    existing.append(path)
+                if changed:
+                    continue
+                for path in existing:
+                    path.unlink()
+                connection.execute(
+                    "DELETE FROM acknowledged_evidence WHERE record_id = ?", (record_id,)
+                )
+                removed += int(bool(existing))
+        return removed
 
     def renew_claim(self, record_id: str, owner_id: str, *, lease_seconds: float) -> bool:
         """Extend a long-running upload only while this owner still holds its claim."""

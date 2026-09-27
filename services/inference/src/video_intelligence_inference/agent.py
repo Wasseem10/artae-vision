@@ -538,6 +538,8 @@ def run(
                 headers=control_headers,
                 timeout_seconds=settings.webhook_timeout_seconds,
                 outbox_path=settings.evidence_outbox_path if control_plane_api_base else None,
+                clips_directory=settings.events_directory / "clips",
+                retention_hours=settings.incident_evidence_retention_hours,
             ) as evidence_uploads,
         ):
             evidence = EvidenceRecorder(
@@ -553,6 +555,7 @@ def run(
                     3 if pose_rules else 0,
                 ),
                 post_event_seconds=settings.evidence_post_seconds,
+                minimum_free_storage_mb=settings.incident_evidence_minimum_free_mb,
             )
             try:
                 while max_frames is None or processed_frames < max_frames:
@@ -674,12 +677,6 @@ def run(
                         )
                         new_events.append(record)
 
-                    completed = evidence.process_frame(
-                        frame,
-                        timestamp_seconds=packet.timestamp_seconds,
-                        new_events=new_events,
-                    )
-                    _handle_completed(completed, evidence_uploads, source.fps)
                     for record in new_events:
                         event_sink.write(record)
                         webhooks.submit(record)
@@ -692,6 +689,13 @@ def run(
                             record.zone_name,
                             record.dwell_seconds,
                         )
+
+                    completed = evidence.process_frame(
+                        frame,
+                        timestamp_seconds=packet.timestamp_seconds,
+                        new_events=new_events,
+                    )
+                    _handle_completed(completed, evidence_uploads, source.fps)
 
                     processed_frames += 1
                     if display:

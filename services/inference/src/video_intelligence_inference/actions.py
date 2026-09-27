@@ -171,6 +171,8 @@ class BackgroundEvidenceUploader:
         transport: httpx.BaseTransport | None = None,
         transcode_clip: bool = True,
         outbox_path: Path | None = None,
+        clips_directory: Path | None = None,
+        retention_hours: float | None = None,
         retry_interval_seconds: float = 5.0,
         retry_max_seconds: float = 300.0,
         claim_lease_seconds: float | None = None,
@@ -179,6 +181,11 @@ class BackgroundEvidenceUploader:
             raise ValueError("Evidence retry interval must be finite and positive")
         if not math.isfinite(retry_max_seconds) or retry_max_seconds < retry_interval_seconds:
             raise ValueError("Evidence retry maximum must be at least the retry interval")
+        if retention_hours is not None:
+            if not math.isfinite(retention_hours) or retention_hours <= 0:
+                raise ValueError("Evidence retention must be finite and positive")
+            if outbox_path is None or clips_directory is None:
+                raise ValueError("Evidence retention requires an outbox and clips directory")
         self._api_base_url = api_base_url.rstrip("/") if api_base_url else None
         self._headers = dict(headers or {})
         if agent_key:
@@ -186,6 +193,8 @@ class BackgroundEvidenceUploader:
         self._client = httpx.Client(timeout=timeout_seconds, transport=transport)
         self._transcode_clip = transcode_clip
         self._outbox = DurableJsonOutbox(outbox_path) if outbox_path else None
+        self._clips_directory = clips_directory
+        self._retention_hours = retention_hours
         self._retry_interval_seconds = retry_interval_seconds
         self._retry_max_seconds = retry_max_seconds
         self._claim_owner = uuid.uuid4().hex
@@ -235,6 +244,7 @@ class BackgroundEvidenceUploader:
         self._client.close()
 
     def _run_outbox_loop(self) -> None:
+        last_prune_at = float("-inf")
         while not self._retry_stop.is_set():
             self._retry_wake.clear()
             if self._retry_stop.is_set():
@@ -243,6 +253,18 @@ class BackgroundEvidenceUploader:
                 self._flush_pending()
             except Exception:
                 logger.exception("Evidence upload queue failed; queued clips will be retried")
+            if self._retention_hours is not None and time.monotonic() - last_prune_at >= 60:
+                try:
+                    assert self._outbox is not None and self._clips_directory is not None
+                    removed = self._outbox.prune_acknowledged_evidence(
+                        self._clips_directory, retention_hours=self._retention_hours
+                    )
+                    if removed:
+                        logger.info("Pruned acknowledged incident clips: count=%d", removed)
+                except Exception:
+                    logger.exception("Evidence retention sweep failed; clips were kept")
+                finally:
+                    last_prune_at = time.monotonic()
             if self._retry_stop.is_set():
                 return
             self._retry_wake.wait(self._retry_interval_seconds)
@@ -319,7 +341,29 @@ class BackgroundEvidenceUploader:
                 error,
             )
             return False
-        if not self._outbox.acknowledge(event_id, owner_id=self._claim_owner):
+        try:
+            acknowledged = self._outbox.acknowledge_evidence(
+                event_id,
+                source,
+                owner_id=self._claim_owner,
+                cache_path=upload_path if upload_path != source else None,
+            )
+        except FileNotFoundError:
+            # The API accepted the bytes, but the local source disappeared before
+            # we could record an immutable cleanup receipt. Clear the accepted
+            # queue job without claiming that any local file is safe to delete.
+            acknowledged = self._outbox.acknowledge(event_id, owner_id=self._claim_owner)
+            logger.error(
+                "Evidence source disappeared after API acceptance: event=%s path=%s",
+                event_id,
+                source,
+            )
+        except OSError:
+            logger.exception(
+                "Evidence uploaded but source receipt could not be saved: event=%s", event_id
+            )
+            return False
+        if not acknowledged:
             logger.warning("Evidence upload succeeded after claim changed: event=%s", event_id)
             return False
         if upload_path is not None and upload_path != source:
