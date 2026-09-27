@@ -9,6 +9,7 @@ from datetime import timedelta
 from pathlib import Path
 from time import perf_counter
 from typing import Annotated
+from uuid import uuid4
 
 import anyio
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -339,17 +340,13 @@ async def upload_event_clip(
     if camera is None:
         raise HTTPException(status_code=404, detail="Event camera is unavailable")
     ensure_edge_organization(principal, camera.organization_id)
-    asset = await session.scalar(select(EvidenceAsset).where(EvidenceAsset.event_id == event.id))
-    if asset is None:
-        raise HTTPException(status_code=409, detail="Evidence record is missing")
-
     media_type = request.headers.get("content-type", "video/mp4").split(";", maxsplit=1)[0]
     if not media_type.startswith("video/"):
         raise HTTPException(status_code=415, detail="Evidence must use a video media type")
     directory = settings.evidence_directory.expanduser().resolve()
     directory.mkdir(parents=True, exist_ok=True)
-    final_path = directory / f"{asset.id}.mp4"
-    partial_path = directory / f"{asset.id}.part"
+    # A request-private file prevents overlapping retries from sharing a .part path.
+    partial_path = directory / f"upload-{uuid4().hex}.part"
     digest = hashlib.sha256()
     size_bytes = 0
     try:
@@ -364,23 +361,42 @@ async def upload_event_clip(
                 await output.write(chunk)
         if size_bytes == 0:
             raise HTTPException(status_code=400, detail="Evidence clip is empty")
-        await anyio.to_thread.run_sync(partial_path.replace, final_path)
-    except Exception:
-        partial_path.unlink(missing_ok=True)
-        raise
+        checksum = digest.hexdigest()
+        # Decide under the asset row lock after receiving the body. A retry of the
+        # same bytes must not replace evidence or send an indexed asset through
+        # the provider again. populate_existing avoids a stale identity-map row.
+        asset = await session.scalar(
+            select(EvidenceAsset)
+            .where(EvidenceAsset.event_id == event.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if asset is None:
+            raise HTTPException(status_code=409, detail="Evidence record is missing")
+        if asset.storage_uri is not None:
+            if asset.sha256 != checksum or asset.size_bytes != size_bytes:
+                raise HTTPException(
+                    status_code=409,
+                    detail="A different clip is already stored for this event",
+                )
+            return evidence_response(asset, camera.organization_id, settings)
 
-    asset.storage_uri = str(final_path)
-    asset.media_type = media_type
-    asset.size_bytes = size_bytes
-    asset.sha256 = digest.hexdigest()
-    asset.duration_seconds = duration_seconds
-    asset.status = EvidenceStatus.QUEUED
-    asset.worker_id = None
-    asset.lease_expires_at = None
-    asset.last_error = None
-    await session.commit()
-    await session.refresh(asset)
-    return evidence_response(asset, camera.organization_id, settings)
+        final_path = directory / f"{asset.id}.mp4"
+        await anyio.to_thread.run_sync(partial_path.replace, final_path)
+        asset.storage_uri = str(final_path)
+        asset.media_type = media_type
+        asset.size_bytes = size_bytes
+        asset.sha256 = checksum
+        asset.duration_seconds = duration_seconds
+        asset.status = EvidenceStatus.QUEUED
+        asset.worker_id = None
+        asset.lease_expires_at = None
+        asset.last_error = None
+        await session.commit()
+        await session.refresh(asset)
+        return evidence_response(asset, camera.organization_id, settings)
+    finally:
+        partial_path.unlink(missing_ok=True)
 
 
 @router.post(

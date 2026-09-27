@@ -140,14 +140,26 @@ def replay_pose(posture: str) -> PoseObservation:
     if posture == "upright":
         box = (6, 1, 10, 15)
         core = {
-            5: (7, 4), 6: (9, 4), 11: (7, 8), 12: (9, 8),
-            13: (7, 11), 14: (9, 11), 15: (7, 14), 16: (9, 14),
+            5: (7, 4),
+            6: (9, 4),
+            11: (7, 8),
+            12: (9, 8),
+            13: (7, 11),
+            14: (9, 11),
+            15: (7, 14),
+            16: (9, 14),
         }
     else:
         box = (1, 10, 15, 15)
         core = {
-            5: (4, 12), 6: (4, 13), 11: (12, 12), 12: (12, 13),
-            13: (13, 12), 14: (13, 13), 15: (14, 12), 16: (14, 13),
+            5: (4, 12),
+            6: (4, 13),
+            11: (12, 12),
+            12: (12, 13),
+            13: (13, 12),
+            14: (13, 13),
+            15: (14, 12),
+            16: (14, 13),
         }
     for index, (x, y) in core.items():
         points[index] = PoseKeypoint(x, y, 0.95)
@@ -266,26 +278,39 @@ def test_semantic_replay_fails_instead_of_silently_skipping_budgeted_windows() -
         )
 
 
-def test_specialized_pose_replay_runs_without_provider_requests() -> None:
+@pytest.mark.parametrize(
+    ("minimum_confidence", "detector_confidence"),
+    [(0.5, 0.25), (0.2, 0.2)],
+)
+def test_specialized_pose_replay_runs_without_provider_requests(
+    minimum_confidence: float, detector_confidence: float
+) -> None:
     rule = replace(
         semantic_rule(),
         instruction="Alert me if a person falls to the ground.",
-        minimum_confidence=0.5,
+        minimum_confidence=minimum_confidence,
         execution_strategy="specialized_pose",
         geometry=Zone(
             "Full frame",
             (Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1)),
         ),
     )
+    detector_options: list[dict] = []
+
+    def pose_detector_factory(**kwargs):
+        detector_options.append(kwargs)
+        return FakePoseDetector()
+
     output = run_replay(
         Settings(continuous_recording_archive_enabled=False),
         source_uri="fixture.mp4",
         duration_seconds=10,
         rule=rule,
         source_factory=lambda *_args, **_kwargs: FakeSource(),
-        pose_detector_factory=lambda **_kwargs: FakePoseDetector(),
+        pose_detector_factory=pose_detector_factory,
     )
 
+    assert detector_options[0]["confidence_threshold"] == detector_confidence
     assert output.provider_requests == 0
     assert len(output.intervals) == 1
     assert output.intervals[0].start_seconds == 1

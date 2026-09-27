@@ -7,7 +7,8 @@
 > visual review and Strands incident coordination. `/demo` is a separate
 > AWS-backed upload-and-prompt workflow.
 > This is a hackathon prototype, not a validated medical, emergency-response, or
-> unattended monitoring product. See [tested scope](docs/browser-demo.md).
+> unattended monitoring product. See [tested scope](docs/browser-demo.md) and
+> the [supervised fall pilot plan](docs/fall-pilot-plan.md).
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
@@ -51,6 +52,25 @@ MediaPipe worker and temporal rule as `/live`, makes no AWS calls, reports
 clip-level precision and recall, candidate latency, pose coverage, and inference time, and can
 export the run as JSON. The first measured baseline and its limitations are in
 [`docs/fall-evaluation.md`](docs/fall-evaluation.md).
+
+The installed-camera path has a separate
+[native fall baseline procedure](docs/native-fall-evaluation.md) for YOLO pose
+and its temporal rule. The current development host blocks the needed
+`torchvision` extension, so that procedure has no successful candidate result
+yet; neither the browser benchmark nor an unlabeled native replay establishes
+field accuracy. The [pilot plan](docs/fall-pilot-plan.md) sets the held-out,
+shadow-mode, delivery, and human-review gates. Its setting and responder remain
+to be chosen with a pilot partner.
+
+Installed-camera alert-triggered evidence uploads now use a SQLite outbox that
+keeps pending jobs across API outages and edge-process restarts, retrying the
+original clip while a camera agent sharing that outbox is running. This has
+recovery unit tests; it has not yet passed a real-camera
+outage/restart trial. Pilot promotion still requires an approved inference host,
+persistent volumes for the edge queue and clip files and the API's local evidence
+storage, capacity/retention controls, backlog monitoring, and remote playback
+verification after recovery. The continuous-recording archive uses a separate
+upload spool.
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers
@@ -163,8 +183,11 @@ multi-camera operations, offline-edge, production-hardening, and commissioning l
   operator console and Prometheus metrics;
 - optional background continuous MP4 recording with atomic segment completion,
   per-segment manifests, bounded queues, and age/byte retention enforcement;
-- durable edge upload spooling, tenant-scoped historical-video catalogs, signed
-  browser playback, administrator legal holds, and explicit retention execution;
+- restart-recoverable continuous-recording upload spooling, tenant-scoped
+  historical-video catalogs, signed browser playback, administrator legal holds,
+  and explicit retention execution;
+- a separate SQLite outbox for alert-triggered evidence uploads with retry after
+  API failure and edge-process restart;
 - edge-executed ONVIF WS-Discovery jobs with bounded multicast collection,
   deduplication, device-token leases, and operator-visible results;
 - encrypted ONVIF credentials, authenticated media-profile resolution, automatic

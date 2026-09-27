@@ -262,7 +262,7 @@ def _run_pose(
     )
     detector = pose_detector_factory(
         model_name=settings.pose_model_name,
-        confidence_threshold=rule.minimum_confidence,
+        confidence_threshold=min(0.25, rule.minimum_confidence),
         iou_threshold=settings.iou_threshold,
         device=settings.device,
     )

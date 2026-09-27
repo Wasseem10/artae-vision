@@ -55,7 +55,9 @@ Artae should be evaluated on a separately held-out set with multiple people,
 rooms, camera angles, lighting conditions, falls, and ordinary activities. A
 provisional engineering gate is:
 
-- at least 100 positive fall clips and 300 negative clips;
+- at least 100 independently sourced positive fall clips and 300 hours of
+  representative negative footage, with exposure reported in analyzed and
+  scheduled camera-hours;
 - event-level recall of at least 90% on the held-out set, measured with labeled
   event windows and one-to-one alert matching;
 - no more than 0.1 false alerts per monitored hour;
@@ -66,3 +68,6 @@ provisional engineering gate is:
 Meeting these engineering gates would still not make Artae a medical device or
 an emergency response service. It would establish a credible computer-vision
 baseline for a limited field pilot.
+The installed-camera YOLO path must be measured separately from this browser
+MediaPipe path; see [native candidate replay](native-fall-evaluation.md) and the
+[supervised pilot plan](fall-pilot-plan.md).
