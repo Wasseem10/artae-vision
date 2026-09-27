@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 from video_intelligence_api.models import (
     AgentDesiredStatus,
     AgentObservedStatus,
@@ -12,6 +13,7 @@ from video_intelligence_api.models import (
     EdgeDevice,
     OperationalHealthDelivery,
     OperationalHealthIncident,
+    OperationalHealthWatchdog,
     Organization,
     utc_now,
 )
@@ -76,6 +78,62 @@ def _age_incident(api_client: TestClient, incident_id: str) -> None:
             await session.commit()
 
     asyncio.run(age())
+
+
+def test_watchdog_liveness_persists_quiet_runs_and_fails_closed_when_stale(
+    api_client: TestClient,
+) -> None:
+    dashboard_path = "/api/v1/operational-health/watchdog"
+    monitor_path = "/api/v1/health/watchdog"
+    assert api_client.get(monitor_path).status_code == 401
+    api_client.app.state.settings.operational_health_monitor_key = SecretStr(
+        "separate-monitor-key-123456789"
+    )
+    assert api_client.get(dashboard_path, headers={"X-Dashboard-Key": "wrong"}).status_code == 401
+    assert api_client.get(monitor_path).status_code == 401
+    assert (
+        api_client.get(monitor_path, headers={"X-Health-Monitor-Key": AGENT_KEY}).status_code
+        == 401
+    )
+    initial_response = api_client.get(dashboard_path)
+    assert initial_response.headers["cache-control"] == "no-store"
+    initial = initial_response.json()
+    assert initial["status"] == "never_run"
+    assert initial["last_successful_evaluation_at"] is None
+    assert set(initial) == {
+        "status",
+        "last_successful_evaluation_at",
+        "stale_after_seconds",
+        "server_time",
+    }
+    monitor_headers = {"X-Health-Monitor-Key": "separate-monitor-key-123456789"}
+    never_run_probe = api_client.get(monitor_path, headers=monitor_headers)
+    assert never_run_probe.status_code == 503
+    assert never_run_probe.headers["cache-control"] == "no-store"
+
+    evaluation = _evaluate(api_client)
+    assert evaluation["evaluated_resources"] == 0
+    assert evaluation["active_incidents"] == 0
+    fresh = api_client.get(dashboard_path).json()
+    assert fresh["status"] == "fresh"
+    assert fresh["last_successful_evaluation_at"] is not None
+    fresh_probe = api_client.get(monitor_path, headers=monitor_headers)
+    assert fresh_probe.headers["cache-control"] == "no-store"
+    assert fresh_probe.json() == {"status": "ok"}
+
+    async def age_watchdog() -> None:
+        async with api_client.app.state.database.session_factory() as session:
+            watchdog = await session.get(OperationalHealthWatchdog, 1)
+            assert watchdog is not None
+            watchdog.last_successful_evaluation_at = utc_now() - timedelta(minutes=5)
+            await session.commit()
+
+    asyncio.run(age_watchdog())
+    stale = api_client.get(dashboard_path).json()
+    assert stale["status"] == "stale"
+    assert api_client.get(monitor_path, headers=monitor_headers).status_code == 503
+    _evaluate(api_client)
+    assert api_client.get(dashboard_path).json()["status"] == "fresh"
 
 
 def test_watchdog_opens_acknowledges_and_auto_resolves_camera_incident(

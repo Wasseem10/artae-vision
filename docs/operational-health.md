@@ -32,6 +32,29 @@ The dashboard displays active and recently recovered incidents. If the operator 
 already enabled browser notifications, newly opened reliability incidents use that
 same permission.
 
+## Watchdog liveness
+
+Each successful evaluation writes a single last-success timestamp in the same database
+transaction as the incident changes, even when there are no cameras or incidents. The
+authenticated dashboard reads `GET /api/v1/operational-health/watchdog` and shows
+`never_run`, `fresh`, or `stale` using API server time. A missing record is never run;
+the default stale limit is 60 seconds. Set
+`VIDEO_INTEL_API_OPERATIONAL_HEALTH_WATCHDOG_STALE_SECONDS` above the operations
+worker's `VIDEO_INTEL_ALERT_HEALTH_EVALUATION_SECONDS` plus expected scheduling and
+network delay. A recent timestamp proves only that an evaluation call completed; it does not
+prove that any camera is covering a room or that someone is responding.
+
+For an independent uptime service, configure a separate
+`VIDEO_INTEL_API_OPERATIONAL_HEALTH_MONITOR_KEY` (at least 16 random characters) in
+the API secret manager. The service can call `GET /api/v1/health/watchdog` over HTTPS
+with `X-Health-Monitor-Key`. The endpoint returns only `200 {"status":"ok"}` for a
+recent successful evaluation or `503` for never run/stale; missing or invalid monitor
+credentials return `401`. It does not expose camera or tenant details. The monitor
+credential must be distinct from the agent and dashboard keys. Place the checker on
+infrastructure independent of the camera site and configure it to alert a human on
+`503`, `401`, a timeout, or any other non-200 response. This repository does not
+configure or operate that external monitor.
+
 ## Opt-in prolonged camera outage notifications
 
 An administrator may attach an existing, tenant-owned signed alert webhook channel to

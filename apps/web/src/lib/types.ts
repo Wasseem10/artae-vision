@@ -27,7 +27,8 @@ export type EvidenceStatus =
   | "indexing"
   | "ready"
   | "unavailable"
-  | "failed";
+  | "failed"
+  | "expired";
 export type EvidenceSearchStatus =
   | "queued"
   | "searching"
@@ -290,6 +291,13 @@ export interface OperationalHealthIncident {
   resolved_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface OperationalHealthWatchdogStatus {
+  status: "fresh" | "stale" | "never_run";
+  last_successful_evaluation_at: string | null;
+  stale_after_seconds: number;
+  server_time: string;
 }
 
 export interface OperationalHealthDelivery {
@@ -830,6 +838,12 @@ export interface EvidenceAsset {
   external_video_id: string | null;
   retry_count: number;
   last_error: string | null;
+  expires_at: string | null;
+  legal_hold: boolean;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  expired_at: string | null;
+  retention_error: string | null;
   content_url: string | null;
   created_at: string;
   updated_at: string;

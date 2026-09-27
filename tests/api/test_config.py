@@ -47,3 +47,13 @@ def test_database_url_normalization(input_url: str, expected_url: str) -> None:
     )
 
     assert settings.database_url == expected_url
+
+
+@pytest.mark.parametrize("reused_key", ["test-agent-key-123456789", "test-dashboard-key-12345"])
+def test_health_monitor_key_must_not_reuse_worker_or_dashboard_key(reused_key: str) -> None:
+    with pytest.raises(ValueError, match="Health monitor key must differ"):
+        ApiSettings(
+            agent_key="test-agent-key-123456789",
+            dashboard_key="test-dashboard-key-12345",
+            operational_health_monitor_key=reused_key,
+        )

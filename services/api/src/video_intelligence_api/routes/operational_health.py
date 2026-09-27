@@ -4,7 +4,7 @@ from datetime import UTC, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, case, or_, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
@@ -23,6 +23,7 @@ from video_intelligence_api.models import (
     OperationalHealthIncident,
     OperationalHealthRoute,
     OperationalHealthSeverity,
+    OperationalHealthWatchdog,
     new_id,
     utc_now,
 )
@@ -30,16 +31,80 @@ from video_intelligence_api.operational_health import camera_conditions, edge_co
 from video_intelligence_api.schemas import (
     AlertDeliveryResult,
     AlertWorkerClaim,
+    HealthResponse,
     OperationalHealthDeliveryAssignment,
     OperationalHealthDeliveryRead,
     OperationalHealthEvaluationRead,
     OperationalHealthIncidentRead,
     OperationalHealthRouteCreate,
     OperationalHealthRouteRead,
+    OperationalHealthWatchdogRead,
 )
-from video_intelligence_api.security import require_agent_key
+from video_intelligence_api.security import require_agent_key, require_health_monitor_key
 
 router = APIRouter(tags=["operational health"])
+
+
+async def _watchdog_status(
+    session: SessionDependency, settings: SettingsDependency
+) -> OperationalHealthWatchdogRead:
+    now = utc_now()
+    watchdog = await session.get(OperationalHealthWatchdog, 1)
+    last_success = watchdog.last_successful_evaluation_at if watchdog else None
+    if last_success is None:
+        state = "never_run"
+    else:
+        if last_success.tzinfo is None:
+            last_success = last_success.replace(tzinfo=UTC)
+        age_seconds = (now - last_success).total_seconds()
+        state = (
+            "fresh"
+            if 0 <= age_seconds <= settings.operational_health_watchdog_stale_seconds
+            else "stale"
+        )
+    return OperationalHealthWatchdogRead(
+        status=state,
+        last_successful_evaluation_at=last_success,
+        stale_after_seconds=settings.operational_health_watchdog_stale_seconds,
+        server_time=now,
+    )
+
+
+@router.get(
+    "/operational-health/watchdog",
+    response_model=OperationalHealthWatchdogRead,
+)
+async def read_operational_health_watchdog(
+    session: SessionDependency,
+    settings: SettingsDependency,
+    _actor: ActorDependency,
+    response: Response,
+) -> OperationalHealthWatchdogRead:
+    """Show global evaluator liveness without exposing another tenant's resources."""
+    response.headers["Cache-Control"] = "no-store"
+    return await _watchdog_status(session, settings)
+
+
+@router.get(
+    "/health/watchdog",
+    response_model=HealthResponse,
+    dependencies=[Depends(require_health_monitor_key)],
+)
+async def operational_health_watchdog_ready(
+    session: SessionDependency,
+    settings: SettingsDependency,
+    response: Response,
+) -> HealthResponse:
+    """Low-detail probe for a separately authenticated external uptime monitor."""
+    response.headers["Cache-Control"] = "no-store"
+    watchdog = await _watchdog_status(session, settings)
+    if watchdog.status != "fresh":
+        raise HTTPException(
+            status_code=503,
+            detail="Operational health watchdog is not current",
+            headers={"Cache-Control": "no-store"},
+        )
+    return HealthResponse()
 
 
 def _delivery_response(
@@ -462,6 +527,26 @@ async def evaluate_operational_health(
                     ]
                 )
             )
+    completed_at = utc_now()
+    values = {"id": 1, "last_successful_evaluation_at": completed_at}
+    if session.bind is not None and session.bind.dialect.name == "postgresql":
+        watchdog_insert = postgres_insert(OperationalHealthWatchdog).values(**values)
+    else:
+        watchdog_insert = sqlite_insert(OperationalHealthWatchdog).values(**values)
+    await session.execute(
+        watchdog_insert.on_conflict_do_update(
+            index_elements=[OperationalHealthWatchdog.id],
+            set_={
+                "last_successful_evaluation_at": case(
+                    (
+                        OperationalHealthWatchdog.last_successful_evaluation_at < completed_at,
+                        completed_at,
+                    ),
+                    else_=OperationalHealthWatchdog.last_successful_evaluation_at,
+                )
+            },
+        )
+    )
     await session.commit()
     active_count = len(observed_keys)
     return OperationalHealthEvaluationRead(

@@ -76,11 +76,16 @@ upload spool.
 The edge health profile now reports free space for its outbox and incident-clip
 volumes separately, plus the pending evidence queue depth. Its top-level free
 space is the lower value; either volume below the existing 1 GiB reserve, or a
-missing clip directory, marks the edge degraded. This is capacity visibility,
-not a retention or deletion policy. Before a private-home pilot, agree on how
-long incident clips are kept and implement bounded cleanup that never removes
-pending evidence; the existing continuous-recording retention setting does not
-cover incident clips.
+missing clip directory, marks the edge degraded. The incident recorder also
+refuses to start or complete a clip below its configurable free-space reserve,
+which makes the managed camera fail visibly rather than silently continuing.
+After a successful API upload, the evidence outbox records a durable receipt.
+`VIDEO_INTEL_INCIDENT_EVIDENCE_RETENTION_HOURS` is unset by default, so local
+incident clips are not deleted automatically. If a policy is approved and the
+setting is enabled, the edge prunes only unchanged clips with old receipts and
+no pending or leased queue reference. Unacknowledged clips remain on disk even
+under pressure. The API evidence store needs its own retention, capacity, and
+backup policy before a live pilot.
 
 The incident feed is the primary alert channel. A granted browser notification and
 audible cue can surface a possible fall while the page is open. Signed-in caregivers
@@ -817,6 +822,9 @@ enabled on the gateway.
 | `VIDEO_INTEL_DWELL_SECONDS` | `10` | Local-rule continuous dwell threshold |
 | `VIDEO_INTEL_EVENTS_DIRECTORY` | `artifacts/events` | JSONL and local evidence clips |
 | `VIDEO_INTEL_OFFLINE_OUTBOX_PATH` | `artifacts/offline/event-outbox.db` | Durable unsent control-plane event queue |
+| `VIDEO_INTEL_EVIDENCE_OUTBOX_PATH` | `artifacts/offline/evidence-outbox.db` | Durable pending evidence queue and accepted-clip receipts |
+| `VIDEO_INTEL_INCIDENT_EVIDENCE_RETENTION_HOURS` | unset | Opt-in age of accepted edge clips before protected cleanup; requires a control plane |
+| `VIDEO_INTEL_INCIDENT_EVIDENCE_MINIMUM_FREE_MB` | `1024` | Edge clip-volume reserve below which capture fails visibly |
 | `VIDEO_INTEL_CONTROL_PLANE_URL` | none | FastAPI base URL; also enables event delivery |
 | `VIDEO_INTEL_CONTROL_PLANE_DEVICE_TOKEN` | none | One-time enrolled credential for a production edge host |
 | `VIDEO_INTEL_CONTROL_PLANE_AGENT_KEY` | none | Shared fallback accepted only by edge development mode |
@@ -864,6 +872,8 @@ enabled on the gateway.
 | `VIDEO_INTEL_API_OPERATIONAL_HEALTH_CAMERA_STALE_SECONDS` | `20` | Camera heartbeat age that opens a reliability incident |
 | `VIDEO_INTEL_API_OPERATIONAL_HEALTH_FRAME_STALE_SECONDS` | `15` | Live-frame age that opens a stalled-video incident |
 | `VIDEO_INTEL_API_OPERATIONAL_HEALTH_EDGE_STALE_SECONDS` | `30` | Attached edge-station check-in age that opens an incident |
+| `VIDEO_INTEL_API_OPERATIONAL_HEALTH_WATCHDOG_STALE_SECONDS` | `60` | Maximum age of a successful health evaluation before the watchdog is stale |
+| `VIDEO_INTEL_API_OPERATIONAL_HEALTH_MONITOR_KEY` | none | Separate secret for an external `/api/v1/health/watchdog` readiness probe |
 | `VIDEO_INTEL_API_RECORDING_ARCHIVE_DIRECTORY` | `artifacts/recording-archive` | Control-plane historical-video archive root |
 | `VIDEO_INTEL_API_RECORDING_UPLOAD_MAX_BYTES` | `1073741824` | Maximum accepted archived segment size |
 | `VIDEO_INTEL_API_RECORDING_RETENTION_HOURS` | `2` | Rolling playable cloud history retained per camera |

@@ -158,11 +158,16 @@ class ApiSettings(BaseSettings):
     operational_health_camera_stale_seconds: int = Field(default=20, ge=5, le=3600)
     operational_health_frame_stale_seconds: int = Field(default=15, ge=5, le=3600)
     operational_health_edge_stale_seconds: int = Field(default=30, ge=5, le=3600)
+    operational_health_watchdog_stale_seconds: int = Field(default=60, ge=10, le=3600)
+    operational_health_monitor_key: SecretStr | None = Field(default=None, min_length=16)
     replay_lease_seconds: int = Field(default=900, ge=60, le=3600)
     replay_directory: Path = Path("artifacts/replays")
     replay_max_bytes: int = Field(default=512 * 1024 * 1024, ge=1024, le=10 * 1024**3)
     evidence_directory: Path = Path("artifacts/evidence")
     evidence_max_bytes: int = Field(default=512 * 1024 * 1024, ge=1024, le=10 * 1024**3)
+    evidence_storage_max_bytes: int | None = Field(default=None, ge=1)
+    evidence_min_free_bytes: int = Field(default=0, ge=0)
+    evidence_retention_hours: int | None = Field(default=None, ge=1, le=24 * 3650)
     evidence_lease_seconds: int = Field(default=1800, ge=10, le=7200)
     recording_archive_directory: Path = Path("artifacts/recording-archive")
     recording_upload_max_bytes: int = Field(
@@ -242,6 +247,14 @@ class ApiSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_security_configuration(self) -> "ApiSettings":
+        if self.operational_health_monitor_key is not None and (
+            self.operational_health_monitor_key.get_secret_value()
+            in {
+                self.agent_key.get_secret_value(),
+                self.dashboard_key.get_secret_value(),
+            }
+        ):
+            raise ValueError("Health monitor key must differ from agent and dashboard keys")
         if self.agent_restart_backoff_max_seconds < self.agent_restart_backoff_base_seconds:
             raise ValueError("Agent restart maximum backoff must be at least the base backoff")
         asymmetric_algorithms = {

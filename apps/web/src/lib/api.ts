@@ -17,6 +17,7 @@ import type {
   CreateCameraOnboardingInput,
   CreateCameraCommissioningInput,
   OperationalHealthIncident,
+  OperationalHealthWatchdogStatus,
   HealthAlertRoute,
   CreateReplaySuiteInput,
   CreateRuleInput,
@@ -249,6 +250,8 @@ export const api = {
     }),
   listOperationalHealthIncidents: () =>
     request<OperationalHealthIncident[]>("/operational-health/incidents"),
+  getOperationalHealthWatchdog: () =>
+    request<OperationalHealthWatchdogStatus>("/operational-health/watchdog"),
   listHealthAlertRoutes: (cameraId: string) =>
     request<HealthAlertRoute[]>(`/cameras/${cameraId}/health-alert-routes`),
   createHealthAlertRoute: (cameraId: string, channelId: string, outageAfterSeconds: number) =>
@@ -454,6 +457,13 @@ export const api = {
       method: "POST",
     }),
   listEvidence: () => request<EvidenceAsset[]>("/evidence?limit=100"),
+  markEvidenceReviewed: (evidenceId: string) =>
+    request<EvidenceAsset>(`/evidence/${evidenceId}/review`, { method: "POST" }),
+  setEvidenceLegalHold: (evidenceId: string, enabled: boolean) =>
+    request<EvidenceAsset>(`/evidence/${evidenceId}/legal-hold`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled }),
+    }),
   createEvidenceSearch: (query: string, cameraId: string | null) =>
     request<EvidenceSearch>("/evidence/searches", {
       method: "POST",

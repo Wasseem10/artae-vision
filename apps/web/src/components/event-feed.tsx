@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icon";
-import { evidenceContentUrl } from "@/lib/api";
+import { api, evidenceContentUrl } from "@/lib/api";
 import type { Camera, EvidenceAsset, StreamStatus, VideoEvent } from "@/lib/types";
 
 interface EventFeedProps {
@@ -11,6 +11,9 @@ interface EventFeedProps {
   cameras: Camera[];
   evidence: EvidenceAsset[];
   streamStatus: StreamStatus;
+  canOperate: boolean;
+  canAdminister: boolean;
+  onRefreshEvidence: () => Promise<void>;
 }
 
 function formatTime(value: string): string {
@@ -26,8 +29,17 @@ function eventLabel(eventType: string): string {
   return eventType.replaceAll("_", " ");
 }
 
-export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeedProps) {
+export function EventFeed({ events, cameras, evidence, streamStatus, canOperate, canAdminister, onRefreshEvidence }: EventFeedProps) {
   const [selectedAsset, setSelectedAsset] = useState<EvidenceAsset | null>(null);
+  const [clipOpened, setClipOpened] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const listedAsset = selectedAsset && evidence.find((candidate) => candidate.id === selectedAsset.id);
+  const modalAsset = selectedAsset && listedAsset
+    ? listedAsset.status === "expired" || Date.parse(listedAsset.updated_at) > Date.parse(selectedAsset.updated_at)
+      ? listedAsset
+      : selectedAsset
+    : null;
 
   useEffect(() => {
     if (!selectedAsset) return;
@@ -37,6 +49,40 @@ export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeed
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [selectedAsset]);
+
+  function openClip(asset: EvidenceAsset) {
+    setSelectedAsset(asset);
+    setClipOpened(false);
+    setActionError(null);
+  }
+
+  async function markReviewed() {
+    if (!modalAsset || !clipOpened || modalAsset.reviewed_at || !canOperate || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      setSelectedAsset(await api.markEvidenceReviewed(modalAsset.id));
+      await onRefreshEvidence();
+    } catch (failure) {
+      setActionError(failure instanceof Error ? failure.message : "Could not mark this clip reviewed.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function toggleLegalHold() {
+    if (!modalAsset || !canAdminister || actionBusy) return;
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      setSelectedAsset(await api.setEvidenceLegalHold(modalAsset.id, !modalAsset.legal_hold));
+      await onRefreshEvidence();
+    } catch (failure) {
+      setActionError(failure instanceof Error ? failure.message : "Could not change the legal hold.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
 
   return (
     <>
@@ -70,6 +116,8 @@ export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeed
                   ? "Test alert · no clip"
                   : asset?.status === "ready"
                   ? "Search ready"
+                  : asset?.status === "expired"
+                    ? "Expired · clip removed"
                   : asset?.status === "indexing"
                     ? "Indexing"
                     : asset?.content_url
@@ -110,10 +158,10 @@ export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeed
                       <span className={`clipState clip-${asset?.status ?? "pending"}`}>
                         {clipLabel}
                       </span>
-                      {asset?.content_url && (
+                      {asset?.content_url && asset.status !== "expired" && (
                         <button
                           className="playClipButton"
-                          onClick={() => setSelectedAsset(asset)}
+                          onClick={() => openClip(asset)}
                           type="button"
                         >
                           Play clip
@@ -128,7 +176,7 @@ export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeed
         )}
       </section>
 
-      {selectedAsset?.content_url && (
+      {modalAsset?.content_url && modalAsset.status !== "expired" && (
         <div
           aria-labelledby="event-clip-title"
           aria-modal="true"
@@ -156,15 +204,44 @@ export function EventFeed({ events, cameras, evidence, streamStatus }: EventFeed
             <video
               autoPlay
               controls
-              key={selectedAsset.id}
+              key={modalAsset.id}
+              onLoadedData={() => {
+                setClipOpened(true);
+                setActionError(null);
+              }}
+              onError={() => {
+                setClipOpened(false);
+                setActionError("The clip could not be loaded. Review remains unavailable.");
+              }}
               preload="metadata"
-              src={evidenceContentUrl(selectedAsset.content_url)}
+              src={evidenceContentUrl(modalAsset.content_url)}
             />
             <p>
-              {selectedAsset.duration_seconds === null
+              {modalAsset.duration_seconds === null
                 ? "Evidence captured around the alert."
-                : `${selectedAsset.duration_seconds.toFixed(1)} seconds captured around the alert.`}
+                : `${modalAsset.duration_seconds.toFixed(1)} seconds captured around the alert.`}
             </p>
+            <div className="clipModalReview">
+              <span>Clip status: {modalAsset.status.replaceAll("_", " ")}</span>
+              <span>{modalAsset.expires_at ? `Retention end: ${formatTime(modalAsset.expires_at)}` : "Retention end not set"}</span>
+              <span>{modalAsset.legal_hold ? "Legal hold active" : "No legal hold"}</span>
+              <span>{modalAsset.reviewed_at ? `Reviewed ${formatTime(modalAsset.reviewed_at)}${modalAsset.reviewed_by ? ` by ${modalAsset.reviewed_by}` : ""}` : "Awaiting operator review"}</span>
+            </div>
+            {(canOperate || canAdminister) && (
+              <div className="clipModalReviewActions">
+                {canOperate && !modalAsset.reviewed_at && (
+                  <button disabled={!clipOpened || actionBusy} onClick={() => void markReviewed()} type="button">
+                    Mark reviewed
+                  </button>
+                )}
+                {canAdminister && (
+                  <button disabled={actionBusy} onClick={() => void toggleLegalHold()} type="button">
+                    {modalAsset.legal_hold ? "Release legal hold" : "Place legal hold"}
+                  </button>
+                )}
+              </div>
+            )}
+            {actionError && <p className="clipModalReviewError" role="alert">{actionError}</p>}
           </div>
         </div>
       )}

@@ -52,3 +52,19 @@ def test_settings_accept_gemini_observer_with_key() -> None:
 def test_settings_reject_observer_overlap_equal_to_window() -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, observer_window_frames=10, observer_overlap_frames=10)
+
+
+def test_incident_evidence_cleanup_is_disabled_until_policy_is_configured() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.incident_evidence_retention_hours is None
+    assert settings.incident_evidence_minimum_free_mb == 1024
+
+    with pytest.raises(ValidationError, match="requires the control-plane URL"):
+        Settings(_env_file=None, incident_evidence_retention_hours=24)
+
+    enabled = Settings(
+        _env_file=None,
+        control_plane_url="https://control.test",
+        incident_evidence_retention_hours=24,
+    )
+    assert enabled.incident_evidence_retention_hours == 24

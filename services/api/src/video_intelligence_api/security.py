@@ -31,6 +31,23 @@ async def require_agent_key(
         )
 
 
+async def require_health_monitor_key(
+    request: Request,
+    x_health_monitor_key: Annotated[str | None, Header()] = None,
+) -> None:
+    """Authenticate a low-privilege external watchdog readiness probe."""
+    configured = request.app.state.settings.operational_health_monitor_key
+    if (
+        configured is None
+        or x_health_monitor_key is None
+        or not hmac.compare_digest(x_health_monitor_key, configured.get_secret_value())
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid health monitor key",
+        )
+
+
 async def require_edge_device(
     request: Request,
     session: SessionDependency,

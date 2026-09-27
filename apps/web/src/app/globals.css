@@ -3691,6 +3691,45 @@ textarea:focus {
   margin: 12px 2px 0;
 }
 
+.clipModalReview {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 8px 18px;
+  margin: 14px 2px 0;
+}
+
+.clipModalReviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.clipModalReviewActions button {
+  background: #edf6df;
+  border: 1px solid #d7e9bc;
+  border-radius: 9px;
+  color: #2f5320;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 7px 12px;
+}
+
+.clipModalReviewActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.clipModalReviewError {
+  color: #ad2b2b !important;
+  font-size: 12px !important;
+}
+
 .searchPanel {
   margin: 16px auto 0;
   max-width: 1420px;
