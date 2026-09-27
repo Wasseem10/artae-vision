@@ -1853,6 +1853,42 @@ class OperationalHealthIncidentRead(ApiModel):
     resolved_by: str | None
     created_at: datetime
     updated_at: datetime
+    deliveries: list[OperationalHealthDeliveryRead] = Field(default_factory=list)
+
+
+class OperationalHealthRouteCreate(ApiModel):
+    channel_id: str = Field(min_length=1, max_length=36)
+    outage_after_seconds: int = Field(default=120, ge=60, le=3600)
+
+
+class OperationalHealthRouteRead(ApiModel):
+    id: str
+    camera_id: str
+    channel_id: str
+    channel_name: str
+    outage_after_seconds: int
+    created_at: datetime
+
+
+class OperationalHealthDeliveryRead(ApiModel):
+    id: str
+    channel_id: str
+    channel_name: str
+    status: AlertDeliveryStatus
+    attempt_count: int
+    next_attempt_at: datetime
+    last_status_code: int | None
+    last_error: str | None
+    delivered_at: datetime | None
+
+
+class OperationalHealthDeliveryAssignment(ApiModel):
+    delivery_id: str
+    incident_id: str
+    webhook_url: HttpUrl
+    signing_secret: str
+    timeout_seconds: float
+    payload: dict[str, object]
 
 
 class OperationalHealthEvaluationRead(ApiModel):

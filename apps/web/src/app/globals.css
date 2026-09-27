@@ -378,6 +378,39 @@
 .healthSeverity-warning { color: #8a6419; }
 .healthAcknowledged { color: var(--muted); }
 
+.healthRouteConfig {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--canvas);
+}
+
+.healthRouteConfig > div > p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.healthRouteConfig .compactForm {
+  max-width: 460px;
+}
+
+.healthRouteList {
+  display: grid;
+  gap: 8px;
+}
+
+.healthRouteList > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.84rem;
+}
+
 .resolvedHealthIncidents {
   padding-top: 8px;
   border-top: 1px solid var(--line);

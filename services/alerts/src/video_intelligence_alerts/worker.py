@@ -28,6 +28,15 @@ class AlertAssignment(BaseModel):
     payload: dict[str, Any]
 
 
+class HealthAssignment(BaseModel):
+    delivery_id: str
+    incident_id: str
+    webhook_url: HttpUrl
+    signing_secret: str
+    timeout_seconds: float = Field(gt=0, le=60)
+    payload: dict[str, Any]
+
+
 class ActionAssignment(BaseModel):
     execution_id: str
     connector_type: Literal[
@@ -47,12 +56,24 @@ def canonical_body(payload: dict[str, Any]) -> bytes:
 
 
 def signed_headers(assignment: AlertAssignment, body: bytes, timestamp: int) -> dict[str, str]:
+    return _signed_webhook_headers(
+        assignment.delivery_id,
+        assignment.signing_secret,
+        "video.alert.created",
+        body,
+        timestamp,
+    )
+
+
+def _signed_webhook_headers(
+    delivery_id: str, signing_secret: str, event_type: str, body: bytes, timestamp: int
+) -> dict[str, str]:
     message = str(timestamp).encode() + b"." + body
-    signature = hmac.new(assignment.signing_secret.encode(), message, hashlib.sha256).hexdigest()
+    signature = hmac.new(signing_secret.encode(), message, hashlib.sha256).hexdigest()
     return {
         "Content-Type": "application/json",
-        "Idempotency-Key": assignment.delivery_id,
-        "X-Artae-Event": "video.alert.created",
+        "Idempotency-Key": delivery_id,
+        "X-Artae-Event": event_type,
         "X-Artae-Timestamp": str(timestamp),
         "X-Artae-Signature": f"v1={signature}",
     }
@@ -181,6 +202,60 @@ def deliver_assignment(assignment: AlertAssignment, client: httpx.Client) -> dic
         return {"outcome": outcome, "status_code": response.status_code, "error": error}
     except httpx.HTTPError as exc:
         return {"outcome": "retryable", "error": str(exc)}
+
+
+def claim_health_assignment(
+    client: httpx.Client, base_url: str, headers: dict[str, str], worker_id: str
+) -> HealthAssignment | None:
+    response = client.post(
+        f"{base_url}/api/v1/agent/operational-health/deliveries/claim",
+        headers=headers,
+        json={"worker_id": worker_id},
+    )
+    if response.status_code == 204:
+        return None
+    response.raise_for_status()
+    return HealthAssignment.model_validate(response.json())
+
+
+def deliver_health_assignment(assignment: HealthAssignment, client: httpx.Client) -> dict[str, Any]:
+    body = canonical_body(assignment.payload)
+    headers = _signed_webhook_headers(
+        assignment.delivery_id,
+        assignment.signing_secret,
+        "video.monitoring.unavailable",
+        body,
+        int(time.time()),
+    )
+    try:
+        response = client.post(
+            str(assignment.webhook_url),
+            content=body,
+            headers=headers,
+            timeout=assignment.timeout_seconds,
+        )
+        outcome = classify_response(response.status_code)
+        error = None if outcome == "delivered" else f"Webhook returned HTTP {response.status_code}"
+        return {"outcome": outcome, "status_code": response.status_code, "error": error}
+    except httpx.HTTPError as exc:
+        # A URL may carry a secret in its query string; never persist it in last_error.
+        return {"outcome": "retryable", "error": f"Webhook request failed ({type(exc).__name__})"}
+
+
+def report_health_result(
+    client: httpx.Client,
+    base_url: str,
+    headers: dict[str, str],
+    worker_id: str,
+    assignment: HealthAssignment,
+    result: dict[str, Any],
+) -> None:
+    response = client.post(
+        f"{base_url}/api/v1/agent/operational-health/deliveries/{assignment.delivery_id}/result",
+        headers=headers,
+        json={"worker_id": worker_id, **result},
+    )
+    response.raise_for_status()
 
 
 def claim_action(
@@ -321,6 +396,7 @@ def run_worker(
     logger.info("Alert worker ready: worker=%s", worker_id)
     next_health_evaluation = 0.0
     next_evidence_sampling = 0.0
+    next_delivery_type = "alert"
     with httpx.Client(
         timeout=settings.control_plane_timeout_seconds,
         transport=transport,
@@ -364,17 +440,42 @@ def run_worker(
                     logger.warning("Active evidence reconciliation failed: %s", exc)
                 next_evidence_sampling = current_time + settings.evidence_sampling_seconds
             try:
-                assignment = claim_assignment(client, base_url, control_headers, worker_id)
-                if assignment is not None:
-                    result = deliver_assignment(assignment, client)
-                    report_result(client, base_url, control_headers, worker_id, assignment, result)
-                    logger.info(
-                        "Alert delivery completed: delivery=%s outcome=%s",
-                        assignment.delivery_id,
-                        result["outcome"],
-                    )
+                delivery_order = (
+                    ("alert", "health") if next_delivery_type == "alert" else ("health", "alert")
+                )
+                for delivery_type in delivery_order:
+                    if delivery_type == "alert":
+                        assignment = claim_assignment(client, base_url, control_headers, worker_id)
+                        if assignment is None:
+                            continue
+                        result = deliver_assignment(assignment, client)
+                        report_result(
+                            client, base_url, control_headers, worker_id, assignment, result
+                        )
+                        logger.info(
+                            "Alert delivery completed: delivery=%s outcome=%s",
+                            assignment.delivery_id,
+                            result["outcome"],
+                        )
+                    else:
+                        health_assignment = claim_health_assignment(
+                            client, base_url, control_headers, worker_id
+                        )
+                        if health_assignment is None:
+                            continue
+                        result = deliver_health_assignment(health_assignment, client)
+                        report_health_result(
+                            client, base_url, control_headers, worker_id, health_assignment, result
+                        )
+                        logger.info(
+                            "Outage delivery completed: delivery=%s outcome=%s",
+                            health_assignment.delivery_id,
+                            result["outcome"],
+                        )
                     handled = True
-                else:
+                    next_delivery_type = "health" if delivery_type == "alert" else "alert"
+                    break
+                if not handled:
                     action = claim_action(client, base_url, control_headers, worker_id)
                     if action is not None:
                         result = execute_action(action, client)

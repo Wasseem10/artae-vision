@@ -538,6 +538,67 @@ class OperationalHealthIncident(Base):
     )
 
 
+class OperationalHealthRoute(Base):
+    """Opt-in outbound outage route for one tenant-owned camera."""
+
+    __tablename__ = "operational_health_routes"
+    __table_args__ = (
+        UniqueConstraint("camera_id", "channel_id", name="uq_operational_health_route"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    camera_id: Mapped[str] = mapped_column(
+        ForeignKey("cameras.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    channel_id: Mapped[str] = mapped_column(
+        ForeignKey("alert_channels.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    outage_after_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=120)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+
+class OperationalHealthDelivery(Base):
+    """One leased, durable outage notification per incident and channel."""
+
+    __tablename__ = "operational_health_deliveries"
+    __table_args__ = (
+        UniqueConstraint("incident_id", "channel_id", name="uq_operational_health_delivery"),
+        Index("ix_operational_health_deliveries_claim", "status", "next_attempt_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    incident_id: Mapped[str] = mapped_column(
+        ForeignKey("operational_health_incidents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    channel_id: Mapped[str] = mapped_column(
+        ForeignKey("alert_channels.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[AlertDeliveryStatus] = mapped_column(
+        Enum(AlertDeliveryStatus, native_enum=False, length=20),
+        nullable=False,
+        default=AlertDeliveryStatus.QUEUED,
+    )
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    worker_id: Mapped[str | None] = mapped_column(String(120))
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_status_code: Mapped[int | None] = mapped_column(Integer)
+    last_error: Mapped[str | None] = mapped_column(String(1000))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now
+    )
+
+
 class RecordingSegment(Base):
     """Tenant-owned historical camera segment optionally archived from an edge host."""
 
