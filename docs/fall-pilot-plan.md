@@ -33,9 +33,12 @@ browser-session SMS feature is a separate path. A webhook or provider 2xx means
 the provider accepted a request, not that the caregiver saw it. Before an
 assisted trial, configure and test a real caregiver-device route, independently
 log receipt and acknowledgment, verify that the stored identity matches the
-authenticated caregiver, and notify the backup when the camera or edge host
-stays offline. Device receipt and offline escalation are open product gates,
-not capabilities of this first shadow pilot.
+authenticated caregiver, and notify the backup when monitoring stays offline.
+An opt-in signed webhook can now report a sustained camera-runtime outage, but
+it has not been connected to a caregiver device or checked end to end. A full
+control-plane, operations-worker, or home-wide power/network failure still
+needs an independent uptime check. Device receipt and backup escalation remain
+open product gates.
 
 ## Site-specific decisions before live video
 
@@ -60,8 +63,10 @@ Record these in a dated protocol with the home owner, resident, and caregivers:
    does not inherit the browser fall result: demonstrate and evaluate a
    fall-specific candidate on the chosen edge path before a continuous pilot.
    Start with the [native fall baseline procedure](native-fall-evaluation.md);
-   it has no successful result yet on the current development host and does not
-   by itself establish event-level accuracy.
+   it has no successful result yet on the current development host. The
+   separate [native event scorer](native-fall-evaluation.md#score-against-adjudicated-labels)
+   can measure a completed replay against adjudicated labels; neither script
+   alone establishes field accuracy.
 2. **Create a held-out replay set.** Obtain permissioned clips from multiple
    people, camera placements, rooms, lighting states, mobility patterns,
    assistive devices, occlusions, and normal activities that resemble falls.
@@ -86,7 +91,11 @@ Record these in a dated protocol with the home owner, resident, and caregivers:
    `torchvision` extension); place the edge outbox
    (`VIDEO_INTEL_EVIDENCE_OUTBOX_PATH`) and clip files **and** the
    API's locally stored evidence on persistent volumes with capacity/retention
-   controls and monitor the pending-job backlog; test network loss, API failure,
+   controls and monitor the pending-job backlog. Edge health now checks free
+   space on both the outbox and incident-clip volumes, but it does not prune
+   incident clips or stop capture before a volume fills. Approve a retention
+   policy and implement protected cleanup and a tested disk-pressure response
+   before live capture. Test network loss, API failure,
    and process restart using a real camera and verify remote playback from an
    authorized second device. Fail the gate if any incident loses required
    evidence. Unit recovery tests do not replace

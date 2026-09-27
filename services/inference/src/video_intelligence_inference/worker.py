@@ -7,6 +7,7 @@ import base64
 import logging
 import os
 import socket
+import sqlite3
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -607,12 +608,14 @@ def run_worker(
                         profile_response = client.post(
                             base_url.rstrip("/") + "/api/v1/agent/fleet/profile",
                             json=collect_edge_profile(
-                                settings.offline_outbox_path, settings.evidence_outbox_path
+                                settings.offline_outbox_path,
+                                settings.evidence_outbox_path,
+                                settings.events_directory / "clips",
                             ),
                             headers=auth_headers,
                         )
                         profile_response.raise_for_status()
-                    except httpx.HTTPError as exc:
+                    except (httpx.HTTPError, OSError, sqlite3.Error) as exc:
                         logger.warning("Could not report edge hardware profile: %s", exc)
                     finally:
                         last_profile_at = time.monotonic()
