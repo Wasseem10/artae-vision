@@ -1,0 +1,1984 @@
+{
+  "schemaVersion": 1,
+  "note": "Subject-separated research evaluation. Original videos and per-frame poses are excluded.",
+  "sourceReportSchemaVersion": 3,
+  "generatedAt": "2026-09-28T20:03:17.479Z",
+  "scoringUnit": "clip",
+  "sampleIntervalSeconds": 0.1,
+  "dataset": {
+    "datasetId": "gmdcsa24-v2.1",
+    "source": "https://zenodo.org/records/13354453",
+    "citation": "Alam E, Sufian A, Dutta P, Leo M, Hameed IA. GMDCSA24: A dataset for human fall detection in videos. Data in Brief, 2024.",
+    "license": "Source repository has MIT LICENSE; participant videos remain local and are not redistributed here.",
+    "split": "Subjects 1-2 are development; subjects 3-4 are locked evaluation. Separate from UR Fall.",
+    "labelNote": "Clip classes and approximate fall onset are parsed from author CSV files; one fall has no onset timestamp. Event range ends may include recovery/other activities.",
+    "sourceRevision": "5abac7693229900cf80f722e878fbb119211fc1c"
+  },
+  "provenance": {
+    "detector": {
+      "rule": "BrowserPoseRule/fall-v2",
+      "ruleSource": "apps/web/src/lib/browser-pose.ts",
+      "runtime": "@mediapipe/tasks-vision@0.10.32",
+      "worker": "/vision/pose-worker.js",
+      "model": "MediaPipe Pose Landmarker Lite float16/1",
+      "modelSha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a"
+    },
+    "candidate": {
+      "name": "PoseWindowLogistic/v1",
+      "source": "apps/web/src/lib/fall-window-model.json",
+      "threshold": 0.96,
+      "training": {
+        "sources": [
+          "UR Fall all 70, previously examined",
+          "GMDCSA-24 subject 1"
+        ],
+        "validation": "GMDCSA-24 subject 2",
+        "reserved": "GMDCSA-24 subjects 3-4, no detector outputs examined before freeze",
+        "urReportSha256": "71157de27aa53309c6f84e060b0e6de8a482cd019be97556d257db321a0d227b",
+        "gmdDevelopmentReportSha256": "a6a2c711ec1008efda9e8ce664d3fec6239273aa3c248683e11851567111dfff",
+        "trainingWindows": 4581,
+        "positiveTrainingWindows": 628,
+        "validationSummary": {
+          "fallsDetected": 21,
+          "fallsMissed": 4,
+          "activitiesAlerted": 0,
+          "activitiesSilent": 23
+        },
+        "validationThresholdCandidates": [
+          {
+            "threshold": 0.1,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 19,
+            "activitiesSilent": 4
+          },
+          {
+            "threshold": 0.15,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 16,
+            "activitiesSilent": 7
+          },
+          {
+            "threshold": 0.2,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 15,
+            "activitiesSilent": 8
+          },
+          {
+            "threshold": 0.25,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 14,
+            "activitiesSilent": 9
+          },
+          {
+            "threshold": 0.3,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 14,
+            "activitiesSilent": 9
+          },
+          {
+            "threshold": 0.35,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 12,
+            "activitiesSilent": 11
+          },
+          {
+            "threshold": 0.4,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 12,
+            "activitiesSilent": 11
+          },
+          {
+            "threshold": 0.45,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 11,
+            "activitiesSilent": 12
+          },
+          {
+            "threshold": 0.5,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 10,
+            "activitiesSilent": 13
+          },
+          {
+            "threshold": 0.55,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 10,
+            "activitiesSilent": 13
+          },
+          {
+            "threshold": 0.6,
+            "fallsDetected": 24,
+            "fallsMissed": 1,
+            "activitiesAlerted": 10,
+            "activitiesSilent": 13
+          },
+          {
+            "threshold": 0.65,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 8,
+            "activitiesSilent": 15
+          },
+          {
+            "threshold": 0.7,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 7,
+            "activitiesSilent": 16
+          },
+          {
+            "threshold": 0.75,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 7,
+            "activitiesSilent": 16
+          },
+          {
+            "threshold": 0.8,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 6,
+            "activitiesSilent": 17
+          },
+          {
+            "threshold": 0.85,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 5,
+            "activitiesSilent": 18
+          },
+          {
+            "threshold": 0.9,
+            "fallsDetected": 23,
+            "fallsMissed": 2,
+            "activitiesAlerted": 5,
+            "activitiesSilent": 18
+          },
+          {
+            "threshold": 0.92,
+            "fallsDetected": 22,
+            "fallsMissed": 3,
+            "activitiesAlerted": 4,
+            "activitiesSilent": 19
+          },
+          {
+            "threshold": 0.94,
+            "fallsDetected": 21,
+            "fallsMissed": 4,
+            "activitiesAlerted": 1,
+            "activitiesSilent": 22
+          },
+          {
+            "threshold": 0.96,
+            "fallsDetected": 21,
+            "fallsMissed": 4,
+            "activitiesAlerted": 0,
+            "activitiesSilent": 23
+          },
+          {
+            "threshold": 0.97,
+            "fallsDetected": 20,
+            "fallsMissed": 5,
+            "activitiesAlerted": 0,
+            "activitiesSilent": 23
+          },
+          {
+            "threshold": 0.98,
+            "fallsDetected": 19,
+            "fallsMissed": 6,
+            "activitiesAlerted": 0,
+            "activitiesSilent": 23
+          },
+          {
+            "threshold": 0.99,
+            "fallsDetected": 13,
+            "fallsMissed": 12,
+            "activitiesAlerted": 0,
+            "activitiesSilent": 23
+          },
+          {
+            "threshold": 0.995,
+            "fallsDetected": 8,
+            "fallsMissed": 17,
+            "activitiesAlerted": 0,
+            "activitiesSilent": 23
+          }
+        ],
+        "trainingClipSummary": {
+          "fallsDetected": 35,
+          "fallsMissed": 11,
+          "activitiesAlerted": 1,
+          "activitiesSilent": 55
+        }
+      }
+    },
+    "codeRevision": null,
+    "codeRevisionSource": null,
+    "localSourceHashes": {
+      "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+      "apps/web/src/lib/fall-evaluation.ts": "f28981840a49ebe11e1b9fd5512e916fcd30c368eab1d9f07ac83e5d612cc611",
+      "apps/web/src/components/fall-evaluation-runner.tsx": "24542a7589792c6072341e5a29d60e7edfc259d2a69157683f3db9551f71cbd1",
+      "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+      "apps/web/src/lib/fall-window-model.json": "f87a5c88b6a38954997faea80b1b626fd9ea77f5906730ac79a26eddae030aba",
+      "scripts/train-pose-window-fall.py": "10f7dfe519c9b9203086cc65facd8bd8ea9717489532d2cb63443876299f6528",
+      "apps/web/public/vision/pose-worker.js": "064c44b3a5dff71a1440da3d7e22a6e316acad374bcbd6eddaed7a91332395b1",
+      "apps/web/public/vision/gmdcsa24/manifest.json": "e5bcbe10b97a51bb54edc4b27214b37e212fbe81401220c81ef8eb74344df998"
+    },
+    "localGitRevision": "5d37d6416b2be7082c8c8f6b825dd4519474f2ca",
+    "localGitDirty": false
+  },
+  "summary": {
+    "totalCases": 80,
+    "passedCases": 58,
+    "truePositives": 17,
+    "falsePositives": 1,
+    "trueNegatives": 41,
+    "falseNegatives": 21,
+    "precision": 0.9444444444444444,
+    "recall": 0.4473684210526316,
+    "accuracy": 0.725,
+    "falseAlertsPerHour": 9.175026895954195,
+    "meanDetectionLatencySeconds": 1.7312499999999997,
+    "totalDetections": 18,
+    "extraDetections": 1
+  },
+  "postureBaselineSummary": {
+    "totalCases": 80,
+    "passedCases": 60,
+    "truePositives": 28,
+    "falsePositives": 10,
+    "trueNegatives": 32,
+    "falseNegatives": 10,
+    "precision": 0.7368421052631579,
+    "recall": 0.7368421052631579,
+    "accuracy": 0.75,
+    "falseAlertsPerHour": 100.92529585549615,
+    "meanDetectionLatencySeconds": 1.7428571428571427,
+    "totalDetections": 42,
+    "extraDetections": 14
+  },
+  "windowModelSummary": {
+    "totalCases": 80,
+    "passedCases": 64,
+    "truePositives": 24,
+    "falsePositives": 2,
+    "trueNegatives": 40,
+    "falseNegatives": 14,
+    "precision": 0.9230769230769231,
+    "recall": 0.631578947368421,
+    "accuracy": 0.8,
+    "falseAlertsPerHour": 18.35005379190839,
+    "meanDetectionLatencySeconds": 0.7304347826086957,
+    "totalDetections": 26,
+    "extraDetections": 2
+  },
+  "partitions": [
+    {
+      "name": "holdout",
+      "cases": 80,
+      "summary": {
+        "totalCases": 80,
+        "passedCases": 58,
+        "truePositives": 17,
+        "falsePositives": 1,
+        "trueNegatives": 41,
+        "falseNegatives": 21,
+        "precision": 0.9444444444444444,
+        "recall": 0.4473684210526316,
+        "accuracy": 0.725,
+        "falseAlertsPerHour": 9.175026895954195,
+        "meanDetectionLatencySeconds": 1.7312499999999997,
+        "totalDetections": 18,
+        "extraDetections": 1
+      },
+      "postureBaselineSummary": {
+        "totalCases": 80,
+        "passedCases": 60,
+        "truePositives": 28,
+        "falsePositives": 10,
+        "trueNegatives": 32,
+        "falseNegatives": 10,
+        "precision": 0.7368421052631579,
+        "recall": 0.7368421052631579,
+        "accuracy": 0.75,
+        "falseAlertsPerHour": 100.92529585549615,
+        "meanDetectionLatencySeconds": 1.7428571428571427,
+        "totalDetections": 42,
+        "extraDetections": 14
+      },
+      "windowModelSummary": {
+        "totalCases": 80,
+        "passedCases": 64,
+        "truePositives": 24,
+        "falsePositives": 2,
+        "trueNegatives": 40,
+        "falseNegatives": 14,
+        "precision": 0.9230769230769231,
+        "recall": 0.631578947368421,
+        "accuracy": 0.8,
+        "falseAlertsPerHour": 18.35005379190839,
+        "meanDetectionLatencySeconds": 0.7304347826086957,
+        "totalDetections": 26,
+        "extraDetections": 2
+      }
+    }
+  ],
+  "results": [
+    {
+      "id": "gmd-s3-adl-01",
+      "name": "GMDCSA-24 subject 3 adl 01.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "54ae0c8c24fe1331684adede4aa78e78d9be1992",
+      "videoSha256": "17c8df7c792a8b48707003971c9b2a44dd2a75a227b8060570600a263baf7c85",
+      "durationSeconds": 8.765208,
+      "framesAnalyzed": 88,
+      "framesWithPose": 88,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.7113636335866,
+      "p95InferenceMs": 24.19999998807907
+    },
+    {
+      "id": "gmd-s3-adl-02",
+      "name": "GMDCSA-24 subject 3 adl 02.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "a15dfabd23790c9c02cb5b476cc3b10b40281c9f",
+      "videoSha256": "ccfd632e5b6422672be2f068f13394b9b120eb861cec9d06ba8b85d84e26e10d",
+      "durationSeconds": 9.150521,
+      "framesAnalyzed": 92,
+      "framesWithPose": 92,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.800000001878843,
+      "p95InferenceMs": 25.599999994039536
+    },
+    {
+      "id": "gmd-s3-adl-03",
+      "name": "GMDCSA-24 subject 3 adl 03.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "2837ecbb2ea84ccbbb78edcffe81778c8fa7bbe9",
+      "videoSha256": "f587753621be201cf3a4f00521d99e7869471de47df3d73ec2270efb4bdd0d76",
+      "durationSeconds": 9.921733,
+      "framesAnalyzed": 100,
+      "framesWithPose": 100,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.143999998271465,
+      "p95InferenceMs": 24.69999998807907
+    },
+    {
+      "id": "gmd-s3-adl-04",
+      "name": "GMDCSA-24 subject 3 adl 04.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "67d22efbe35351a1e5659fb912aba445937e714e",
+      "videoSha256": "6fa12e415b47769e2a27e99a0efcb57393bb01cc88c58da3ad752aeda0a09ed3",
+      "durationSeconds": 10.049467,
+      "framesAnalyzed": 101,
+      "framesWithPose": 101,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.608910892859544,
+      "p95InferenceMs": 27.099999994039536
+    },
+    {
+      "id": "gmd-s3-adl-05",
+      "name": "GMDCSA-24 subject 3 adl 05.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "9f2017fd9ae2ba00807ece9335f683d18f8a9067",
+      "videoSha256": "8353ad735c66f1806a77dce2e235e481414023b2dd37a60c6f395f99fca5ac0b",
+      "durationSeconds": 5.1693,
+      "framesAnalyzed": 52,
+      "framesWithPose": 52,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.488461538576164,
+      "p95InferenceMs": 26.200000017881393
+    },
+    {
+      "id": "gmd-s3-adl-06",
+      "name": "GMDCSA-24 subject 3 adl 06.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "e66544079bc009369f1c4068b136de9f27606e2d",
+      "videoSha256": "1953d8a5305e7d8da22ac3dd2f6ca1128c63f3671aaf71761d9dbf9e4f82b971",
+      "durationSeconds": 8.949605,
+      "framesAnalyzed": 90,
+      "framesWithPose": 89,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.938888888226614,
+      "p95InferenceMs": 28
+    },
+    {
+      "id": "gmd-s3-adl-07",
+      "name": "GMDCSA-24 subject 3 adl 07.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "9506c4c2005c9d3830605a9984ab434e1291120a",
+      "videoSha256": "aefbdc248f169ec30bdfb0e81a39fec11b63e315fea6e5be2057615ffecb2c2f",
+      "durationSeconds": 3.354355,
+      "framesAnalyzed": 34,
+      "framesWithPose": 34,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        0.9
+      ],
+      "meanInferenceMs": 25.455882353817714,
+      "p95InferenceMs": 25.900000005960464
+    },
+    {
+      "id": "gmd-s3-adl-08",
+      "name": "GMDCSA-24 subject 3 adl 08.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "a38dca4aed2a27d930354beeb7d36911a7b8dd55",
+      "videoSha256": "b383bb83a22b286cfc65fdd934137ee8b29e84aef7be0b540271d7c69d10fa8b",
+      "durationSeconds": 4.896167,
+      "framesAnalyzed": 49,
+      "framesWithPose": 49,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.6
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.363265306365733,
+      "p95InferenceMs": 28.200000017881393
+    },
+    {
+      "id": "gmd-s3-adl-09",
+      "name": "GMDCSA-24 subject 3 adl 09.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "cfa82a7a175542ace7bf85d97a639009e2fd0349",
+      "videoSha256": "5100230c1f7d22a400ca810b9eef7162853cb556484648bf5c9fbf1844df618d",
+      "durationSeconds": 7.775967,
+      "framesAnalyzed": 78,
+      "framesWithPose": 78,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.016666664909092,
+      "p95InferenceMs": 25.69999998807907
+    },
+    {
+      "id": "gmd-s3-adl-10",
+      "name": "GMDCSA-24 subject 3 adl 10.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "c164e3c72bea8665392b4158faac3e5296fe0fc9",
+      "videoSha256": "145f29516fa6c06ecec6f47d024b86898e930fe95286d136a607084d90b64a1d",
+      "durationSeconds": 12.438791,
+      "framesAnalyzed": 125,
+      "framesWithPose": 125,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.97840000128746,
+      "p95InferenceMs": 25.80000001192093
+    },
+    {
+      "id": "gmd-s3-adl-11",
+      "name": "GMDCSA-24 subject 3 adl 11.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "56e5dfb3c70e4b50bbc3fb7f1402ef9fbe9168af",
+      "videoSha256": "051da841f946496acf7192f32a363109c5a69a3532d31cf82464e72a2f558345",
+      "durationSeconds": 12.0815,
+      "framesAnalyzed": 121,
+      "framesWithPose": 121,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.933884297766962,
+      "p95InferenceMs": 26.100000023841858
+    },
+    {
+      "id": "gmd-s3-adl-12",
+      "name": "GMDCSA-24 subject 3 adl 12.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "476c8c32f2f6c99494746d51751b7de66683fb36",
+      "videoSha256": "1ac3eb88b6993bb5bad420c69633e83dab3bf79604d03955b7d1343501ffc47c",
+      "durationSeconds": 10.673333,
+      "framesAnalyzed": 107,
+      "framesWithPose": 106,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.638317755171073,
+      "p95InferenceMs": 26.299999982118607
+    },
+    {
+      "id": "gmd-s3-adl-13",
+      "name": "GMDCSA-24 subject 3 adl 13.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "1501187cf894db4e575a459d2a2af5bf4c20def5",
+      "videoSha256": "cc8847e582cc3644e745628bf14c66ca11efb235c5a3aef9d5a11355b4cdca9b",
+      "durationSeconds": 8.673771,
+      "framesAnalyzed": 87,
+      "framesWithPose": 77,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.902298851259822,
+      "p95InferenceMs": 33.599999994039536
+    },
+    {
+      "id": "gmd-s3-adl-14",
+      "name": "GMDCSA-24 subject 3 adl 14.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "f7c184b9c5ec8cb2f2a25cc5eb8d36ed17773bbb",
+      "videoSha256": "4f8d1eb75dc0286a6b99687e25b9adb00f847c9c5b2480d64850dd865b6f2e29",
+      "durationSeconds": 8.865633,
+      "framesAnalyzed": 89,
+      "framesWithPose": 82,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.201123596242304,
+      "p95InferenceMs": 31
+    },
+    {
+      "id": "gmd-s3-adl-15",
+      "name": "GMDCSA-24 subject 3 adl 15.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "fffb9992cfe252162ab9078fe698da63cf09fa92",
+      "videoSha256": "b3fb82289131f8d363fb731f05576c9138c9425d2f18412cbd1dc758646506a5",
+      "durationSeconds": 7.694959,
+      "framesAnalyzed": 77,
+      "framesWithPose": 77,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.135064936303472,
+      "p95InferenceMs": 25.5
+    },
+    {
+      "id": "gmd-s3-adl-16",
+      "name": "GMDCSA-24 subject 3 adl 16.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "d7971062272b449d7c0c7b75ad1c0f63192febd4",
+      "videoSha256": "387dbf91bc617efd2fdbeab9de155f2a0522240075077796070e7f37c52ab420",
+      "durationSeconds": 10.26648,
+      "framesAnalyzed": 103,
+      "framesWithPose": 103,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.387378642859968,
+      "p95InferenceMs": 28.80000001192093
+    },
+    {
+      "id": "gmd-s3-adl-17",
+      "name": "GMDCSA-24 subject 3 adl 17.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "e9d7bf106c378e9646810f54f40d175828ba69f8",
+      "videoSha256": "431d87a5c6d160324e684fde7a92f1ba73892062f7f450001694ab2789f831ba",
+      "durationSeconds": 12.153187,
+      "framesAnalyzed": 122,
+      "framesWithPose": 122,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.36885245999352,
+      "p95InferenceMs": 25.5
+    },
+    {
+      "id": "gmd-s3-adl-18",
+      "name": "GMDCSA-24 subject 3 adl 18.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "62398c07c61d33a08ca13a1f33daa75c492a1e19",
+      "videoSha256": "43870e1530924496c1156de1dcc8d84b6f6bf589cd92f765779721cf58e6a6c5",
+      "durationSeconds": 11.121433,
+      "framesAnalyzed": 112,
+      "framesWithPose": 109,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.06160714397473,
+      "p95InferenceMs": 28.30000001192093
+    },
+    {
+      "id": "gmd-s3-adl-19",
+      "name": "GMDCSA-24 subject 3 adl 19.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "65627988f84c8eaf7cc10d32b774ebc4b01eefdb",
+      "videoSha256": "397ae0392f5e62373aff2bbe5854c1a32942d0834df744b7718e54fca13fffc9",
+      "durationSeconds": 6.5133,
+      "framesAnalyzed": 66,
+      "framesWithPose": 61,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.80151515160546,
+      "p95InferenceMs": 31.700000017881393
+    },
+    {
+      "id": "gmd-s3-adl-20",
+      "name": "GMDCSA-24 subject 3 adl 20.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "5e4495f59284b006dd40b9dc34f8fcd9061b6fc8",
+      "videoSha256": "410b01a11f95bb0e9fe02bed87836312daba38cbd6383cc865ec46283af65b03",
+      "durationSeconds": 9.393267,
+      "framesAnalyzed": 94,
+      "framesWithPose": 94,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 21.100000001014546,
+      "p95InferenceMs": 22.30000001192093
+    },
+    {
+      "id": "gmd-s3-adl-21",
+      "name": "GMDCSA-24 subject 3 adl 21.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "43ad6357b61726133c9e54749ec8c3d04326c868",
+      "videoSha256": "96bd5526e40377acaa56d54b8b6bd0be4b83cfc533605c58611d133fd867a6a9",
+      "durationSeconds": 10.229792,
+      "framesAnalyzed": 103,
+      "framesWithPose": 103,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.845631067903298,
+      "p95InferenceMs": 26.799999982118607
+    },
+    {
+      "id": "gmd-s3-adl-22",
+      "name": "GMDCSA-24 subject 3 adl 22.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "0af96bfce52598b282df794d19296d15b05dfd61",
+      "videoSha256": "0b126b31148aacb973d074287bd6b31c9c5567a271f3321b2d37c39cf42b1dfd",
+      "durationSeconds": 9.489533,
+      "framesAnalyzed": 95,
+      "framesWithPose": 95,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.8884210555177,
+      "p95InferenceMs": 28.099999994039536
+    },
+    {
+      "id": "gmd-s3-fall-01",
+      "name": "GMDCSA-24 subject 3 fall 01.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 0,
+      "sourceGitBlobSha1": "63849f8c776ba8197a5df16f9e900bd97e9214be",
+      "videoSha256": "89ed574427ac26e03bc951a43fd98bd9e57cf85d55335fa359b0632050365864",
+      "durationSeconds": 3.815125,
+      "framesAnalyzed": 39,
+      "framesWithPose": 38,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.1
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.4
+      ],
+      "meanInferenceMs": 28.28205128434377,
+      "p95InferenceMs": 33.80000001192093
+    },
+    {
+      "id": "gmd-s3-fall-02",
+      "name": "GMDCSA-24 subject 3 fall 02.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.6,
+      "sourceGitBlobSha1": "dd39274c58c56a260cc947902ef2bf34b1320359",
+      "videoSha256": "6d9539cbb137c9de305f05d2d4b49dc45217aaae711ee26ca72da58718eeaf38",
+      "durationSeconds": 6.574521,
+      "framesAnalyzed": 66,
+      "framesWithPose": 60,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        4.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.18181817956043,
+      "p95InferenceMs": 34.19999998807907
+    },
+    {
+      "id": "gmd-s3-fall-03",
+      "name": "GMDCSA-24 subject 3 fall 03.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.5,
+      "sourceGitBlobSha1": "41daaee74ceb00e8db32f34525a57c704994f0b5",
+      "videoSha256": "267abab9b0ca7f4ef8425e2bfb2272ffeae1165fc2e3523ca1a6e0a62046b912",
+      "durationSeconds": 5.630271,
+      "framesAnalyzed": 57,
+      "framesWithPose": 56,
+      "detectedAtSeconds": [
+        3.3
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.7
+      ],
+      "windowModelDetectedAtSeconds": [
+        2.2
+      ],
+      "meanInferenceMs": 25.88070175574537,
+      "p95InferenceMs": 28.900000005960464
+    },
+    {
+      "id": "gmd-s3-fall-04",
+      "name": "GMDCSA-24 subject 3 fall 04.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.2,
+      "sourceGitBlobSha1": "ce498c960dd528b498b5b328b7a4545b1b52e304",
+      "videoSha256": "a90c5a6f8c2c1bb899bf01f20615b896f67492e4267d2483cdbeacd71db62c92",
+      "durationSeconds": 5.479792,
+      "framesAnalyzed": 55,
+      "framesWithPose": 54,
+      "detectedAtSeconds": [
+        2.9
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.2
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.7
+      ],
+      "meanInferenceMs": 26.716363635388287,
+      "p95InferenceMs": 28.5
+    },
+    {
+      "id": "gmd-s3-fall-05",
+      "name": "GMDCSA-24 subject 3 fall 05.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 3.2,
+      "sourceGitBlobSha1": "1663613e3e0f00c3d3e3cf705ef5745223cdf313",
+      "videoSha256": "efbb2c6c4721df503426918056b5ed3f233f77b55595b70dce9f9d68c48e650f",
+      "durationSeconds": 10.057562,
+      "framesAnalyzed": 101,
+      "framesWithPose": 99,
+      "detectedAtSeconds": [
+        5
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        5
+      ],
+      "windowModelDetectedAtSeconds": [
+        3.7
+      ],
+      "meanInferenceMs": 25.486138612917156,
+      "p95InferenceMs": 27.5
+    },
+    {
+      "id": "gmd-s3-fall-06",
+      "name": "GMDCSA-24 subject 3 fall 06.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 0,
+      "sourceGitBlobSha1": "fd97835118f3f87c4027eb98d58fdd5cf4a7c11a",
+      "videoSha256": "c76b7b74f56b344c11a8cdae0e7f5e01e6ab89af048ba220c1a4687891d15f34",
+      "durationSeconds": 5.601542,
+      "framesAnalyzed": 57,
+      "framesWithPose": 56,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        1.4
+      ],
+      "windowModelDetectedAtSeconds": [
+        0.7
+      ],
+      "meanInferenceMs": 26.61929824425463,
+      "p95InferenceMs": 27.700000017881393
+    },
+    {
+      "id": "gmd-s3-fall-07",
+      "name": "GMDCSA-24 subject 3 fall 07.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1,
+      "sourceGitBlobSha1": "bca432834b997569b87599a4e25886c342279da8",
+      "videoSha256": "86a20851a1d3bfacbe11d8977972f95a256893b80cd4de66dc7bb224a4dca55b",
+      "durationSeconds": 9.029667,
+      "framesAnalyzed": 91,
+      "framesWithPose": 91,
+      "detectedAtSeconds": [
+        2.6
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.1
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.5
+      ],
+      "meanInferenceMs": 25.97802197769448,
+      "p95InferenceMs": 28.69999998807907
+    },
+    {
+      "id": "gmd-s3-fall-08",
+      "name": "GMDCSA-24 subject 3 fall 08.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 0,
+      "sourceGitBlobSha1": "c3673fff8bbed53b8273f8f52a7dd762082a9fae",
+      "videoSha256": "39c2bcd61f24ebf38e05fc00cd680cad60688c5a5ad43f642e2ea5833b83da32",
+      "durationSeconds": 6.353084,
+      "framesAnalyzed": 64,
+      "framesWithPose": 57,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        1.9,
+        3.2,
+        5.3,
+        6.3
+      ],
+      "windowModelDetectedAtSeconds": [
+        0.6
+      ],
+      "meanInferenceMs": 27.80937499878928,
+      "p95InferenceMs": 37.099999994039536
+    },
+    {
+      "id": "gmd-s3-fall-09",
+      "name": "GMDCSA-24 subject 3 fall 09.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 3.3,
+      "sourceGitBlobSha1": "102824d32ae3fa2296e94ddac23ea836607dc767",
+      "videoSha256": "a3149bb1c897d47f7354e33db312ff6ca8e51bfbd702191c03a7b08ac82143e8",
+      "durationSeconds": 6.229354,
+      "framesAnalyzed": 63,
+      "framesWithPose": 62,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        4.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.982539680269028,
+      "p95InferenceMs": 29.900000005960464
+    },
+    {
+      "id": "gmd-s3-fall-10",
+      "name": "GMDCSA-24 subject 3 fall 10.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.7,
+      "sourceGitBlobSha1": "80f9db9f7fb6ae87c627dceaf73ff2afaf755200",
+      "videoSha256": "c757966a85eca4190186ed897c0cab13e6242abf6fe78af925d6eddb8cb5a6df",
+      "durationSeconds": 4.395209,
+      "framesAnalyzed": 44,
+      "framesWithPose": 44,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.4
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.67499999972907,
+      "p95InferenceMs": 27.5
+    },
+    {
+      "id": "gmd-s3-fall-11",
+      "name": "GMDCSA-24 subject 3 fall 11.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 4.7,
+      "sourceGitBlobSha1": "9326428d64e7b5053088af4f0f5d63b27f65f65e",
+      "videoSha256": "d6651bf5f65931f583b48d6a3275c0d42b6d0f21a1db70e1c7ec4bdea24ac789",
+      "durationSeconds": 8.9585,
+      "framesAnalyzed": 90,
+      "framesWithPose": 88,
+      "detectedAtSeconds": [
+        6.8
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        6.8
+      ],
+      "windowModelDetectedAtSeconds": [
+        6.1
+      ],
+      "meanInferenceMs": 25.421111112501887,
+      "p95InferenceMs": 28.5
+    },
+    {
+      "id": "gmd-s3-fall-12",
+      "name": "GMDCSA-24 subject 3 fall 12.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.6,
+      "sourceGitBlobSha1": "e8aa3e0c5c0c994df6f91cdf0ab1d053e8e9a42b",
+      "videoSha256": "0448a84525101056e14e3ec4b88c596a6c47f2f6aa559bdccefe693c97a8949e",
+      "durationSeconds": 4.256167,
+      "framesAnalyzed": 43,
+      "framesWithPose": 43,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        3.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 27.369767440612925,
+      "p95InferenceMs": 28.30000001192093
+    },
+    {
+      "id": "gmd-s3-fall-13",
+      "name": "GMDCSA-24 subject 3 fall 13.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.4,
+      "sourceGitBlobSha1": "d25639c966de928befc72ebfe7c02d8fea071b4b",
+      "videoSha256": "295489f450694ee828a8be2a4d441b4c1c44961c9548205edf67fa992701871b",
+      "durationSeconds": 4.053333,
+      "framesAnalyzed": 41,
+      "framesWithPose": 41,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.6
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.8
+      ],
+      "meanInferenceMs": 27.15365853542235,
+      "p95InferenceMs": 28.399999976158142
+    },
+    {
+      "id": "gmd-s3-fall-14",
+      "name": "GMDCSA-24 subject 3 fall 14.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 8.1,
+      "sourceGitBlobSha1": "3754524922b86f4367295f1f56b598595a7fa737",
+      "videoSha256": "6bd447b9c5a7aeda59da7fa8c1c070f153559afc7e07b1bdf687f7dfcb3f70bf",
+      "durationSeconds": 12.329438,
+      "framesAnalyzed": 124,
+      "framesWithPose": 117,
+      "detectedAtSeconds": [
+        9.6
+      ],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        8.7
+      ],
+      "meanInferenceMs": 24.954838709725486,
+      "p95InferenceMs": 29.299999982118607
+    },
+    {
+      "id": "gmd-s3-fall-15",
+      "name": "GMDCSA-24 subject 3 fall 15.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.9,
+      "sourceGitBlobSha1": "baf9b41b71882ba3c9198df259ef0b805b35dc81",
+      "videoSha256": "4b94ca9f0c8f3c80ad187e8d3fb3363b69f5c8e17492bbfa3c90f9e57d598f8f",
+      "durationSeconds": 5.6496,
+      "framesAnalyzed": 57,
+      "framesWithPose": 51,
+      "detectedAtSeconds": [
+        3.8
+      ],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        3.1
+      ],
+      "meanInferenceMs": 25.780701753863116,
+      "p95InferenceMs": 31.700000017881393
+    },
+    {
+      "id": "gmd-s3-fall-16",
+      "name": "GMDCSA-24 subject 3 fall 16.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.8,
+      "sourceGitBlobSha1": "a66bfe75bebe8643865bf685fb74e867f23ad6e9",
+      "videoSha256": "28c03494de00d7aefc6baa5b976da66ef51962e6157f84e16caffc03279972fa",
+      "durationSeconds": 6.0803,
+      "framesAnalyzed": 61,
+      "framesWithPose": 56,
+      "detectedAtSeconds": [
+        3.2
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        4.1
+      ],
+      "windowModelDetectedAtSeconds": [
+        2.2
+      ],
+      "meanInferenceMs": 28.08032786895017,
+      "p95InferenceMs": 40.099999994039536
+    },
+    {
+      "id": "gmd-s3-fall-17",
+      "name": "GMDCSA-24 subject 3 fall 17.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.4,
+      "sourceGitBlobSha1": "c0e414259b54cf9b0c6adea995df9c39ade13927",
+      "videoSha256": "de6400042b58e6bd23e5c18bc1d276b91230a806d573368b8f718649d27d4acf",
+      "durationSeconds": 8.520687,
+      "framesAnalyzed": 86,
+      "framesWithPose": 27,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.144186046927473,
+      "p95InferenceMs": 31.599999994039536
+    },
+    {
+      "id": "gmd-s3-fall-18",
+      "name": "GMDCSA-24 subject 3 fall 18.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 4.2,
+      "sourceGitBlobSha1": "4f713e0ebd80c994826dd5932d692d9183f9ab71",
+      "videoSha256": "abaced84cd40b09fa0a31dddad8d947247bf3a717878fb423c1cc4de782a6a86",
+      "durationSeconds": 11.896313,
+      "framesAnalyzed": 119,
+      "framesWithPose": 98,
+      "detectedAtSeconds": [
+        6.3
+      ],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        5
+      ],
+      "meanInferenceMs": 27.375630253503303,
+      "p95InferenceMs": 39.900000005960464
+    },
+    {
+      "id": "gmd-s3-fall-19",
+      "name": "GMDCSA-24 subject 3 fall 19.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2,
+      "sourceGitBlobSha1": "4af4f588d0dfb11947e7a92da3acd44a81f06337",
+      "videoSha256": "2cb5a9c8e383a5b8646e59c79ca48586d1ff701f2f5addc5969cdb690fc7017e",
+      "durationSeconds": 5.724333,
+      "framesAnalyzed": 58,
+      "framesWithPose": 37,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        2.4
+      ],
+      "meanInferenceMs": 20.33620689757939,
+      "p95InferenceMs": 30.600000023841858
+    },
+    {
+      "id": "gmd-s3-fall-20",
+      "name": "GMDCSA-24 subject 3 fall 20.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.3,
+      "sourceGitBlobSha1": "25242c4a325fbccb74c2c98b3f2455bc575f65c2",
+      "videoSha256": "a923f3fac2304a8c4e5345b927c89e32569e0f02ab6677f7331a79b22603aaaf",
+      "durationSeconds": 6.241333,
+      "framesAnalyzed": 63,
+      "framesWithPose": 53,
+      "detectedAtSeconds": [
+        3.9
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        4.6
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 21.369841269084386,
+      "p95InferenceMs": 23.599999994039536
+    },
+    {
+      "id": "gmd-s3-fall-21",
+      "name": "GMDCSA-24 subject 3 fall 21.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-3",
+      "expectedEvents": 1,
+      "eventStartSeconds": 5.4,
+      "sourceGitBlobSha1": "5aada1cbc7c28faa5fedf243436d35e2f181f22d",
+      "videoSha256": "3db7463e737831e8e97971e903664c787044341c8531c3519e30388473bd7abe",
+      "durationSeconds": 9.175917,
+      "framesAnalyzed": 92,
+      "framesWithPose": 91,
+      "detectedAtSeconds": [
+        7.1
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        7.3
+      ],
+      "windowModelDetectedAtSeconds": [
+        5.8
+      ],
+      "meanInferenceMs": 24.74565217287644,
+      "p95InferenceMs": 27.69999998807907
+    },
+    {
+      "id": "gmd-s4-adl-01",
+      "name": "GMDCSA-24 subject 4 adl 01.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "7dbf0869841e3fed0814f8851ebacdca1268996d",
+      "videoSha256": "820bbbb1189ee2fe176b453e3dc26b730cd9a22fe6b0a18b42410732513b8e43",
+      "durationSeconds": 12.419563,
+      "framesAnalyzed": 125,
+      "framesWithPose": 125,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.463199999809266,
+      "p95InferenceMs": 27.900000005960464
+    },
+    {
+      "id": "gmd-s4-adl-02",
+      "name": "GMDCSA-24 subject 4 adl 02.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "0191212b9bab2146890cd74056e02356c9c84160",
+      "videoSha256": "a68ce68aa309267d6395cdcd716e13a797994fa838361e03bd337133d9952c7f",
+      "durationSeconds": 10.5614,
+      "framesAnalyzed": 106,
+      "framesWithPose": 106,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 27.614150944183457,
+      "p95InferenceMs": 33.599999994039536
+    },
+    {
+      "id": "gmd-s4-adl-03",
+      "name": "GMDCSA-24 subject 4 adl 03.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "3b1105224422fb2bce42f0b1946dfd773cfda15f",
+      "videoSha256": "4b5f84f64edeae806555a9b4517a4c7e2daa46e8ba4b1d32bf4caf8afe914ed2",
+      "durationSeconds": 8.983355,
+      "framesAnalyzed": 90,
+      "framesWithPose": 90,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.76555555363496,
+      "p95InferenceMs": 26.80000001192093
+    },
+    {
+      "id": "gmd-s4-adl-04",
+      "name": "GMDCSA-24 subject 4 adl 04.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "77b141141434801e08bb7713ab2a6907712458d0",
+      "videoSha256": "321851a458c35adff4739b93987e8262a5f76b3fc1479dfe0303f8ed47825401",
+      "durationSeconds": 13.047855,
+      "framesAnalyzed": 131,
+      "framesWithPose": 131,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.600763358460128,
+      "p95InferenceMs": 25.400000005960464
+    },
+    {
+      "id": "gmd-s4-adl-05",
+      "name": "GMDCSA-24 subject 4 adl 05.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "491b537d4d4ea14807673c29bb7fbee6dcb6bcf7",
+      "videoSha256": "d7bd6f68df5f0c526ab2a1ada10eac780fd429e7cfb58cc14b673eaf1d682d69",
+      "durationSeconds": 7.387126,
+      "framesAnalyzed": 74,
+      "framesWithPose": 58,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.32837837733127,
+      "p95InferenceMs": 34.30000001192093
+    },
+    {
+      "id": "gmd-s4-adl-06",
+      "name": "GMDCSA-24 subject 4 adl 06.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "8e9aef94e8009fe3dae712a0d371f5bb9dec55e2",
+      "videoSha256": "3b8635e008c5ba27337ddf7cb3b1ad5da9b2758a196f1cbed2576cc776c8887d",
+      "durationSeconds": 6.584167,
+      "framesAnalyzed": 66,
+      "framesWithPose": 66,
+      "detectedAtSeconds": [
+        2.3
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        2.6
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.5
+      ],
+      "meanInferenceMs": 24.681818181818183,
+      "p95InferenceMs": 27.400000005960464
+    },
+    {
+      "id": "gmd-s4-adl-07",
+      "name": "GMDCSA-24 subject 4 adl 07.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "8a6aad020ff6f70b01eb3ecd952b5ec445e0a90d",
+      "videoSha256": "6e410abbc6d4ef7bf52ac835b952a74a94311d0977fdfddb21885477602b7b69",
+      "durationSeconds": 4.996792,
+      "framesAnalyzed": 50,
+      "framesWithPose": 50,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.8
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.11000000119209,
+      "p95InferenceMs": 27.19999998807907
+    },
+    {
+      "id": "gmd-s4-adl-08",
+      "name": "GMDCSA-24 subject 4 adl 08.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "e8b9a27b55f83f2e23e43169c1e852975a119de2",
+      "videoSha256": "b56a914572559ea75b58eea722fa483d52092b2ad35e3000708f27b04adb1b8f",
+      "durationSeconds": 12.353375,
+      "framesAnalyzed": 124,
+      "framesWithPose": 123,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.9
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.076612902985467,
+      "p95InferenceMs": 26.30000001192093
+    },
+    {
+      "id": "gmd-s4-adl-09",
+      "name": "GMDCSA-24 subject 4 adl 09.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "2a7449714447e32018fe9f5ce76eab37b0292e3f",
+      "videoSha256": "c910141112d74d00d9a9c4f749b23d8e92b144270e6a54f65073a11c7f6bc4c1",
+      "durationSeconds": 12.129467,
+      "framesAnalyzed": 122,
+      "framesWithPose": 122,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.99426229542396,
+      "p95InferenceMs": 25.599999994039536
+    },
+    {
+      "id": "gmd-s4-adl-10",
+      "name": "GMDCSA-24 subject 4 adl 10.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "dd792111af6642e96d831be0adcaea21dfaf8492",
+      "videoSha256": "9547a6408eeeca6da339b111cf6d3112129ef02105941d7f1c1051c12bb9f849",
+      "durationSeconds": 12.8012,
+      "framesAnalyzed": 129,
+      "framesWithPose": 119,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        6.2,
+        10.3
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.51317829401918,
+      "p95InferenceMs": 27.099999994039536
+    },
+    {
+      "id": "gmd-s4-adl-11",
+      "name": "GMDCSA-24 subject 4 adl 11.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "50773e79129d81cee8239d3392c226889b8882da",
+      "videoSha256": "94d467ff662ef086d5f2009aa4c29596819b50fe6dd3989648b78d3f029a03d8",
+      "durationSeconds": 10.721433,
+      "framesAnalyzed": 108,
+      "framesWithPose": 108,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.997222221284,
+      "p95InferenceMs": 26.099999994039536
+    },
+    {
+      "id": "gmd-s4-adl-12",
+      "name": "GMDCSA-24 subject 4 adl 12.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "ac42729b0dd8a47ec5dfba3b2a6c1263f9dd65a1",
+      "videoSha256": "7c30439dc4f507521e7f278ccba34ee45d205f723dfb8e9dde665f223efb1dc4",
+      "durationSeconds": 8.619875,
+      "framesAnalyzed": 87,
+      "framesWithPose": 87,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.20229885290409,
+      "p95InferenceMs": 25.099999994039536
+    },
+    {
+      "id": "gmd-s4-adl-13",
+      "name": "GMDCSA-24 subject 4 adl 13.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "3816f83a422ce780d5572a32734a30ed612dab43",
+      "videoSha256": "67fdb5cc193595f74e371ce520a1ca40018258c8a9d1802653cef5101c37aa3b",
+      "durationSeconds": 5.489533,
+      "framesAnalyzed": 55,
+      "framesWithPose": 55,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.154545453461733,
+      "p95InferenceMs": 27.600000023841858
+    },
+    {
+      "id": "gmd-s4-adl-14",
+      "name": "GMDCSA-24 subject 4 adl 14.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "46cb781aa5ff1d5f7c9329d925f077af9c81ff10",
+      "videoSha256": "e337e1248f012e5db82c5e92879add0fc5bb747b65ae31762b38cca6909f90d4",
+      "durationSeconds": 8.319937,
+      "framesAnalyzed": 84,
+      "framesWithPose": 84,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.42738095458065,
+      "p95InferenceMs": 29.400000005960464
+    },
+    {
+      "id": "gmd-s4-adl-15",
+      "name": "GMDCSA-24 subject 4 adl 15.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "6dd09260974b158ce54b007641257e7df0055499",
+      "videoSha256": "a42a66af9fc8e8e9df46518f6960efb1899fbc368950c5517c1ab9d4f4704918",
+      "durationSeconds": 5.3445,
+      "framesAnalyzed": 54,
+      "framesWithPose": 54,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.2
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.872222221559948,
+      "p95InferenceMs": 28.599999994039536
+    },
+    {
+      "id": "gmd-s4-adl-16",
+      "name": "GMDCSA-24 subject 4 adl 16.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "230970de9b41962a4000cc914e61dbfedc15b130",
+      "videoSha256": "20895c4a7ce5ff072158cc9c16675e2cbd39dc7c472ad2e511f097123918a4db",
+      "durationSeconds": 7.159271,
+      "framesAnalyzed": 72,
+      "framesWithPose": 72,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        4.1
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.85277777703272,
+      "p95InferenceMs": 31.700000017881393
+    },
+    {
+      "id": "gmd-s4-adl-17",
+      "name": "GMDCSA-24 subject 4 adl 17.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "dc51aec68e802b763f99f9784246aa449c3ec9e5",
+      "videoSha256": "084c8010f5af4992b7ddf4482fd031d053fc68bbd33ffaa49effd610f5a4426c",
+      "durationSeconds": 6.265167,
+      "framesAnalyzed": 63,
+      "framesWithPose": 53,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.849206349206348,
+      "p95InferenceMs": 34.900000005960464
+    },
+    {
+      "id": "gmd-s4-adl-18",
+      "name": "GMDCSA-24 subject 4 adl 18.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "0d61b9c24bf30904a34e56584649aae8c28605ba",
+      "videoSha256": "d944e20496c582d59975b58128c390e4f2ac6a5891632305097b39521ee9b4a9",
+      "durationSeconds": 14.108542,
+      "framesAnalyzed": 142,
+      "framesWithPose": 142,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 23.07957746466281,
+      "p95InferenceMs": 28.5
+    },
+    {
+      "id": "gmd-s4-adl-19",
+      "name": "GMDCSA-24 subject 4 adl 19.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "ab0a09dce223c4e51b6ba4e62949dd2055c8b532",
+      "videoSha256": "7b222f738d94bcf9ee3692baf89a9e44e4890d8a195e76a22719cc21504b50e3",
+      "durationSeconds": 9.90725,
+      "framesAnalyzed": 100,
+      "framesWithPose": 99,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.66399999946356,
+      "p95InferenceMs": 25.700000017881393
+    },
+    {
+      "id": "gmd-s4-adl-20",
+      "name": "GMDCSA-24 subject 4 adl 20.mp4",
+      "category": "daily_activity",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 0,
+      "sourceGitBlobSha1": "46fadf2363ccd6fcfb0c3a2b4c49966a94737f74",
+      "videoSha256": "0ebf059c3c4f408b7d0552fee4ad47774eecd700fec53e55c96a70f1d5ce773a",
+      "durationSeconds": 17.542312,
+      "framesAnalyzed": 176,
+      "framesWithPose": 176,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 21.37954545376653,
+      "p95InferenceMs": 24.5
+    },
+    {
+      "id": "gmd-s4-fall-01",
+      "name": "GMDCSA-24 subject 4 fall 01.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.8,
+      "sourceGitBlobSha1": "8765c6ffe2c26e5cabcaf828e0a3d58e972a7fb3",
+      "videoSha256": "be235fef9bda633f5f63ccbc28c1dbb6c0138728c5b1696d86f7a6e0c66f4516",
+      "durationSeconds": 4.675104,
+      "framesAnalyzed": 47,
+      "framesWithPose": 34,
+      "detectedAtSeconds": [
+        3.3
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.3
+      ],
+      "windowModelDetectedAtSeconds": [
+        2.3
+      ],
+      "meanInferenceMs": 26.278723402860315,
+      "p95InferenceMs": 29.599999994039536
+    },
+    {
+      "id": "gmd-s4-fall-02",
+      "name": "GMDCSA-24 subject 4 fall 02.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.5,
+      "sourceGitBlobSha1": "2574e2fddf4dd7ddef1bfb25311d78ea0fa40aeb",
+      "videoSha256": "7c57683db153b4a05b362763e69f9ebc86c3cc9833c88d789a33bccc3b5cb2bf",
+      "durationSeconds": 2.984438,
+      "framesAnalyzed": 30,
+      "framesWithPose": 30,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        0.8
+      ],
+      "windowModelDetectedAtSeconds": [
+        2.3
+      ],
+      "meanInferenceMs": 24.766666665673256,
+      "p95InferenceMs": 25.19999998807907
+    },
+    {
+      "id": "gmd-s4-fall-03",
+      "name": "GMDCSA-24 subject 4 fall 03.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.7,
+      "sourceGitBlobSha1": "3076cb2d10c3effc103fc501434ed97ebd27ec75",
+      "videoSha256": "4f178dea77bf9abb9036bcd7fedfbe345358fc2d63e1704dc49b7ec1a621e2f7",
+      "durationSeconds": 6.705533,
+      "framesAnalyzed": 68,
+      "framesWithPose": 48,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        6.1
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 22.160294115981635,
+      "p95InferenceMs": 32.80000001192093
+    },
+    {
+      "id": "gmd-s4-fall-04",
+      "name": "GMDCSA-24 subject 4 fall 04.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.2,
+      "sourceGitBlobSha1": "2a220e381a4f59c315623c0c4ff3b28974c52757",
+      "videoSha256": "76d5150ef358dd6c6b6eabe6df75dd866d56049fb5e1a3b471f1bfb5c2e292c2",
+      "durationSeconds": 4.764771,
+      "framesAnalyzed": 48,
+      "framesWithPose": 37,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.9
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.6
+      ],
+      "meanInferenceMs": 29.17916666592161,
+      "p95InferenceMs": 35.400000005960464
+    },
+    {
+      "id": "gmd-s4-fall-05",
+      "name": "GMDCSA-24 subject 4 fall 05.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.7,
+      "sourceGitBlobSha1": "9dbfeb0c94767d4fa341e2c9eeb0cad074c62040",
+      "videoSha256": "f9bb9dc48699ec993413554c0b55e9c7bb9acfc6372b69df305a4943a26e5965",
+      "durationSeconds": 7.416396,
+      "framesAnalyzed": 75,
+      "framesWithPose": 75,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        3.9
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.87999999920527,
+      "p95InferenceMs": 27.900000005960464
+    },
+    {
+      "id": "gmd-s4-fall-06",
+      "name": "GMDCSA-24 subject 4 fall 06.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.1,
+      "sourceGitBlobSha1": "d4346932cb7ea8d00393b0e16228a270f45665fa",
+      "videoSha256": "aa074bdcf93026e60ea764752763e836c4c0b1b15eaf70b39cc7e1708421fefb",
+      "durationSeconds": 6.1296,
+      "framesAnalyzed": 62,
+      "framesWithPose": 62,
+      "detectedAtSeconds": [
+        4.4
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        2.6
+      ],
+      "windowModelDetectedAtSeconds": [
+        3.8
+      ],
+      "meanInferenceMs": 26.374193550117553,
+      "p95InferenceMs": 28.599999994039536
+    },
+    {
+      "id": "gmd-s4-fall-07",
+      "name": "GMDCSA-24 subject 4 fall 07.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.4,
+      "sourceGitBlobSha1": "55d8df5df21e95734daa7931ff492f0d343aff46",
+      "videoSha256": "7931179693dd93e45cf0510d6e1d8caa3313fbdf2c46a53bcf7646992b11a4ec",
+      "durationSeconds": 6.305033,
+      "framesAnalyzed": 64,
+      "framesWithPose": 63,
+      "detectedAtSeconds": [
+        3.3
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.2
+      ],
+      "windowModelDetectedAtSeconds": [
+        2.7
+      ],
+      "meanInferenceMs": 25.9375,
+      "p95InferenceMs": 28.099999994039536
+    },
+    {
+      "id": "gmd-s4-fall-08",
+      "name": "GMDCSA-24 subject 4 fall 08.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.3,
+      "sourceGitBlobSha1": "c69072e4ea77168e17b89622fdcffe18d90a6478",
+      "videoSha256": "2ac92f95aff7b35deac501250f17c0b406f1c707632f4080007791b26a6e4bc1",
+      "durationSeconds": 6.2575,
+      "framesAnalyzed": 63,
+      "framesWithPose": 60,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.72063492262174,
+      "p95InferenceMs": 32
+    },
+    {
+      "id": "gmd-s4-fall-09",
+      "name": "GMDCSA-24 subject 4 fall 09.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.3,
+      "sourceGitBlobSha1": "eeabf945add5416e7614be282b985418a8266a38",
+      "videoSha256": "0c0e626c816214436dcedd154fff142a42cc04445a665351fdf8a2b6809dd5d4",
+      "durationSeconds": 6.0657,
+      "framesAnalyzed": 61,
+      "framesWithPose": 60,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 25.314754095233855,
+      "p95InferenceMs": 26.400000005960464
+    },
+    {
+      "id": "gmd-s4-fall-10",
+      "name": "GMDCSA-24 subject 4 fall 10.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.2,
+      "sourceGitBlobSha1": "381f56ec7837339e93a49e145f9c1a87f4ff3384",
+      "videoSha256": "e00d0a0d827eb19a71a2de989af2b47fe7181dbe1c13f30ff32c71932b10e068",
+      "durationSeconds": 5.074875,
+      "framesAnalyzed": 51,
+      "framesWithPose": 31,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 32.32745097840534,
+      "p95InferenceMs": 43.79999998211861
+    },
+    {
+      "id": "gmd-s4-fall-11",
+      "name": "GMDCSA-24 subject 4 fall 11.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.2,
+      "sourceGitBlobSha1": "2f7ce1d43b5d4367592fa9398a05685843d06511",
+      "videoSha256": "3a5ac3e006b4b184f1c76fec5a8fe1e3db57c2de046c357546b3a76f0d167b15",
+      "durationSeconds": 4.582313,
+      "framesAnalyzed": 46,
+      "framesWithPose": 44,
+      "detectedAtSeconds": [
+        2.6
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        3.7
+      ],
+      "windowModelDetectedAtSeconds": [
+        1.7
+      ],
+      "meanInferenceMs": 28.439130435171336,
+      "p95InferenceMs": 36.900000005960464
+    },
+    {
+      "id": "gmd-s4-fall-12",
+      "name": "GMDCSA-24 subject 4 fall 12.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 1.5,
+      "sourceGitBlobSha1": "90efc15612205b6eaa17422020f3a4653f577bfa",
+      "videoSha256": "dbea18d773a46e9af2911787bc909d9eca24cebc9a45329563ed884ff68222b4",
+      "durationSeconds": 4.653271,
+      "framesAnalyzed": 47,
+      "framesWithPose": 22,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 24.576595745188126,
+      "p95InferenceMs": 35.20000001788139
+    },
+    {
+      "id": "gmd-s4-fall-13",
+      "name": "GMDCSA-24 subject 4 fall 13.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 0.3,
+      "sourceGitBlobSha1": "098f7ec72f666a79dfcd426505fcc714e3138d30",
+      "videoSha256": "8a0be863f3d25149bf9fd795f603baaeb5e0c580180b7653e31b5cb4a25671cc",
+      "durationSeconds": 5.000667,
+      "framesAnalyzed": 51,
+      "framesWithPose": 51,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        1.6
+      ],
+      "windowModelDetectedAtSeconds": [
+        0.9
+      ],
+      "meanInferenceMs": 27.084313727477017,
+      "p95InferenceMs": 28.69999998807907
+    },
+    {
+      "id": "gmd-s4-fall-14",
+      "name": "GMDCSA-24 subject 4 fall 14.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 0.8,
+      "sourceGitBlobSha1": "4cbd2676db1360b0224ebf2e5d34d1170aa688d7",
+      "videoSha256": "20c40c92d64000eec9e92a07dd1c2495fd11d5d1bf362228a7cb2f6d1d2b0db5",
+      "durationSeconds": 5.249533,
+      "framesAnalyzed": 53,
+      "framesWithPose": 38,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        2.1
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.21886792216661,
+      "p95InferenceMs": 30.69999998807907
+    },
+    {
+      "id": "gmd-s4-fall-15",
+      "name": "GMDCSA-24 subject 4 fall 15.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "sourceGitBlobSha1": "fd98b031b3a758ef77ac683e56df46a1ab991f54",
+      "videoSha256": "4a1867bbff15a80893f081419b2953bb55b0fccb29e66c80c809dd8e0c02144f",
+      "durationSeconds": 4.853625,
+      "framesAnalyzed": 49,
+      "framesWithPose": 47,
+      "detectedAtSeconds": [
+        3.8
+      ],
+      "postureBaselineDetectedAtSeconds": [],
+      "windowModelDetectedAtSeconds": [
+        2.4
+      ],
+      "meanInferenceMs": 27.332653060251353,
+      "p95InferenceMs": 30.899999976158142
+    },
+    {
+      "id": "gmd-s4-fall-16",
+      "name": "GMDCSA-24 subject 4 fall 16.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 3.2,
+      "sourceGitBlobSha1": "1aab68d8e3ceacbf84155bdfc3d486cdc068aa28",
+      "videoSha256": "f2158b2acc02dd532c918e5d73cb60fc78b243babc4652f6cb41be9c2cb5b2f4",
+      "durationSeconds": 7.1056,
+      "framesAnalyzed": 72,
+      "framesWithPose": 44,
+      "detectedAtSeconds": [
+        4.6
+      ],
+      "postureBaselineDetectedAtSeconds": [
+        4.8
+      ],
+      "windowModelDetectedAtSeconds": [
+        3.7
+      ],
+      "meanInferenceMs": 27.398611112187307,
+      "p95InferenceMs": 42.80000001192093
+    },
+    {
+      "id": "gmd-s4-fall-17",
+      "name": "GMDCSA-24 subject 4 fall 17.mp4",
+      "category": "fall",
+      "partition": "holdout",
+      "subjectId": "subject-4",
+      "expectedEvents": 1,
+      "eventStartSeconds": 2.8,
+      "sourceGitBlobSha1": "2f22163dbab1ad52917ce81acee90b7638fb8496",
+      "videoSha256": "ee5a78873971ccedf0445625e1b4f13c6b3dcc12598063842b9f97d23fb9acc2",
+      "durationSeconds": 6.949104,
+      "framesAnalyzed": 70,
+      "framesWithPose": 70,
+      "detectedAtSeconds": [],
+      "postureBaselineDetectedAtSeconds": [
+        3.9
+      ],
+      "windowModelDetectedAtSeconds": [],
+      "meanInferenceMs": 26.535714285714285,
+      "p95InferenceMs": 30.700000017881393
+    }
+  ],
+  "limitation": "Staged research footage does not establish medical or field reliability; clip-level classification is distinct from event-level accuracy."
+}

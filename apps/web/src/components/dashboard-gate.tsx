@@ -15,13 +15,16 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
 
   useEffect(() => {
     if (isLocalDemoHost(window.location.hostname) && sessionStorage.getItem("artae_demo_session")) {
-      const timer = window.setTimeout(() => setReady(true), 0);
+      const timer = window.setTimeout(() => {
+        if (native) setReady(true);
+        else router.replace("/live");
+      }, 0);
       return () => window.clearTimeout(timer);
     }
 
     if (!isSupabaseConfigured()) {
       const timer = window.setTimeout(() => {
-        router.replace("/login");
+        router.replace(native ? "/login" : "/live");
       }, 0);
       return () => window.clearTimeout(timer);
     }
@@ -33,7 +36,7 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
       syncApiSession(null);
       setReady(false);
       void supabase.auth.signOut({ scope: "local" }).finally(() => {
-        if (active) router.replace("/login?reason=session-expired");
+        if (active) router.replace(native ? "/login?reason=session-expired" : "/live");
       });
     };
     window.addEventListener("artae:auth-required", requireLogin);
@@ -41,7 +44,7 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
       if (!active) return;
       syncApiSession(data.session);
       if (!data.session) {
-        router.replace("/login");
+        router.replace(native ? "/login" : "/live");
         return;
       }
       const destination = sessionStorage.getItem(LOGIN_RETURN_KEY);
@@ -50,13 +53,14 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
         router.replace("/demo");
         return;
       }
-      setReady(true);
+      if (native) setReady(true);
+      else router.replace("/live");
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       syncApiSession(session);
       if (!session) {
         setReady(false);
-        router.replace("/login");
+        router.replace(native ? "/login" : "/live");
       }
     });
     return () => {
@@ -64,7 +68,7 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
       window.removeEventListener("artae:auth-required", requireLogin);
       listener.subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, native]);
 
   if (!ready) {
     return <main aria-label="Loading workspace" style={{ minHeight: "100vh", background: "#fff", color: "#24272a", display: "grid", placeItems: "center" }}><p role="status">Opening your workspace…</p></main>;

@@ -1,5 +1,12 @@
 # AI Video Intelligence Platform
 
+The public homepage now presents the fall-monitoring prototype first. Visitors
+can open `/live` and complete the staged fall, evidence, and review flow without
+signing in. The broader camera-agent concept remains at `/platform`; `/demo` is
+a separate upload-and-prompt experiment. Signing in through `/login` returns to
+the same `/live` monitor with account-backed agents and history; the old `/app`
+entry point forwards there after resolving its authentication callback.
+
 > **Current status:** `/live` is the one-click fall prototype. Its staged sample
 > runs real on-device MediaPipe pose sensing, records evidence, and lets a person
 > review the resulting incident without an account, API, or AWS setup. When the
@@ -9,6 +16,28 @@
 > This is a hackathon prototype, not a validated medical, emergency-response, or
 > unattended monitoring product. See [tested scope](docs/browser-demo.md) and
 > the [supervised fall pilot plan](docs/fall-pilot-plan.md).
+
+**Measured browser prototype:** The `/live` detector and a simple posture
+baseline now have a reproducible, 70-clip comparison on the licensed
+[UR Fall research dataset](https://fenix.ur.edu.pl/~mkepski/ds/uf.html). On the
+50 reserved clips, the live temporal rule detected **2/20 falls** and alerted
+on **1/30 daily activities**; the posture baseline detected 5/20 falls and
+alerted on 4/30 daily activities. This exposes a major recall gap, especially
+on short clips. See the [method and limitations](docs/urfall-browser-benchmark.md),
+[per-clip result record](docs/benchmarks/urfall-browser-v2.json), and
+`scripts/prepare-urfall-benchmark.py` / `scripts/run-urfall-benchmark.cjs` to
+reproduce it. The existing one-click demo shows the system workflow; it does
+not establish monitoring reliability.
+On the separate, person-split [GMDCSA-24 research set](docs/gmdcsa24-browser-validation.md),
+a frozen pose-window candidate caught **24/38 falls** and alerted on **2/42
+daily activities**, versus 17/38 and 1/42 for the live rule. It was not
+promoted: 14 staged falls remained undetected and the activity alert count
+rose. The [per-clip result](docs/benchmarks/gmdcsa24-subject-holdout-v1.json)
+records both methods and the posture baseline.
+The [fall product plan](docs/fall-product-plan.md) tracks the independent
+detector check, always-on camera work, and supervised pilot gates.
+The [portfolio case study](docs/portfolio-fall-detection.md) summarizes the
+architecture, measured results, and a resume bullet.
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,

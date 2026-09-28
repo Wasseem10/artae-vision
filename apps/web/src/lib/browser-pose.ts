@@ -81,6 +81,9 @@ export class BrowserPoseRule {
   private missingSince: number | null = null;
   private downSince: number | null = null;
   private candidate = 0;
+  private candidateStartY = 0;
+  private rapidDescent = false;
+  private recentY: { t: number; y: number }[] = [];
   private uprightSince: number | null = null;
   private lastAlert = -Infinity;
   constructor(readonly job: BrowserJob) {}
@@ -107,6 +110,8 @@ export class BrowserPoseRule {
     this.visibleSince ??= t;
     const dt = this.last ? t - this.last.t : 0;
     const speed = this.last && dt > 0 ? (f.y - this.last.f.y) / dt : 0;
+    this.recentY = this.recentY.filter((sample) => t - sample.t <= 1.2);
+    this.recentY.push({ t, y: f.y });
     this.last = { f, t };
     const upright = f.verticality > 0.75 && f.aspect < 1.05;
     if (this.job === "presence") {
@@ -132,12 +137,20 @@ export class BrowserPoseRule {
     else if (this.phase === "upright" && speed > 0.3) {
       this.phase = "descending";
       this.candidate = t;
+      this.candidateStartY = Math.min(...this.recentY.map((sample) => sample.y));
+      this.rapidDescent = false;
     } else if (this.phase === "descending") {
       if (t - this.candidate > 3) {
         this.reset();
         return false;
       }
-      if (f.verticality < 0.48 && f.aspect > 0.9) {
+      if (t - this.candidate <= 1.2 && f.y - this.candidateStartY > 0.35) {
+        this.rapidDescent = true;
+      }
+      // A camera looking down can preserve a nearly vertical pose even as the
+      // person's center drops sharply. Confirm sustained descent in that view.
+      if ((f.verticality < 0.48 && f.aspect > 0.9) ||
+          (this.rapidDescent && f.y - this.candidateStartY > 0.35)) {
         this.downSince ??= t;
         if (t - this.downSince >= 0.8 && t - this.lastAlert > 10) {
           this.phase = "alerted";
@@ -159,5 +172,34 @@ export class BrowserPoseRule {
     this.visibleSince = null;
     this.downSince = null;
     this.uprightSince = null;
+    this.rapidDescent = false;
+    this.recentY = [];
+  }
+}
+
+/** Static posture ablation: sustained horizontal pose without a descent requirement. */
+export class PostureOnlyFallRule {
+  private downSince: number | null = null;
+  private alerted = false;
+  private lastTime = -Infinity;
+
+  update(f: PoseFeatures | null, t: number): boolean {
+    if (!Number.isFinite(t)) return false;
+    if (t <= this.lastTime || t - this.lastTime > 1) {
+      this.downSince = null;
+      this.alerted = false;
+    }
+    this.lastTime = t;
+    if (!f || f.verticality >= 0.48 || f.aspect <= 0.9) {
+      this.downSince = null;
+      this.alerted = false;
+      return false;
+    }
+    this.downSince ??= t;
+    if (!this.alerted && t - this.downSince >= 0.8) {
+      this.alerted = true;
+      return true;
+    }
+    return false;
   }
 }

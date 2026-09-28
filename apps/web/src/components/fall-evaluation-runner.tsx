@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { BrowserPoseRule, poseFeatures, type Landmark } from "@/lib/browser-pose";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BrowserPoseRule, PostureOnlyFallRule, poseFeatures, type Landmark } from "@/lib/browser-pose";
+import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
+import windowModel from "@/lib/fall-window-model.json";
 import {
+  BUILTIN_FALL_DATASET,
   buildFallEvaluationExport,
-  DEFAULT_FALL_EVALUATION_CASES,
   FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS,
   isCompleteFallEvaluation,
+  parseFallEvaluationDataset,
   percentile,
   scoreFallEvaluation,
   type FallEvaluationCase,
+  type FallEvaluationDataset,
   type FallEvaluationResult,
+  type FallPoseTrace,
   type FallEvaluationRunStatus,
 } from "@/lib/fall-evaluation";
 import styles from "./fall-evaluation-runner.module.css";
@@ -105,6 +110,9 @@ async function runCase(
   const worker = new Worker("/vision/pose-worker.js");
   const inferenceTimes: number[] = [];
   const detectedAtSeconds: number[] = [];
+  const postureBaselineDetectedAtSeconds: number[] = [];
+  const windowModelDetectedAtSeconds: number[] = [];
+  const poseTrace: FallPoseTrace[] = [];
   let framesAnalyzed = 0;
   let framesWithPose = 0;
   try {
@@ -123,6 +131,8 @@ async function runCase(
       Math.floor(durationSeconds / FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS),
     );
     const rule = new BrowserPoseRule("fall");
+    const postureBaseline = new PostureOnlyFallRule();
+    const windowCandidate = new PoseWindowFallRule(windowModel as PoseWindowModel);
     for (let frame = 0; frame <= totalFrames; frame += 1) {
       if (cancelled()) throw new Error("Evaluation cancelled");
       const seconds = Math.min(
@@ -151,6 +161,19 @@ async function runCase(
       if (rule.update(features, seconds)) {
         detectedAtSeconds.push(Number(seconds.toFixed(3)));
       }
+      if (postureBaseline.update(features, seconds)) {
+        postureBaselineDetectedAtSeconds.push(Number(seconds.toFixed(3)));
+      }
+      if (windowCandidate.update(features, seconds)) {
+        windowModelDetectedAtSeconds.push(Number(seconds.toFixed(3)));
+      }
+      poseTrace.push({
+        seconds: Number(seconds.toFixed(3)),
+        y: features ? Number(features.y.toFixed(4)) : null,
+        verticality: features ? Number(features.verticality.toFixed(4)) : null,
+        aspect: features ? Number(features.aspect.toFixed(4)) : null,
+        phase: rule.status,
+      });
       inferenceTimes.push(response.inferenceMs ?? 0);
       if (frame % 5 === 0 || frame === totalFrames) {
         onProgress(frame, totalFrames);
@@ -162,6 +185,9 @@ async function runCase(
       framesAnalyzed,
       framesWithPose,
       detectedAtSeconds,
+      postureBaselineDetectedAtSeconds,
+      windowModelDetectedAtSeconds,
+      poseTrace,
       meanInferenceMs:
         inferenceTimes.reduce((total, value) => total + value, 0) /
         Math.max(1, inferenceTimes.length),
@@ -191,12 +217,61 @@ export function FallEvaluationRunner() {
   const [currentCase, setCurrentCase] = useState("");
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
+  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>>({});
+  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24">("builtin");
+  const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
+    ? externalDatasets[datasetMode] : BUILTIN_FALL_DATASET;
+  const cases = dataset.cases;
+
+  useEffect(() => {
+    let active = true;
+    const sources = ["urfall", "gmdcsa24"] as const;
+    void Promise.all(sources.map(async (source) => {
+      try {
+        const response = await fetch(`/vision/${source}/manifest.json`, { cache: "no-store" });
+        if (!response.ok) return null;
+        return [source, parseFallEvaluationDataset(await response.json())] as const;
+      } catch { return null; }
+    })).then((loaded) => {
+      if (!active) return;
+      const available = Object.fromEntries(loaded.filter((item) => item !== null)) as
+        Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>;
+      setExternalDatasets(available);
+      const requested = new URLSearchParams(window.location.search).get("dataset");
+      if ((requested === "urfall" || requested === "gmdcsa24") && available[requested]) {
+        setDatasetMode(requested);
+      }
+    });
+    return () => { active = false; };
+  }, []);
+
+  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24") {
+    if (running) return;
+    setDatasetMode(mode);
+    setRunStatus("idle");
+    setResults([]);
+    setProblem(null);
+    setProgress(0);
+    setCurrentCase("");
+  }
   const summary = useMemo(
-    () => runStatus === "complete" && isCompleteFallEvaluation(results)
+    () => runStatus === "complete" && isCompleteFallEvaluation(results, cases)
       ? scoreFallEvaluation(results)
       : null,
-    [results, runStatus],
+    [results, runStatus, cases],
   );
+  const postureSummary = summary ? scoreFallEvaluation(results, "posture") : null;
+  const windowSummary = summary ? scoreFallEvaluation(results, "window") : null;
+  const splitSummaries = summary ? (["development", "holdout"] as const).flatMap((partition) => {
+    const subset = results.filter((result) => result.partition === partition);
+    return subset.length ? [{
+      partition,
+      cases: subset.length,
+      temporal: scoreFallEvaluation(subset),
+      posture: scoreFallEvaluation(subset, "posture"),
+      window: scoreFallEvaluation(subset, "window"),
+    }] : [];
+  }) : [];
 
   async function run() {
     const video = videoRef.current;
@@ -210,8 +285,8 @@ export function FallEvaluationRunner() {
     setCurrentCase("");
     const completed: FallEvaluationResult[] = [];
     try {
-      for (let index = 0; index < DEFAULT_FALL_EVALUATION_CASES.length; index += 1) {
-        const definition = DEFAULT_FALL_EVALUATION_CASES[index];
+      for (let index = 0; index < cases.length; index += 1) {
+        const definition = cases[index];
         setCurrentCase(definition.name);
         const result = await runCase(
           definition,
@@ -220,7 +295,7 @@ export function FallEvaluationRunner() {
           (frame, total) =>
             setProgress(
               ((index + frame / Math.max(1, total)) /
-                DEFAULT_FALL_EVALUATION_CASES.length) *
+                cases.length) *
                 100,
             ),
         );
@@ -246,7 +321,7 @@ export function FallEvaluationRunner() {
 
   function download() {
     if (runStatus !== "complete" || !summary) return;
-    const payload = buildFallEvaluationExport(runStatus, results);
+    const payload = buildFallEvaluationExport(runStatus, results, new Date().toISOString(), dataset);
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
     );
@@ -264,8 +339,10 @@ export function FallEvaluationRunner() {
           <span>ARTAE ENGINEERING</span>
           <h1>Fall detector evaluation</h1>
           <p>
-            Run the production browser pose model against three staged falls and
-            two normal daily activities. This test is local and makes no AWS calls.
+            Run the production browser pose model on staged footage. Compare its
+            temporal rule with a sustained-posture baseline and a research pose-window
+            candidate on the same frames.
+            This local evaluation makes no AWS calls.
           </p>
         </div>
         <div className={styles.actions}>
@@ -282,10 +359,20 @@ export function FallEvaluationRunner() {
         </div>
       </header>
 
+      <nav className={styles.datasetChoice} aria-label="Evaluation dataset">
+        <button type="button" aria-pressed={datasetMode === "builtin"} disabled={running}
+          onClick={() => selectDataset("builtin")}>Five-clip smoke test</button>
+        {externalDatasets.urfall && <button type="button" aria-pressed={datasetMode === "urfall"} disabled={running}
+          onClick={() => selectDataset("urfall")}>UR Fall research set ({externalDatasets.urfall.cases.length})</button>}
+        {externalDatasets.gmdcsa24 && <button type="button" aria-pressed={datasetMode === "gmdcsa24"} disabled={running}
+          onClick={() => selectDataset("gmdcsa24")}>GMDCSA-24 subject split ({externalDatasets.gmdcsa24.cases.length})</button>}
+        <span>{dataset.split}</span>
+      </nav>
+
       <section className={styles.status} aria-live="polite">
         <div>
           <strong>{runStatus === "idle" ? "Ready" : currentCase}</strong>
-          <span>{running ? `${Math.round(progress)}% processed` : runStatus === "complete" ? "5/5 clips processed" : runStatus === "stopped" || runStatus === "failed" ? `${results.length}/5 clips processed · incomplete run, no summary` : "5 licensed evaluation clips"}</span>
+          <span>{running ? `${Math.round(progress)}% processed` : runStatus === "complete" ? `${cases.length}/${cases.length} clips processed` : runStatus === "stopped" || runStatus === "failed" ? `${results.length}/${cases.length} clips processed · incomplete run, no summary` : `${cases.length} licensed evaluation clips`}</span>
         </div>
         <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
           <i style={{ width: `${progress}%` }} />
@@ -295,19 +382,39 @@ export function FallEvaluationRunner() {
       {problem && <p className={styles.error} role="alert">{problem}</p>}
 
       <section className={styles.metrics} aria-label="Evaluation summary">
-        <article><span>Clip accuracy</span><strong>{summary ? percent(summary.accuracy) : "—"}</strong><small>{summary ? `${summary.passedCases}/${summary.totalCases} clips correct` : "Complete all 5 clips"}</small></article>
-        <article><span>Fall clip recall</span><strong>{summary ? percent(summary.recall) : "—"}</strong><small>{summary ? `${summary.truePositives} detected · ${summary.falseNegatives} missed` : "Complete all 5 clips"}</small></article>
-        <article><span>Clip precision</span><strong>{summary ? percent(summary.precision) : "—"}</strong><small>{summary ? `${summary.falsePositives} negative clips alerted` : "Complete all 5 clips"}</small></article>
-        <article><span>Mean candidate latency</span><strong>{summary ? seconds(summary.meanDetectionLatencySeconds) : "—"}</strong><small>{summary ? "From approximate labeled fall onset" : "Complete all 5 clips"}</small></article>
+        <article><span>Clip accuracy</span><strong>{summary ? percent(summary.accuracy) : "—"}</strong><small>{summary ? `${summary.passedCases}/${summary.totalCases} clips correct` : `Complete all ${cases.length} clips`}</small></article>
+        <article><span>Fall clip recall</span><strong>{summary ? percent(summary.recall) : "—"}</strong><small>{summary ? `${summary.truePositives} detected · ${summary.falseNegatives} missed` : `Complete all ${cases.length} clips`}</small></article>
+        <article><span>Clip precision</span><strong>{summary ? percent(summary.precision) : "—"}</strong><small>{summary ? `${summary.falsePositives} negative clips alerted` : `Complete all ${cases.length} clips`}</small></article>
+        <article><span>Mean candidate latency</span><strong>{summary ? seconds(summary.meanDetectionLatencySeconds) : "—"}</strong><small>{summary ? "From approximate labeled fall onset" : `Complete all ${cases.length} clips`}</small></article>
       </section>
+
+      {summary && postureSummary && windowSummary && <section className={styles.comparison} aria-label="Detector comparison">
+        <h2>Same frames, three methods</h2>
+        <table><thead><tr><th>Rule</th><th>Fall recall</th><th>Clip precision</th><th>False alerts / negative hour</th><th>Candidate delay</th></tr></thead>
+          <tbody>
+            <tr><th>Temporal descent + floor</th><td>{percent(summary.recall)}</td><td>{percent(summary.precision)}</td><td>{summary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(summary.meanDetectionLatencySeconds)}</td></tr>
+            <tr><th>Sustained posture only</th><td>{percent(postureSummary.recall)}</td><td>{percent(postureSummary.precision)}</td><td>{postureSummary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(postureSummary.meanDetectionLatencySeconds)}</td></tr>
+            <tr><th>Trained pose window · research candidate</th><td>{percent(windowSummary.recall)}</td><td>{percent(windowSummary.precision)}</td><td>{windowSummary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(windowSummary.meanDetectionLatencySeconds)}</td></tr>
+          </tbody></table>
+      </section>}
+
+      {splitSummaries.length > 0 && <section className={styles.comparison} aria-label="Dataset partitions">
+        <h2>Development and reserved sequences</h2>
+        <table><thead><tr><th>Partition</th><th>Clips</th><th>Rule</th><th>Fall clips detected</th><th>Daily activity alerts</th></tr></thead>
+          <tbody>{splitSummaries.flatMap((group) => [
+            <tr key={`${group.partition}-temporal`}><th rowSpan={3}>{group.partition}</th><td rowSpan={3}>{group.cases}</td><td>Temporal</td><td>{group.temporal.truePositives}/{group.temporal.truePositives + group.temporal.falseNegatives}</td><td>{group.temporal.falsePositives}</td></tr>,
+            <tr key={`${group.partition}-posture`}><td>Posture</td><td>{group.posture.truePositives}/{group.posture.truePositives + group.posture.falseNegatives}</td><td>{group.posture.falsePositives}</td></tr>,
+            <tr key={`${group.partition}-window`}><td>Pose window candidate</td><td>{group.window.truePositives}/{group.window.truePositives + group.window.falseNegatives}</td><td>{group.window.falsePositives}</td></tr>,
+          ])}</tbody></table>
+      </section>}
 
       <section className={styles.results}>
         <header><h2>Clip results</h2><span>MediaPipe + the same temporal rule used by /live</span></header>
         <div className={styles.tableWrap}>
           <table>
-            <thead><tr><th>Clip</th><th>Expected</th><th>Detected</th><th>First event</th><th>Pose coverage</th><th>Inference p95</th><th>Result</th></tr></thead>
+            <thead><tr><th>Clip</th><th>Expected</th><th>Live rule</th><th>Candidate</th><th>First live event</th><th>Pose coverage</th><th>Inference p95</th><th>Live result</th></tr></thead>
             <tbody>
-              {DEFAULT_FALL_EVALUATION_CASES.map((definition) => {
+              {cases.map((definition) => {
                 const result = results.find((item) => item.id === definition.id);
                 const expected = definition.expectedEvents > 0;
                 const detected = !!result?.detectedAtSeconds.length;
@@ -316,6 +423,7 @@ export function FallEvaluationRunner() {
                   <td><strong>{definition.name}</strong><small>{definition.category === "fall" ? "Positive case" : "Negative control"}</small></td>
                   <td>{expected ? "Fall" : "No fall"}</td>
                   <td>{result ? `${result.detectedAtSeconds.length} event${result.detectedAtSeconds.length === 1 ? "" : "s"}` : "Waiting"}</td>
+                  <td>{result ? `${result.windowModelDetectedAtSeconds?.length ?? 0} event${result.windowModelDetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
                   <td>{result?.detectedAtSeconds.length ? `${result.detectedAtSeconds[0].toFixed(1)} s` : "—"}</td>
                   <td>{result ? percent(result.framesWithPose / Math.max(1, result.framesAnalyzed)) : "—"}</td>
                   <td>{result ? `${result.p95InferenceMs.toFixed(1)} ms` : "—"}</td>
@@ -329,7 +437,7 @@ export function FallEvaluationRunner() {
 
       <footer className={styles.disclosure}>
         <strong>What this proves</strong>
-        <p>This is a reproducible engineering baseline, not clinical validation. Five staged clips cannot establish real-world safety, and approximate onset labels make the latency metric directional rather than medically precise.</p>
+        <p>This is a reproducible engineering benchmark on staged research footage, not clinical validation. The dataset does not represent real accidental falls or older adults. Candidate delay uses approximate onset labels; dataset license and provenance appear in the downloaded JSON.</p>
       </footer>
       <video className={styles.probe} ref={videoRef} muted playsInline preload="auto" aria-hidden="true" />
     </main>

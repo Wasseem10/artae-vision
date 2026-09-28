@@ -936,10 +936,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           artae.
         </Link>
         <div>
-          {seniorSafety && <Link href="/demo">Upload analysis</Link>}
           <Link href="#saved-agents">My agents</Link>
           <Link href="#history">Past footage</Link>
-          {scope === "guest" ? <Link href="/login?next=demo">Sign in to save</Link> :
+          {scope === "guest" ? <Link href="/login?next=live">Sign in to save</Link> :
             <button disabled={running || saving > 0 || savingJob} onClick={() => void getSupabaseBrowserClient().auth.signOut()}>Sign out</button>}
         </div>
       </header>
@@ -1331,7 +1330,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           ))}
         </div>
       </section>
-      <footer className={styles.attribution}><Link href="/app/native">Installed camera workspace (requires the camera service)</Link> · Browser monitoring is not an emergency response service.</footer>
+      <footer className={styles.attribution}>{!seniorSafety && <><Link href="/app/native">Installed camera workspace (requires the camera service)</Link> · </>}Browser monitoring is not an emergency response service.</footer>
     </main>
   );
 }

@@ -4,6 +4,7 @@ import {
   DEFAULT_FALL_EVALUATION_CASES,
   isCompleteFallEvaluation,
   percentile,
+  parseFallEvaluationDataset,
   scoreFallEvaluation,
   type FallEvaluationResult,
 } from "./fall-evaluation";
@@ -60,6 +61,58 @@ describe("fall evaluation scoring", () => {
     expect(percentile([4, 1, 3, 2], 50)).toBe(2);
   });
 
+  it("compares both rules on identical clip labels and rejects changed media paths", () => {
+    const clips = [
+      { ...result("fall-01", 1, [4]), postureBaselineDetectedAtSeconds: [3], windowModelDetectedAtSeconds: [4.1] },
+      { ...result("adl-01", 0, []), postureBaselineDetectedAtSeconds: [2], windowModelDetectedAtSeconds: [] },
+    ];
+    expect(scoreFallEvaluation(clips)).toMatchObject({ recall: 1, falsePositives: 0 });
+    expect(scoreFallEvaluation(clips, "posture")).toMatchObject({
+      recall: 1, falsePositives: 1, falseAlertsPerHour: 360,
+    });
+    expect(scoreFallEvaluation(clips, "window")).toMatchObject({ recall: 1, falsePositives: 0 });
+    const digest = "a".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "urfall-rgb-cam0-v1", source: "source",
+      citation: "citation", license: "CC BY-NC-SA 4.0", split: "split",
+      labelNote: "approximate", cases: [{
+        id: "fall-01", name: "UR Fall fall-01", category: "fall",
+        partition: "development", videoUrl: "/vision/urfall/fall-01-cam0-rgb.mp4",
+        expectedEvents: 1, eventStartSeconds: 1, frameCount: 30,
+        sourceZipSha256: digest, videoSha256: digest,
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(1);
+    expect(() => parseFallEvaluationDataset({
+      ...manifest, cases: [{ ...manifest.cases[0], videoUrl: "https://other.example/video" }],
+    })).toThrow();
+  });
+
+  it("keeps the second research set split by subject and rejects a swapped clip", () => {
+    const digest = "b".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "gmdcsa24-v2.1", source: "source",
+      citation: "citation", license: "source license", split: "subject split",
+      labelNote: "author labels", sourceRevision: "5abac7693229900cf80f722e878fbb119211fc1c",
+      cases: [
+        { id: "gmd-s1-fall-01", name: "dev", category: "fall", partition: "development",
+          subjectId: "subject-1", videoUrl: "/vision/gmdcsa24/Subject%201/Fall/01.mp4",
+          expectedEvents: 1, eventStartSeconds: 2, videoSha256: digest,
+          sourceGitBlobSha1: "a".repeat(40) },
+        { id: "gmd-s4-adl-01", name: "reserved", category: "daily_activity", partition: "holdout",
+          subjectId: "subject-4", videoUrl: "/vision/gmdcsa24/Subject%204/ADL/01.mp4",
+          expectedEvents: 0, videoSha256: digest, sourceGitBlobSha1: "a".repeat(40) },
+      ],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(2);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [
+      manifest.cases[0], { ...manifest.cases[1], partition: "development" },
+    ] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [
+      manifest.cases[0], { ...manifest.cases[1], videoUrl: "/vision/gmdcsa24/Subject%201/ADL/01.mp4" },
+    ] })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(
@@ -87,10 +140,12 @@ describe("fall evaluation scoring", () => {
       "2026-09-26T00:00:00.000Z",
     );
     expect(exported.status).toBe("complete");
+    expect(exported.schemaVersion).toBe(3);
     expect(exported.scoringUnit).toBe("clip");
     expect(exported.summary.totalCases).toBe(5);
     expect(exported.provenance.detector.modelSha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(exported.provenance.detector.rule).toBe("BrowserPoseRule/fall-v1");
+    expect(exported.provenance.detector.rule).toBe("BrowserPoseRule/fall-v2");
+    expect(exported.provenance.candidate.name).toBe("PoseWindowLogistic/v1");
     expect(exported.provenance).toHaveProperty("codeRevision");
   });
 });
