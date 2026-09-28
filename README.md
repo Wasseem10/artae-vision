@@ -1,5 +1,14 @@
 # AI Video Intelligence Platform
 
+## Working demo
+
+[![Artae fall monitor showing a staged fall alert and pose overlay](apps/web/public/media/fall-monitor-walkthrough.png)](https://artae-vision.vercel.app/media/fall-monitor-walkthrough.webm)
+
+[Watch the 38-second walkthrough](https://artae-vision.vercel.app/media/fall-monitor-walkthrough.webm) or [try the no-account fall monitor](https://artae-vision.vercel.app/live).
+The recording shows a licensed staged fall, local pose detection, evidence and
+human review, then a sitting clip as a negative control. Cloud API calls were
+disabled during capture, so this demonstrates the browser workflow only.
+
 The original camera-agent landing page is at `/`. Its fall-demo link opens
 `/live`, where visitors can complete the staged fall, evidence, and review flow
 without signing in. Signing in through `/login` returns to that same monitor
@@ -36,6 +45,8 @@ rose. The [per-clip result](docs/benchmarks/gmdcsa24-subject-holdout-v1.json)
 records both methods and the posture baseline.
 The [fall product plan](docs/fall-product-plan.md) tracks the independent
 detector check, always-on camera work, and supervised pilot gates.
+The [failure audit](docs/fall-failure-audit.md) breaks down the candidate's
+missed bed-related falls and records the next detector experiment.
 The [portfolio case study](docs/portfolio-fall-detection.md) summarizes the
 architecture, measured results, and a resume bullet.
 
