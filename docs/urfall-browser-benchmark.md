@@ -19,6 +19,7 @@ pnpm --dir apps/web dev
 # In another terminal:
 node scripts/run-urfall-benchmark.cjs
 & '.venv/Scripts/python.exe' scripts/analyze-urfall-trace.py artifacts/urfall/evaluation.json
+node scripts/export-urfall-summary.cjs
 ```
 
 The preparer downloads the authors' camera-0 RGB ZIPs and depth posture label
@@ -28,6 +29,8 @@ the source and derived media hashes, citation, label provenance, and partition.
 The benchmark page appears at `/evaluation/fall?dataset=urfall` while the local
 manifest exists. The exported JSON records code/model revision, per-clip
 detections, pose coverage, model inference time, and a compact pose trace.
+The final command writes a [small, committed result record](benchmarks/urfall-browser-v2.json)
+with per-clip outcomes and SHA-256 hashes, excluding footage and pose traces.
 
 The first 10 fall and 10 daily activity sequences are the **development** set.
 The remaining 20 falls and 30 daily activity sequences are reserved for one
@@ -70,4 +73,45 @@ that partition. The posture baseline detected 4/10 falls and alerted on 0/10
 daily activity clips. These development results informed the rule, so they
 must not be presented as independent test performance.
 
-Reserved-sequence results will be recorded below after the one-time run.
+## Frozen-rule result on reserved sequences
+
+The one-time run used commit `70f19ae6149fc3f1c9fa8140753d78219f372b55`
+with a clean worktree. It evaluated all 70 sequences, verified every converted
+video against the local manifest, and saved the full report locally at
+`artifacts/urfall/evaluation.json`. The [committed result record](benchmarks/urfall-browser-v2.json)
+contains the complete per-clip outcomes, dataset citation, source hashes, and
+detector provenance without redistributing the research media.
+
+| Partition and rule | Falls detected | Daily activities alerted | Clip recall | Clip precision |
+| --- | ---: | ---: | ---: | ---: |
+| Development, temporal | 6/10 | 0/10 | 60% | 100% |
+| Development, posture baseline | 4/10 | 0/10 | 40% | 100% |
+| Reserved, temporal | **2/20** | **1/30** | **10%** | **66.7%** |
+| Reserved, posture baseline | 5/20 | 4/30 | 25% | 55.6% |
+
+The temporal rule reduced false alerts on this reserved partition but missed
+18 of 20 staged falls. It is not reliable enough for unattended fall monitoring.
+The small number of alerts and roughly four minutes of negative footage make
+precision and hourly false-alert estimates especially uncertain. The
+development partition was used for rule changes, so its higher recall is not
+independent evidence of performance.
+
+The reserved falls have a median duration of 2.43 seconds versus 4.68 seconds
+for development falls, and approximate onset occurs at median 0.8 versus 1.95
+seconds. Median pose coverage is 84% versus 98%. Four reserved falls never
+reached the rule's upright state; many others reached descent but not confirmed
+fall before the clip ended. These are diagnostics from the recorded states,
+not a validated attribution of every miss. The fixed sequence ordering also
+means this partition may differ systematically beyond clip length. Because
+subjects are unidentified and both partitions come from one staged source,
+this is not an independent person or deployment-site validation.
+
+## Next experiment
+
+Use these failure cases as development evidence for a candidate that handles
+short observation windows and pose loss. Keep event confirmation and false
+alerts as separate measured tradeoffs. Freeze the new candidate before testing
+on a different labeled source with person or site separation; the 20 reserved
+UR Fall clips have already been examined and cannot serve as a fresh holdout.
+Only after that should a supervised camera pilot measure real-world alert and
+review behavior. The current result must not be presented as field accuracy.

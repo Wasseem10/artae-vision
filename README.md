@@ -10,6 +10,18 @@
 > unattended monitoring product. See [tested scope](docs/browser-demo.md) and
 > the [supervised fall pilot plan](docs/fall-pilot-plan.md).
 
+**Measured browser prototype:** The `/live` detector and a simple posture
+baseline now have a reproducible, 70-clip comparison on the licensed
+[UR Fall research dataset](https://fenix.ur.edu.pl/~mkepski/ds/uf.html). On the
+50 reserved clips, the live temporal rule detected **2/20 falls** and alerted
+on **1/30 daily activities**; the posture baseline detected 5/20 falls and
+alerted on 4/30 daily activities. This exposes a major recall gap, especially
+on short clips. See the [method and limitations](docs/urfall-browser-benchmark.md),
+[per-clip result record](docs/benchmarks/urfall-browser-v2.json), and
+`scripts/prepare-urfall-benchmark.py` / `scripts/run-urfall-benchmark.cjs` to
+reproduce it. The existing one-click demo shows the system workflow; it does
+not establish monitoring reliability.
+
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
 combine what it sees with authorized business-system context, take guarded actions,
