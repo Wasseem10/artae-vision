@@ -1,5 +1,10 @@
 # AI Video Intelligence Platform
 
+The public homepage now presents the fall-monitoring prototype first. Visitors
+can open `/live` and complete the staged fall, evidence, and review flow without
+signing in. The broader camera-agent concept remains at `/platform`; `/demo` is
+a separate upload-and-prompt experiment. Account-backed workspaces use `/login`.
+
 > **Current status:** `/live` is the one-click fall prototype. Its staged sample
 > runs real on-device MediaPipe pose sensing, records evidence, and lets a person
 > review the resulting incident without an account, API, or AWS setup. When the
