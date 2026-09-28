@@ -63,13 +63,14 @@ describe("fall evaluation scoring", () => {
 
   it("compares both rules on identical clip labels and rejects changed media paths", () => {
     const clips = [
-      { ...result("fall-01", 1, [4]), postureBaselineDetectedAtSeconds: [3] },
-      { ...result("adl-01", 0, []), postureBaselineDetectedAtSeconds: [2] },
+      { ...result("fall-01", 1, [4]), postureBaselineDetectedAtSeconds: [3], windowModelDetectedAtSeconds: [4.1] },
+      { ...result("adl-01", 0, []), postureBaselineDetectedAtSeconds: [2], windowModelDetectedAtSeconds: [] },
     ];
     expect(scoreFallEvaluation(clips)).toMatchObject({ recall: 1, falsePositives: 0 });
     expect(scoreFallEvaluation(clips, "posture")).toMatchObject({
       recall: 1, falsePositives: 1, falseAlertsPerHour: 360,
     });
+    expect(scoreFallEvaluation(clips, "window")).toMatchObject({ recall: 1, falsePositives: 0 });
     const digest = "a".repeat(64);
     const manifest = {
       schemaVersion: 1, datasetId: "urfall-rgb-cam0-v1", source: "source",
@@ -139,10 +140,12 @@ describe("fall evaluation scoring", () => {
       "2026-09-26T00:00:00.000Z",
     );
     expect(exported.status).toBe("complete");
+    expect(exported.schemaVersion).toBe(3);
     expect(exported.scoringUnit).toBe("clip");
     expect(exported.summary.totalCases).toBe(5);
     expect(exported.provenance.detector.modelSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(exported.provenance.detector.rule).toBe("BrowserPoseRule/fall-v2");
+    expect(exported.provenance.candidate.name).toBe("PoseWindowLogistic/v1");
     expect(exported.provenance).toHaveProperty("codeRevision");
   });
 });

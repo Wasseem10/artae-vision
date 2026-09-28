@@ -21,6 +21,8 @@ on short clips. See the [method and limitations](docs/urfall-browser-benchmark.m
 `scripts/prepare-urfall-benchmark.py` / `scripts/run-urfall-benchmark.cjs` to
 reproduce it. The existing one-click demo shows the system workflow; it does
 not establish monitoring reliability.
+The [fall product plan](docs/fall-product-plan.md) tracks the independent
+detector check, always-on camera work, and supervised pilot gates.
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,

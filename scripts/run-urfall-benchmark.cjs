@@ -45,7 +45,25 @@ async function fileHash(relativePath) {
       assert.equal(actual, item.videoSha256, `Media changed since preparation: ${item.id}`);
     }
     await page.getByRole('button', { name: 'Run evaluation' }).click();
-    await page.getByRole('button', { name: 'Download JSON' }).waitFor({ timeout: 45 * 60 * 1000 });
+    let lastProgress = -1;
+    const progressTimer = setInterval(async () => {
+      try {
+        const value = Number(await page.getByRole('progressbar').getAttribute('aria-valuenow'));
+        if (value >= lastProgress + 10) {
+          lastProgress = value;
+          console.log(`${dataset}: ${value}% processed`);
+        }
+      } catch { /* Page may be closing. */ }
+    }, 30000);
+    try {
+      await Promise.race([
+        page.getByRole('button', { name: 'Download JSON' }).waitFor({ timeout: 45 * 60 * 1000 }),
+        page.getByText('Evaluation failed', { exact: true }).waitFor({ timeout: 45 * 60 * 1000 })
+          .then(async () => { throw new Error(await page.getByRole('alert').textContent() || 'Evaluation failed'); }),
+      ]);
+    } finally {
+      clearInterval(progressTimer);
+    }
     const promise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download JSON' }).click();
     const download = await promise;
@@ -58,6 +76,9 @@ async function fileHash(relativePath) {
       'apps/web/src/lib/browser-pose.ts',
       'apps/web/src/lib/fall-evaluation.ts',
       'apps/web/src/components/fall-evaluation-runner.tsx',
+      'apps/web/src/lib/pose-window-fall.ts',
+      'apps/web/src/lib/fall-window-model.json',
+      'scripts/train-pose-window-fall.py',
       'apps/web/public/vision/pose-worker.js',
       manifestPath,
     ].map(async (filename) => [filename, await fileHash(filename)])));
@@ -72,6 +93,7 @@ async function fileHash(relativePath) {
       output,
       temporal: result.summary,
       postureBaseline: result.postureBaselineSummary,
+      windowCandidate: result.windowModelSummary,
       partitions: result.partitions,
     }, null, 2));
   } finally {

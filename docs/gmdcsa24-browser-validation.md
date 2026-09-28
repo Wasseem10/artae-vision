@@ -31,6 +31,8 @@ environment available:
 pnpm --dir apps/web dev
 # In another terminal:
 node scripts/run-gmdcsa24-benchmark.cjs
+& '.venv/Scripts/python.exe' scripts/train-pose-window-fall.py
+node scripts/check-pose-window-parity.cjs
 ```
 
 The preparer downloads files from pinned source revision
@@ -39,6 +41,38 @@ blob SHA-1, and records SHA-256 values in a local manifest. The runner verifies
 those hashes again and exports per-clip pose traces and detector outcomes to
 `artifacts/gmdcsa24/evaluation.json`. The benchmark reuses the pose worker and
 rules from `/live`; it makes no AWS calls.
+
+## Candidate built on development footage
+
+The original browser rule, on all 80 subject-1/2 clips, detected **35/41 falls**
+and alerted on **2/39 daily activities**. The posture-only ablation detected
+34/41 falls and alerted on 8/39 daily activities. These are development
+numbers, not independent performance.
+
+`PoseWindowLogistic/v1` is an 11-feature causal classifier of recent pose
+position, torso angle, bounding-box aspect, changes over 0.3/0.7 seconds, and
+pose coverage. It requires motion and two consecutive positive samples and
+discards pre-gap history after sustained pose loss. The
+training script uses all 70 already examined UR Fall clips and GMDCSA subject
+1, then chooses a threshold using subject 2. We expanded the threshold grid
+above 0.90 after the initial range failed the preselected limit of two subject-2
+daily-activity alerts; this makes subject 2 an exploratory tuning set. After
+adding the pose-loss guard, the selected threshold is 0.96. On subject 2's
+recorded pose traces, the candidate detected **21/25 falls** and alerted on
+**0/23 daily activities**; the live temporal rule detected 21/25 and alerted
+on 2/23. Python and the actual
+TypeScript rule produced identical candidate events across all 80 recorded
+development clips. A second run through the full browser/video pipeline on
+subject 2 reproduced **21/25 falls, 0/23 activity alerts** for the candidate;
+its mean approximate onset-to-candidate delay was 0.89 seconds versus 1.75
+seconds for the live rule's detected falls. The candidate is evaluated alongside
+`/live` but is not used to create live incidents. Both subject-2 numbers were
+used in development and cannot be treated as independent accuracy.
+
+The model JSON records feature order, coefficients, threshold, training report
+hashes, and the full subject-2 threshold sweep. The training source includes
+UR Fall's noncommercial academic data, so these weights remain a research
+candidate; any commercial release needs an appropriate data/license review.
 
 After freezing the next candidate, regenerate the manifest with subjects
 `1 2 3 4`, commit the detector, and run the same command once on all 160 clips.

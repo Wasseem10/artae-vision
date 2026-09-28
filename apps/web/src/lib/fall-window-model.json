@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 1,
+  "name": "PoseWindowLogistic/v1",
+  "sampleIntervalSeconds": 0.1,
+  "featureNames": [
+    "y",
+    "verticality",
+    "aspect",
+    "drop_0.3s",
+    "drop_0.7s",
+    "tilt_0.3s",
+    "tilt_0.7s",
+    "aspect_rise_0.3s",
+    "aspect_rise_0.7s",
+    "drop_from_recent_min",
+    "pose_coverage_1s"
+  ],
+  "mean": [
+    0.50962146,
+    0.84225073,
+    0.77271067,
+    0.01251177,
+    0.0274234,
+    0.02074473,
+    0.04547169,
+    0.05394931,
+    0.12211115,
+    0.05199022,
+    0.98840571
+  ],
+  "scale": [
+    0.15489873,
+    0.28839916,
+    0.75037929,
+    0.05,
+    0.08304906,
+    0.10951263,
+    0.18045222,
+    0.26905634,
+    0.42385942,
+    0.09037937,
+    0.05155888
+  ],
+  "weights": [
+    0.70953274,
+    -0.12981911,
+    -0.07164715,
+    0.66710141,
+    0.17014509,
+    0.07654356,
+    0.38205012,
+    0.01959255,
+    0.29431167,
+    0.28597303,
+    0.14193589
+  ],
+  "bias": -0.98950289,
+  "minConsecutiveSamples": 2,
+  "motionGate": {
+    "drop": 0.07,
+    "tilt": 0.15,
+    "aspectRise": 0.2
+  },
+  "training": {
+    "sources": [
+      "UR Fall all 70, previously examined",
+      "GMDCSA-24 subject 1"
+    ],
+    "validation": "GMDCSA-24 subject 2",
+    "reserved": "GMDCSA-24 subjects 3-4, no detector outputs examined before freeze",
+    "urReportSha256": "71157de27aa53309c6f84e060b0e6de8a482cd019be97556d257db321a0d227b",
+    "gmdDevelopmentReportSha256": "a6a2c711ec1008efda9e8ce664d3fec6239273aa3c248683e11851567111dfff",
+    "trainingWindows": 4581,
+    "positiveTrainingWindows": 628,
+    "validationSummary": {
+      "fallsDetected": 21,
+      "fallsMissed": 4,
+      "activitiesAlerted": 0,
+      "activitiesSilent": 23
+    },
+    "validationThresholdCandidates": [
+      {
+        "threshold": 0.1,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 19,
+        "activitiesSilent": 4
+      },
+      {
+        "threshold": 0.15,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 16,
+        "activitiesSilent": 7
+      },
+      {
+        "threshold": 0.2,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 15,
+        "activitiesSilent": 8
+      },
+      {
+        "threshold": 0.25,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 14,
+        "activitiesSilent": 9
+      },
+      {
+        "threshold": 0.3,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 14,
+        "activitiesSilent": 9
+      },
+      {
+        "threshold": 0.35,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 12,
+        "activitiesSilent": 11
+      },
+      {
+        "threshold": 0.4,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 12,
+        "activitiesSilent": 11
+      },
+      {
+        "threshold": 0.45,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 11,
+        "activitiesSilent": 12
+      },
+      {
+        "threshold": 0.5,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 10,
+        "activitiesSilent": 13
+      },
+      {
+        "threshold": 0.55,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 10,
+        "activitiesSilent": 13
+      },
+      {
+        "threshold": 0.6,
+        "fallsDetected": 24,
+        "fallsMissed": 1,
+        "activitiesAlerted": 10,
+        "activitiesSilent": 13
+      },
+      {
+        "threshold": 0.65,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 8,
+        "activitiesSilent": 15
+      },
+      {
+        "threshold": 0.7,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 7,
+        "activitiesSilent": 16
+      },
+      {
+        "threshold": 0.75,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 7,
+        "activitiesSilent": 16
+      },
+      {
+        "threshold": 0.8,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 6,
+        "activitiesSilent": 17
+      },
+      {
+        "threshold": 0.85,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 5,
+        "activitiesSilent": 18
+      },
+      {
+        "threshold": 0.9,
+        "fallsDetected": 23,
+        "fallsMissed": 2,
+        "activitiesAlerted": 5,
+        "activitiesSilent": 18
+      },
+      {
+        "threshold": 0.92,
+        "fallsDetected": 22,
+        "fallsMissed": 3,
+        "activitiesAlerted": 4,
+        "activitiesSilent": 19
+      },
+      {
+        "threshold": 0.94,
+        "fallsDetected": 21,
+        "fallsMissed": 4,
+        "activitiesAlerted": 1,
+        "activitiesSilent": 22
+      },
+      {
+        "threshold": 0.96,
+        "fallsDetected": 21,
+        "fallsMissed": 4,
+        "activitiesAlerted": 0,
+        "activitiesSilent": 23
+      },
+      {
+        "threshold": 0.97,
+        "fallsDetected": 20,
+        "fallsMissed": 5,
+        "activitiesAlerted": 0,
+        "activitiesSilent": 23
+      },
+      {
+        "threshold": 0.98,
+        "fallsDetected": 19,
+        "fallsMissed": 6,
+        "activitiesAlerted": 0,
+        "activitiesSilent": 23
+      },
+      {
+        "threshold": 0.99,
+        "fallsDetected": 13,
+        "fallsMissed": 12,
+        "activitiesAlerted": 0,
+        "activitiesSilent": 23
+      },
+      {
+        "threshold": 0.995,
+        "fallsDetected": 8,
+        "fallsMissed": 17,
+        "activitiesAlerted": 0,
+        "activitiesSilent": 23
+      }
+    ],
+    "trainingClipSummary": {
+      "fallsDetected": 35,
+      "fallsMissed": 11,
+      "activitiesAlerted": 1,
+      "activitiesSilent": 55
+    }
+  },
+  "threshold": 0.96
+}

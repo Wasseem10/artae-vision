@@ -1,3 +1,5 @@
+import windowModel from "./fall-window-model.json";
+
 export type FallEvaluationCase = {
   id: string;
   name: string;
@@ -27,6 +29,7 @@ export type FallEvaluationResult = FallEvaluationCase & {
   framesWithPose: number;
   detectedAtSeconds: number[];
   postureBaselineDetectedAtSeconds?: number[];
+  windowModelDetectedAtSeconds?: number[];
   poseTrace?: FallPoseTrace[];
   meanInferenceMs: number;
   p95InferenceMs: number;
@@ -211,7 +214,7 @@ function mean(values: number[]): number | null {
 
 export function scoreFallEvaluation(
   results: FallEvaluationResult[],
-  detector: "temporal" | "posture" = "temporal",
+  detector: "temporal" | "posture" | "window" = "temporal",
 ): FallEvaluationSummary {
   let truePositives = 0;
   let falsePositives = 0;
@@ -223,9 +226,9 @@ export function scoreFallEvaluation(
   const latencies: number[] = [];
 
   for (const result of results) {
-    const detections = detector === "temporal"
-      ? result.detectedAtSeconds
-      : result.postureBaselineDetectedAtSeconds ?? [];
+    const detections = detector === "temporal" ? result.detectedAtSeconds :
+      detector === "posture" ? result.postureBaselineDetectedAtSeconds ?? [] :
+        result.windowModelDetectedAtSeconds ?? [];
     const expectedPositive = result.expectedEvents > 0;
     const detected = detections.length > 0;
     if (expectedPositive && detected) truePositives += 1;
@@ -270,7 +273,8 @@ export function scoreFallEvaluation(
     meanDetectionLatencySeconds: mean(latencies),
     totalDetections: results.reduce((total, result) => total + (
       detector === "temporal" ? result.detectedAtSeconds.length :
-        result.postureBaselineDetectedAtSeconds?.length ?? 0
+        detector === "posture" ? result.postureBaselineDetectedAtSeconds?.length ?? 0 :
+          result.windowModelDetectedAtSeconds?.length ?? 0
     ), 0),
     extraDetections,
   };
@@ -289,7 +293,7 @@ export function buildFallEvaluationExport(
   // the browser bundle. Leave it null for builds without a known Git revision.
   const codeRevision = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA?.trim() || null;
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     status: "complete" as const,
     scoringUnit: "clip" as const,
     generatedAt,
@@ -305,11 +309,18 @@ export function buildFallEvaluationExport(
     },
     provenance: {
       detector: FALL_EVALUATION_DETECTOR,
+      candidate: {
+        name: windowModel.name,
+        source: "apps/web/src/lib/fall-window-model.json",
+        threshold: windowModel.threshold,
+        training: windowModel.training,
+      },
       codeRevision,
       codeRevisionSource: codeRevision ? "NEXT_PUBLIC_GIT_COMMIT_SHA" : null,
     },
     summary: scoreFallEvaluation(results),
     postureBaselineSummary: scoreFallEvaluation(results, "posture"),
+    windowModelSummary: scoreFallEvaluation(results, "window"),
     partitions: (["development", "holdout"] as const).flatMap((partition) => {
       const subset = results.filter((result) => result.partition === partition);
       return subset.length ? [{
@@ -317,6 +328,7 @@ export function buildFallEvaluationExport(
         cases: subset.length,
         summary: scoreFallEvaluation(subset),
         postureBaselineSummary: scoreFallEvaluation(subset, "posture"),
+        windowModelSummary: scoreFallEvaluation(subset, "window"),
       }] : [];
     }),
     results,
