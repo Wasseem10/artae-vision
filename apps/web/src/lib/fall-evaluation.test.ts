@@ -4,6 +4,7 @@ import {
   DEFAULT_FALL_EVALUATION_CASES,
   isCompleteFallEvaluation,
   percentile,
+  parseFallEvaluationDataset,
   scoreFallEvaluation,
   type FallEvaluationResult,
 } from "./fall-evaluation";
@@ -60,6 +61,32 @@ describe("fall evaluation scoring", () => {
     expect(percentile([4, 1, 3, 2], 50)).toBe(2);
   });
 
+  it("compares both rules on identical clip labels and rejects changed media paths", () => {
+    const clips = [
+      { ...result("fall-01", 1, [4]), postureBaselineDetectedAtSeconds: [3] },
+      { ...result("adl-01", 0, []), postureBaselineDetectedAtSeconds: [2] },
+    ];
+    expect(scoreFallEvaluation(clips)).toMatchObject({ recall: 1, falsePositives: 0 });
+    expect(scoreFallEvaluation(clips, "posture")).toMatchObject({
+      recall: 1, falsePositives: 1, falseAlertsPerHour: 360,
+    });
+    const digest = "a".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "urfall-rgb-cam0-v1", source: "source",
+      citation: "citation", license: "CC BY-NC-SA 4.0", split: "split",
+      labelNote: "approximate", cases: [{
+        id: "fall-01", name: "UR Fall fall-01", category: "fall",
+        partition: "development", videoUrl: "/vision/urfall/fall-01-cam0-rgb.mp4",
+        expectedEvents: 1, eventStartSeconds: 1, frameCount: 30,
+        sourceZipSha256: digest, videoSha256: digest,
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(1);
+    expect(() => parseFallEvaluationDataset({
+      ...manifest, cases: [{ ...manifest.cases[0], videoUrl: "https://other.example/video" }],
+    })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(
@@ -90,7 +117,7 @@ describe("fall evaluation scoring", () => {
     expect(exported.scoringUnit).toBe("clip");
     expect(exported.summary.totalCases).toBe(5);
     expect(exported.provenance.detector.modelSha256).toMatch(/^[a-f0-9]{64}$/);
-    expect(exported.provenance.detector.rule).toBe("BrowserPoseRule/fall-v1");
+    expect(exported.provenance.detector.rule).toBe("BrowserPoseRule/fall-v2");
     expect(exported.provenance).toHaveProperty("codeRevision");
   });
 });

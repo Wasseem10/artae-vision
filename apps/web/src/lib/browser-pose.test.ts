@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BrowserPoseRule,
+  PostureOnlyFallRule,
   type PoseFeatures,
   poseFeatures,
 } from "./browser-pose";
@@ -44,6 +45,38 @@ describe("real browser pose rules", () => {
       expect(r.update(down, 10 + i / 10)).toBe(false);
     expect(r.update(down, 0)).toBe(false);
   });
+  it("can confirm a sharp sustained descent when the camera angle keeps the torso vertical", () => {
+    const r = new BrowserPoseRule("fall");
+    for (let i = 0; i <= 10; i++) r.update(up, i / 10);
+    const alerts: number[] = [];
+    for (let i = 1; i <= 20; i++) {
+      const t = 1 + i / 10;
+      const y = Math.min(0.82, up.y + i * 0.05);
+      if (r.update({ ...up, y, verticality: 0.91 }, t)) alerts.push(t);
+    }
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toBeGreaterThan(1.8);
+  });
+  it("does not classify a smaller sitting descent as a fall", () => {
+    const r = new BrowserPoseRule("fall");
+    for (let i = 0; i <= 10; i++) r.update(up, i / 10);
+    for (let i = 1; i <= 20; i++) {
+      const y = Math.min(0.62, up.y + i * 0.04);
+      expect(r.update({ ...up, y, verticality: 0.85 }, 1 + i / 10)).toBe(false);
+    }
+  });
   it("requires visible core landmarks", () =>
     expect(poseFeatures([], 640, 480)).toBeNull());
+
+  it("shows the posture baseline's false alert on an already lying person", () => {
+    const baseline = new PostureOnlyFallRule();
+    const temporal = new BrowserPoseRule("fall");
+    const baselineAlerts: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const t = i / 10;
+      if (baseline.update(down, t)) baselineAlerts.push(t);
+      expect(temporal.update(down, t)).toBe(false);
+    }
+    expect(baselineAlerts).toEqual([0.8]);
+  });
 });
