@@ -3,7 +3,9 @@
 The public homepage now presents the fall-monitoring prototype first. Visitors
 can open `/live` and complete the staged fall, evidence, and review flow without
 signing in. The broader camera-agent concept remains at `/platform`; `/demo` is
-a separate upload-and-prompt experiment. Account-backed workspaces use `/login`.
+a separate upload-and-prompt experiment. Signing in through `/login` returns to
+the same `/live` monitor with account-backed agents and history; the old `/app`
+entry point forwards there after resolving its authentication callback.
 
 > **Current status:** `/live` is the one-click fall prototype. Its staged sample
 > runs real on-device MediaPipe pose sensing, records evidence, and lets a person
