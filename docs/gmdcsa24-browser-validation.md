@@ -74,11 +74,52 @@ hashes, and the full subject-2 threshold sweep. The training source includes
 UR Fall's noncommercial academic data, so these weights remain a research
 candidate; any commercial release needs an appropriate data/license review.
 
-After freezing the next candidate, regenerate the manifest with subjects
-`1 2 3 4`, commit the detector, and run the same command once on all 160 clips.
-Publish a compact derived result with code and media hashes but no video or
-per-frame poses. Report development and reserved results separately; do not
-select a threshold using reserved outputs.
+For the one-time reserved run, we regenerated the manifest with
+`--subjects 3 4` and ran the same command on those 80 clips. Keeping the
+development and reserved reports separate prevents a combined total from
+hiding the independently measured result.
+
+## One-time result on subjects 3–4
+
+The candidate was frozen at `852a5cf4661b781fda3b5d1843525d93765f9b53`.
+The one-time browser run used clean commit
+`5d37d6416b2be7082c8c8f6b825dd4519474f2ca`, which added only the compact
+export script after the detector freeze. It analyzed all 80 reserved clips and
+verified every local video against its pinned-source SHA-256. The
+[per-clip result record](benchmarks/gmdcsa24-subject-holdout-v1.json) includes
+all three methods, model/worker/source hashes, and subject IDs, without videos
+or per-frame poses.
+
+| Rule | Fall clips detected | Daily activities alerted | Clip recall | Clip precision | Mean detected-clip delay* |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Current `/live` temporal rule | 17/38 | 1/42 | 44.7% | 94.4% | 1.73 s |
+| Pose-window candidate | **24/38** | **2/42** | **63.2%** | 92.3% | **0.73 s** |
+| Posture-only ablation | 28/38 | 10/42 | 73.7% | 73.7% | 1.74 s |
+
+\* Delay uses approximate author onset and only detected falls with a known
+onset; one fall has no onset label. Different sets of detected clips make the
+mean delays descriptive, not a paired latency comparison. A clip is scored
+positive if any candidate fires, so these are not event-matched accuracy
+figures. The 42 negative clips provide only about 6.5 minutes of exposure;
+hourly false-alert estimates are too unstable to predict field workload.
+
+On subject 3, the live rule detected 11/21 falls with 0/22 activity alerts;
+the candidate detected 15/21 with 1/22. On subject 4, the live rule detected
+6/17 with 1/20; the candidate detected 9/17 with 1/20. The candidate therefore
+gained seven fall clips but also added an activity alert. Its two alerted
+negative clips are described by the authors as sitting/standing exercise and
+push-ups. Ten of its 14 missed falls have descriptions mentioning a bed,
+compared with 16 of all 38 reserved falls. This points to seated/bed falls as
+a useful next diagnostic slice; it does not prove the cause of each miss.
+
+**Decision:** Do not promote this model to `/live` or an unattended camera.
+It missed 14/38 staged falls, increased activity alerts relative to the current
+rule, and does not meet the [pilot gates](fall-pilot-plan.md). Subjects 3–4 have
+now been examined and cannot be reused as a fresh holdout for a revised model.
+Use these failure cases for development, then freeze a new candidate and test
+on a genuinely separate labeled source or consented pilot set. Keep any live
+camera experiment in supervised shadow mode until delivery and field metrics
+also pass.
 
 ## Decision criteria
 

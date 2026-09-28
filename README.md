@@ -21,8 +21,16 @@ on short clips. See the [method and limitations](docs/urfall-browser-benchmark.m
 `scripts/prepare-urfall-benchmark.py` / `scripts/run-urfall-benchmark.cjs` to
 reproduce it. The existing one-click demo shows the system workflow; it does
 not establish monitoring reliability.
+On the separate, person-split [GMDCSA-24 research set](docs/gmdcsa24-browser-validation.md),
+a frozen pose-window candidate caught **24/38 falls** and alerted on **2/42
+daily activities**, versus 17/38 and 1/42 for the live rule. It was not
+promoted: 14 staged falls remained undetected and the activity alert count
+rose. The [per-clip result](docs/benchmarks/gmdcsa24-subject-holdout-v1.json)
+records both methods and the posture baseline.
 The [fall product plan](docs/fall-product-plan.md) tracks the independent
 detector check, always-on camera work, and supervised pilot gates.
+The [portfolio case study](docs/portfolio-fall-detection.md) summarizes the
+architecture, measured results, and a resume bullet.
 
 This monorepo is growing toward an OpenVector-style platform: click a camera, give
 it a job in natural language, review the generated rule, deploy it continuously,
