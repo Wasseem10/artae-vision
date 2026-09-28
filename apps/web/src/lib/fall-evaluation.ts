@@ -8,6 +8,8 @@ export type FallEvaluationCase = {
   eventStartSeconds?: number;
   frameCount?: number;
   sourceZipSha256?: string;
+  sourceGitBlobSha1?: string;
+  subjectId?: string;
   videoSha256?: string;
 };
 
@@ -38,30 +40,45 @@ export type FallEvaluationDataset = {
   license: string;
   split: string;
   labelNote: string;
+  sourceRevision?: string;
   cases: FallEvaluationCase[];
 };
 
 export function parseFallEvaluationDataset(value: unknown): FallEvaluationDataset {
   if (!value || typeof value !== "object") throw new Error("Invalid dataset manifest");
   const candidate = value as Record<string, unknown>;
-  if (candidate.schemaVersion !== 1 || candidate.datasetId !== "urfall-rgb-cam0-v1" ||
+  const urfall = candidate.datasetId === "urfall-rgb-cam0-v1";
+  const gmdcsa24 = candidate.datasetId === "gmdcsa24-v2.1";
+  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24) ||
       !Array.isArray(candidate.cases) || candidate.cases.length === 0 ||
-      candidate.cases.length > 70) throw new Error("Invalid UR Fall manifest");
+      candidate.cases.length > (urfall ? 70 : 160)) throw new Error("Invalid fall dataset manifest");
   const cases = candidate.cases as Array<Record<string, unknown>>;
   const ids = new Set<string>();
   for (const item of cases) {
     const positive = item.category === "fall";
-    if (typeof item.id !== "string" || !/^(fall|adl)-\d{2}$/.test(item.id) ||
+    const urId = typeof item.id === "string" ? /^(fall|adl)-(\d{2})$/.exec(item.id) : null;
+    const gmdId = typeof item.id === "string" ? /^gmd-s([1-4])-(fall|adl)-(\d{2})$/.exec(item.id) : null;
+    const validUrCase = urfall && urId &&
+      item.videoUrl === `/vision/urfall/${item.id}-cam0-rgb.mp4` &&
+      item.partition === (Number(urId[2]) <= 10 ? "development" : "holdout") &&
+      Number.isInteger(item.frameCount) && (item.frameCount as number) > 0 &&
+      typeof item.sourceZipSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceZipSha256);
+    const validGmdCase = gmdcsa24 && gmdId &&
+      item.videoUrl === `/vision/gmdcsa24/Subject%20${gmdId[1]}/${gmdId[2] === "fall" ? "Fall" : "ADL"}/${gmdId[3]}.mp4` &&
+      item.partition === (Number(gmdId[1]) <= 2 ? "development" : "holdout") &&
+      item.subjectId === `subject-${gmdId[1]}` &&
+      typeof item.sourceGitBlobSha1 === "string" && /^[a-f0-9]{40}$/.test(item.sourceGitBlobSha1);
+    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase) ||
         ids.has(item.id) || typeof item.name !== "string" ||
         item.name.length > 100 || (item.category !== "fall" && item.category !== "daily_activity") ||
-        item.videoUrl !== `/vision/urfall/${item.id}-cam0-rgb.mp4` ||
-        item.partition !== ((Number(item.id.slice(-2)) <= 10) ? "development" : "holdout") ||
+        (urfall && urId?.[1] !== (positive ? "fall" : "adl")) ||
+        (gmdcsa24 && gmdId?.[2] !== (positive ? "fall" : "adl")) ||
         item.expectedEvents !== (positive ? 1 : 0) ||
-        (positive && (!Number.isFinite(item.eventStartSeconds) || (item.eventStartSeconds as number) < 0)) ||
-        !Number.isInteger(item.frameCount) || (item.frameCount as number) <= 0 ||
-        typeof item.sourceZipSha256 !== "string" || !/^[a-f0-9]{64}$/.test(item.sourceZipSha256) ||
+        (urfall && positive && item.eventStartSeconds === undefined) ||
+        (item.eventStartSeconds !== undefined &&
+          (!Number.isFinite(item.eventStartSeconds) || (item.eventStartSeconds as number) < 0)) ||
         typeof item.videoSha256 !== "string" || !/^[a-f0-9]{64}$/.test(item.videoSha256)) {
-      throw new Error("Invalid UR Fall case in manifest");
+      throw new Error("Invalid fall case in manifest");
     }
     ids.add(item.id);
   }
@@ -69,6 +86,9 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
     if (typeof candidate[key] !== "string" || candidate[key].length > 1000) {
       throw new Error("Invalid UR Fall provenance");
     }
+  }
+  if (gmdcsa24 && candidate.sourceRevision !== "5abac7693229900cf80f722e878fbb119211fc1c") {
+    throw new Error("Invalid GMDCSA-24 source revision");
   }
   return candidate as FallEvaluationDataset;
 }
@@ -281,6 +301,7 @@ export function buildFallEvaluationExport(
       license: dataset.license,
       split: dataset.split,
       labelNote: dataset.labelNote,
+      sourceRevision: dataset.sourceRevision ?? null,
     },
     provenance: {
       detector: FALL_EVALUATION_DETECTOR,

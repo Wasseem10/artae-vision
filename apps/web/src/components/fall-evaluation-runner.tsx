@@ -209,29 +209,35 @@ export function FallEvaluationRunner() {
   const [currentCase, setCurrentCase] = useState("");
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  const [externalDataset, setExternalDataset] = useState<FallEvaluationDataset | null>(null);
-  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall">("builtin");
-  const dataset = datasetMode === "urfall" && externalDataset
-    ? externalDataset : BUILTIN_FALL_DATASET;
+  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>>({});
+  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24">("builtin");
+  const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
+    ? externalDatasets[datasetMode] : BUILTIN_FALL_DATASET;
   const cases = dataset.cases;
 
   useEffect(() => {
     let active = true;
-    void fetch("/vision/urfall/manifest.json", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((value: unknown) => {
-        if (!active || !value) return;
-        const parsed = parseFallEvaluationDataset(value);
-        setExternalDataset(parsed);
-        if (new URLSearchParams(window.location.search).get("dataset") === "urfall") {
-          setDatasetMode("urfall");
-        }
-      })
-      .catch(() => { /* The optional research dataset is local only. */ });
+    const sources = ["urfall", "gmdcsa24"] as const;
+    void Promise.all(sources.map(async (source) => {
+      try {
+        const response = await fetch(`/vision/${source}/manifest.json`, { cache: "no-store" });
+        if (!response.ok) return null;
+        return [source, parseFallEvaluationDataset(await response.json())] as const;
+      } catch { return null; }
+    })).then((loaded) => {
+      if (!active) return;
+      const available = Object.fromEntries(loaded.filter((item) => item !== null)) as
+        Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>;
+      setExternalDatasets(available);
+      const requested = new URLSearchParams(window.location.search).get("dataset");
+      if ((requested === "urfall" || requested === "gmdcsa24") && available[requested]) {
+        setDatasetMode(requested);
+      }
+    });
     return () => { active = false; };
   }, []);
 
-  function selectDataset(mode: "builtin" | "urfall") {
+  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24") {
     if (running) return;
     setDatasetMode(mode);
     setRunStatus("idle");
@@ -345,8 +351,10 @@ export function FallEvaluationRunner() {
       <nav className={styles.datasetChoice} aria-label="Evaluation dataset">
         <button type="button" aria-pressed={datasetMode === "builtin"} disabled={running}
           onClick={() => selectDataset("builtin")}>Five-clip smoke test</button>
-        {externalDataset && <button type="button" aria-pressed={datasetMode === "urfall"} disabled={running}
-          onClick={() => selectDataset("urfall")}>UR Fall research set ({externalDataset.cases.length})</button>}
+        {externalDatasets.urfall && <button type="button" aria-pressed={datasetMode === "urfall"} disabled={running}
+          onClick={() => selectDataset("urfall")}>UR Fall research set ({externalDatasets.urfall.cases.length})</button>}
+        {externalDatasets.gmdcsa24 && <button type="button" aria-pressed={datasetMode === "gmdcsa24"} disabled={running}
+          onClick={() => selectDataset("gmdcsa24")}>GMDCSA-24 subject split ({externalDatasets.gmdcsa24.cases.length})</button>}
         <span>{dataset.split}</span>
       </nav>
 

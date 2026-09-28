@@ -1,5 +1,5 @@
 // Start the local web app, then run: node scripts/run-urfall-benchmark.cjs
-// The research media is prepared by prepare-urfall-benchmark.py and stays gitignored.
+// The research media is prepared locally and stays gitignored.
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const assert = require('node:assert/strict');
@@ -10,8 +10,11 @@ const { chromium } = require(require.resolve('playwright', {
 }));
 
 const baseUrl = process.env.ARTAE_BENCHMARK_URL || 'http://127.0.0.1:3000';
-const output = path.resolve(__dirname, '../artifacts/urfall/evaluation.json');
+const dataset = process.env.ARTAE_BENCHMARK_DATASET || 'urfall';
+assert.ok(['urfall', 'gmdcsa24'].includes(dataset), 'Unsupported benchmark dataset');
+const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation.json`);
 const root = path.resolve(__dirname, '..');
+const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
 
 async function fileHash(relativePath) {
   return crypto.createHash('sha256')
@@ -28,15 +31,17 @@ async function fileHash(relativePath) {
   try {
     const page = await browser.newPage({ acceptDownloads: true });
     page.on('pageerror', (error) => console.error('PAGE:', error.message));
-    await page.goto(`${baseUrl}/evaluation/fall?dataset=urfall`, { waitUntil: 'domcontentloaded' });
-    const datasetButton = page.getByRole('button', { name: /UR Fall research set/ });
+    await page.goto(`${baseUrl}/evaluation/fall?dataset=${dataset}`, { waitUntil: 'domcontentloaded' });
+    const datasetButton = page.getByRole('button', {
+      name: dataset === 'urfall' ? /UR Fall research set/ : /GMDCSA-24 subject split/,
+    });
     await datasetButton.waitFor({ timeout: 30000 });
     assert.equal(await datasetButton.getAttribute('aria-pressed'), 'true');
     const manifest = await page.evaluate(async () =>
-      (await fetch('/vision/urfall/manifest.json')).json());
-    console.log(`Running ${manifest.cases.length} UR Fall clips`);
+      (await fetch(`/vision/${dataset}/manifest.json`)).json());
+    console.log(`Running ${manifest.cases.length} ${dataset} clips`);
     for (const item of manifest.cases) {
-      const actual = await fileHash(`apps/web/public${item.videoUrl}`);
+      const actual = await fileHash(`apps/web/public${decodeURIComponent(item.videoUrl)}`);
       assert.equal(actual, item.videoSha256, `Media changed since preparation: ${item.id}`);
     }
     await page.getByRole('button', { name: 'Run evaluation' }).click();
@@ -54,7 +59,7 @@ async function fileHash(relativePath) {
       'apps/web/src/lib/fall-evaluation.ts',
       'apps/web/src/components/fall-evaluation-runner.tsx',
       'apps/web/public/vision/pose-worker.js',
-      'apps/web/public/vision/urfall/manifest.json',
+      manifestPath,
     ].map(async (filename) => [filename, await fileHash(filename)])));
     result.provenance.localGitRevision = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: root, encoding: 'utf8',

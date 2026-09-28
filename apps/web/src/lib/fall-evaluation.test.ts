@@ -87,6 +87,31 @@ describe("fall evaluation scoring", () => {
     })).toThrow();
   });
 
+  it("keeps the second research set split by subject and rejects a swapped clip", () => {
+    const digest = "b".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "gmdcsa24-v2.1", source: "source",
+      citation: "citation", license: "source license", split: "subject split",
+      labelNote: "author labels", sourceRevision: "5abac7693229900cf80f722e878fbb119211fc1c",
+      cases: [
+        { id: "gmd-s1-fall-01", name: "dev", category: "fall", partition: "development",
+          subjectId: "subject-1", videoUrl: "/vision/gmdcsa24/Subject%201/Fall/01.mp4",
+          expectedEvents: 1, eventStartSeconds: 2, videoSha256: digest,
+          sourceGitBlobSha1: "a".repeat(40) },
+        { id: "gmd-s4-adl-01", name: "reserved", category: "daily_activity", partition: "holdout",
+          subjectId: "subject-4", videoUrl: "/vision/gmdcsa24/Subject%204/ADL/01.mp4",
+          expectedEvents: 0, videoSha256: digest, sourceGitBlobSha1: "a".repeat(40) },
+      ],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(2);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [
+      manifest.cases[0], { ...manifest.cases[1], partition: "development" },
+    ] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [
+      manifest.cases[0], { ...manifest.cases[1], videoUrl: "/vision/gmdcsa24/Subject%201/ADL/01.mp4" },
+    ] })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(

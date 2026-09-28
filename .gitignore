@@ -43,4 +43,5 @@ apps/web/public/vision/vision.js
 apps/web/public/vision/vision.cjs
 apps/web/public/vision/*.task
 apps/web/public/vision/urfall/
+apps/web/public/vision/gmdcsa24/
 browser-monitor-*.png
