@@ -37,8 +37,8 @@ async function fileHash(relativePath) {
     });
     await datasetButton.waitFor({ timeout: 30000 });
     assert.equal(await datasetButton.getAttribute('aria-pressed'), 'true');
-    const manifest = await page.evaluate(async () =>
-      (await fetch(`/vision/${dataset}/manifest.json`)).json());
+    const manifest = await page.evaluate(async (datasetId) =>
+      (await fetch(`/vision/${datasetId}/manifest.json`)).json(), dataset);
     console.log(`Running ${manifest.cases.length} ${dataset} clips`);
     for (const item of manifest.cases) {
       const actual = await fileHash(`apps/web/public${decodeURIComponent(item.videoUrl)}`);
