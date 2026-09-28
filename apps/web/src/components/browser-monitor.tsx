@@ -945,7 +945,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       <section className={styles.intro}>
         <small>{seniorSafety ? "COMMUNITY SENIOR SAFETY · HUMAN REVIEW REQUIRED" : "REAL DETECTION · NO INSTALLATION"}</small>
         <h1>
-          {seniorSafety ? <>Help caregivers notice<br />a possible fall sooner.</> : <>Give your camera<br />one clear job.</>}
+          {seniorSafety ? <>Help caregivers notice<br />{" "}a possible fall sooner.</> : <>Give your camera<br />one clear job.</>}
         </h1>
         <p>
           {seniorSafety
@@ -954,6 +954,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         </p>
       </section>
       <section id="monitor-setup" className={styles.workspace}>
+        <div className={styles.dashboardTop}>
+        <div className={styles.setupPanel}>
         {scope !== "guest" && <div className={styles.savedJobSetup}>
           <label>Agent name <input maxLength={80} value={agentName} placeholder="e.g. Hallway safety" disabled={running || savingJob} onChange={(e) => { setAgentName(e.target.value); setSelectedAgent(undefined); }} /></label>
           <button disabled={running || savingJob || !agentName.trim() || !!selectedAgent} onClick={() => void saveAgent()}>
@@ -986,13 +988,6 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <option value="webcam">Use my webcam</option>
             </select>
           </label>
-          <button
-            className={styles.start}
-            disabled={!running && (saving > 0 || !authReady || loadedScope !== scope)}
-            onClick={() => (running ? stopRef.current() : void start())}
-          >
-            {running ? "Stop agent" : !authReady ? "Checking account…" : loadedScope !== scope ? "Loading your workspace…" : saving > 0 ? "Finishing uploads…" : "Start agent"}
-          </button>
           {source === "file" && (
             <label>
               Choose a video
@@ -1028,6 +1023,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <option value={60}>60 minutes</option>
             </select>
           </label>}
+          <button
+            className={styles.start}
+            disabled={!running && (saving > 0 || !authReady || loadedScope !== scope)}
+            onClick={() => (running ? stopRef.current() : void start())}
+          >
+            {running ? "Stop agent" : !authReady ? "Checking account…" : loadedScope !== scope ? "Loading your workspace…" : saving > 0 ? "Finishing uploads…" : "Start agent"}
+          </button>
         </div>
         {seniorSafety && <div className={styles.caregiverSetup}>
           <div><strong>3. Choose how the caregiver is alerted</strong><p>The live incident feed and sound always work while this page is open.</p></div>
@@ -1055,6 +1057,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             : "A visible body pose sustained for one second creates an alert. One person is tracked at a time; small or obscured people may not be detected."}{" "}
           This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, or when you press Stop. No audio is recorded. The browser must stay open; closing your laptop stops monitoring.
         </p>
+        </div>
+        <div className={styles.monitorPanel}>
         <div className={styles.ruleBar}>
           <strong role="status">{phase}</strong>
           <label>
@@ -1082,9 +1086,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 aria-label="Live video with real body-pose overlay"
               />
               {!running && (
-                <div className={styles.stageEmpty}>
-                  <strong>{session ? "Agent stopped" : "Ready when you are"}</strong>
-                  <span>{session ? "Your event log and recorded footage are kept below." : "Choose video above, then Start agent."}</span>
+                <div className={`${styles.stageEmpty} ${seniorSafety && source === "sample" && !session ? styles.samplePreview : ""}`}>
+                  <strong>{session ? "Agent stopped" : seniorSafety && source === "sample" ? "Staged fall sample ready" : "Ready when you are"}</strong>
+                  <span>{session ? "Your event log and recorded footage are kept below." : seniorSafety && source === "sample" ? "Press Start agent to see pose detection and the incident log." : "Choose video above, then Start agent."}</span>
                 </div>
               )}
               <span className={styles.cameraLabel}>
@@ -1231,6 +1235,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               )}
             </div>
           </aside>
+        </div>
+        </div>
         </div>
         <div className={styles.storage}>
           <strong>

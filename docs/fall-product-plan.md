@@ -21,6 +21,8 @@ The first person-separated [GMDCSA-24 check](gmdcsa24-browser-validation.md)
 is also complete. The frozen pose-window candidate caught 24/38 falls and
 alerted on 2/42 activities, versus 17/38 and 1/42 for the current rule. It
 missed 14 falls and increased activity alerts, so it was **not promoted**.
+The [failure audit](fall-failure-audit.md) breaks out bed-related misses and
+records why threshold replay on rounded traces is only exploratory.
 
 ## Delivery sequence
 

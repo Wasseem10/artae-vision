@@ -8,6 +8,11 @@ for a possible fall, and gives a person an incident review and report workflow.
 The one-click demo is usable without an account or cloud API. It is not an
 unattended safety or medical product.
 
+[Watch the 38-second staged walkthrough](https://artae-vision.vercel.app/media/fall-monitor-walkthrough.webm)
+or [open the working demo](https://artae-vision.vercel.app/live). The recording
+shows local detection, evidence review, and a sitting negative control with
+cloud API calls disabled.
+
 I built a reproducible evaluation path because three successful demo falls
 could not answer whether the detector would work on other people and camera
 angles. Preparation scripts download licensed research footage locally, pin
@@ -56,6 +61,8 @@ The false alerts involved exercising; 10 missed fall descriptions mention a
 bed. We did not replace the live rule. Each dataset contains staged activities
 by healthy volunteers. Clip classification on a few minutes of negative video
 does not establish real-world fall recall, alert workload, or safety.
+The [failure audit](fall-failure-audit.md) records the bed-fall slice and the
+next independent test gate.
 
 The [committed UR result](benchmarks/urfall-browser-v2.json) and
 [subject-separated GMDCSA result](benchmarks/gmdcsa24-subject-holdout-v1.json)
