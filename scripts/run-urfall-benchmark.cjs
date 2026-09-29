@@ -16,7 +16,9 @@ const poseModel = process.env.ARTAE_BENCHMARK_POSE_MODEL || 'lite';
 assert.ok(['lite', 'full', 'heavy'].includes(poseModel), 'Unsupported pose model');
 const detectorMode = process.env.ARTAE_BENCHMARK_DETECTOR || 'legacy';
 assert.ok(['legacy', 'multi'].includes(detectorMode), 'Unsupported detector mode');
-const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${detectorMode === 'multi' ? '-multiperson' : ''}${poseModel === 'lite' ? '' : `-${poseModel}`}.json`);
+const personCrops = process.env.ARTAE_BENCHMARK_PERSON_CROPS === '1';
+if (personCrops) assert.ok(dataset === 'mpfdd' && detectorMode === 'multi' && poseModel === 'lite', 'Person-crop comparison supports MPFDD multi-pose Lite only');
+const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${detectorMode === 'multi' ? '-multiperson' : ''}${poseModel === 'lite' ? '' : `-${poseModel}`}${personCrops ? '-person-crops' : ''}.json`);
 const root = path.resolve(__dirname, '..');
 const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
 const poseModelPath = path.join(root, `apps/web/public/vision/pose_landmarker_${poseModel}.task`);
@@ -36,6 +38,15 @@ async function fileHash(relativePath) {
   try {
     const page = await browser.newPage({ acceptDownloads: true });
     page.on('pageerror', (error) => console.error('PAGE:', error.message));
+    if (personCrops) {
+      await page.route('**/vision/pose-worker.js', (route) => route.fulfill({
+        path: path.join(root, 'scripts/experiments/person-crop-pose-worker.js'), contentType: 'text/javascript',
+      }));
+      await page.route('**/vision/person_detector.tflite', (route) => route.fulfill({
+        path: path.join(root, 'artifacts/person-crops/efficientdet_lite0_uint8.tflite'),
+        contentType: 'application/octet-stream',
+      }));
+    }
     if (poseModel !== 'lite') {
       await fs.access(poseModelPath);
       // Swap only the worker's model response. Every clip and detector rule is unchanged.
@@ -91,6 +102,13 @@ async function fileHash(relativePath) {
     result.provenance.detector.model = `MediaPipe Pose Landmarker ${poseModel} float16/1`;
     result.provenance.detector.modelSha256 = await fileHash(`apps/web/public/vision/pose_landmarker_${poseModel}.task`);
     result.provenance.detector.modelAsset = `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${poseModel}/float16/1/pose_landmarker_${poseModel}.task`;
+    if (personCrops) {
+      result.provenance.detector.worker = 'scripts/experiments/person-crop-pose-worker.js';
+      result.provenance.detector.personModel = 'EfficientDet Lite0 uint8, person class';
+      result.provenance.detector.personModelAsset = 'https://storage.googleapis.com/mediapipe-tasks/object_detector/efficientdet_lite0_uint8.tflite';
+      result.provenance.detector.personModelSha256 = await fileHash('artifacts/person-crops/efficientdet_lite0_uint8.tflite');
+      result.provenance.detector.candidateWorkerSha256 = await fileHash('scripts/experiments/person-crop-pose-worker.js');
+    }
     result.provenance.localSourceHashes = Object.fromEntries(await Promise.all([
       'apps/web/src/lib/browser-pose.ts',
       'apps/web/src/lib/multi-person-fall.ts',

@@ -103,6 +103,10 @@ exposed a harder failure: both browser alert paths detected just 2/22 staged
 fall clips, with 0/6 activity clips alerted. The source supplies no timed or
 person-identity labels and only 63 seconds of negative footage. We did not
 convert the synthetic two-person smoke result into a real-world accuracy claim.
+The later [chair and shared-room accuracy check](chair-and-shared-room-accuracy-check.md)
+added a reproducible empty-chair regression. Two larger observation paths
+improved pose coverage but produced no additional MPFDD fall-clip hits, so
+neither replaced the live model.
 
 ## Engineering choices I can explain in an interview
 

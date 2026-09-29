@@ -56,6 +56,13 @@ fall clip; the activity footage lasted just 63 seconds. Improve person
 observation and track continuity before changing alert thresholds or making
 multi-person performance claims.
 
+The follow-up [chair and shared-room accuracy check](chair-and-shared-room-accuracy-check.md)
+added repeatable people-free chair regressions (zero poses across 124 static
+and panned frames with the live model). On the already examined MPFDD clips,
+neither a larger pose model nor a person-detector-plus-cropped-pose experiment
+improved the 2/22 fall-clip result. Keep the current live detector while
+collecting person-level labels and longer room-specific negative footage.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
