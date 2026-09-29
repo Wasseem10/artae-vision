@@ -348,6 +348,7 @@ class BrowserObservation(BaseModel):
     id: UUID
     at_seconds: float = Field(ge=0, le=3600, allow_inf_nan=False)
     landmark_visibility: float = Field(ge=0, le=1, allow_inf_nan=False)
+    track_id: int = Field(default=1, ge=1, le=1000000)
 
 
 class IncidentReview(BaseModel):
@@ -1039,7 +1040,7 @@ async def record_observation(
         camera_id=camera.id,
         rule_id=rule.id,
         event_type="person_fall" if fall else "object_dwell",
-        track_id=1,
+        track_id=payload.track_id,
         object_class="person",
         zone_name="Full frame",
         entered_at_seconds=max(0, payload.at_seconds - 1),
@@ -1057,6 +1058,7 @@ async def record_observation(
             "confidence_meaning": "Landmark visibility, not probability of a fall",
             "model": "MediaPipe Pose Landmarker Lite",
             "job": rule.key,
+            "person_track_id": payload.track_id if fall else None,
         },
     )
     run = await coordinate_incident(

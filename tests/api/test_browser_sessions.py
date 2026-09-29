@@ -105,6 +105,19 @@ def test_browser_session_keeps_recording_time_origin_across_devices(api_client):
     assert datetime.fromisoformat(listed["created_at"]) == started
 
 
+def test_fall_observation_keeps_session_person_track(api_client):
+    session = create(api_client, job="fall")
+    path = f"/api/v1/browser-sessions/{session['id']}/events"
+    event = api_client.post(path, json={
+        "id": str(uuid.uuid4()), "at_seconds": 3.5,
+        "landmark_visibility": .83, "track_id": 2,
+    })
+    assert event.status_code == 200, event.text
+    assert event.json()["track_id"] == 2
+    assert event.json()["details"]["person_track_id"] == 2
+    assert api_client.get(path).json()[0]["track_id"] == 2
+
+
 def test_caregiver_sms_fails_closed_when_provider_is_disabled(api_client):
     api_client.app.state.settings.sms_enabled = False
     assert api_client.get("/api/v1/browser-sessions/notification-capabilities").json() == {

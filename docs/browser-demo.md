@@ -2,7 +2,7 @@
 
 ## What runs
 
-### Local-first fall prototype (September 26)
+### Unified browser monitor (September 29)
 
 `/live` starts with a licensed staged-fall clip and runs the MediaPipe pose worker
 in the browser. It does not require login, the control-plane API, or AWS to create
@@ -12,12 +12,29 @@ candidates are additionally sent for Nova visual review and Strands coordination
 Signed-in pose events use the account incident path; they do not receive a separate
 Nova visual review in this route.
 
+The same `/live` workspace also offers a presence job and an AWS visual-condition
+job. The latter requires explicit frame-sharing consent and works for guests via
+the rate-limited public demo API. `/demo` redirects to `/live`; `/app` forwards
+there after account resolution. The installed-camera console remains an advanced
+route at `/app/native`.
+
+For fall monitoring, the pose worker requests up to four poses. Session-only
+track numbers keep temporal fall histories and incident records separate. When
+tracks overlap ambiguously, their histories are discarded to avoid combining
+one person's standing pose with another's descent. These numbers are not identities.
+The optional Nova review examines the entire scene, not a particular track.
+
 The `pnpm --dir apps/web test:live` smoke test first forces every API request to
 return 503. In that state, a staged lateral fall produced a reviewable incident
 and playable clip, and the reviewed result survived page reload. The sitting
 control analyzed frames and produced no fall incident. A third run verifies
 cloud enrichment with mocked Nova and Strands responses; it does not call AWS.
 These clips exercise the prototype flow, not field accuracy.
+`node scripts/check-multiperson-fall-demo.cjs` composes two local sample videos
+and checks a lateral fall beside a standing person (one alert), sitting beside
+a standing person (no fall alert), and the guest AWS visual job in the unified
+workspace. These are smoke tests; the existing single-person research benchmarks
+do not establish multi-person recall or field reliability.
 
 For each candidate, **Review footage** opens the matching recording when available.
 The incident card accepts an optional reviewer note and organization-supplied
@@ -32,9 +49,9 @@ timing, resolution, and availability. Open the HTML file in a browser and print
 to PDF. The report contains no video; download the footage segment separately.
 It does not record reviewer identity or whether response steps were completed.
 
-### Focused live AWS visual monitor (September 12)
+### Historical focused AWS visual monitor (September 12)
 
-`/app` and `/demo` use the focused `VisualWatch` interface. It accepts a licensed
+The earlier `VisualWatch` interface accepted a licensed
 sample, uploaded video, or webcam, one natural-language visual condition, an
 adjustable 5/15/30/60-second sampling interval, and one to three required
 consecutive matches. Start performs the first check immediately. Stop cancels the
@@ -97,10 +114,10 @@ preserved separately at `/app/native`. Named jobs and past runs load from the
 account automatically. A saved job is reusable configuration, not a running
 background process. Each run has independent footage and incident history.
 
-`/demo` is real inference, not a timed animation. A Web Worker runs pinned
+`/live` is real inference, not a timed animation. A Web Worker runs pinned
 MediaPipe Pose Landmarker Lite (Tasks Vision 0.10.32). The UI draws the measured
-landmarks. A one-person temporal rule produces either a person-in-view event or
-a possible-fall event. A fall requires upright posture, downward motion, and a
+landmarks. Separate per-person temporal rules produce possible-fall events; the
+presence job observes one pose. A fall requires upright posture, downward motion, and a
 sustained horizontal posture. The displayed visibility score is **not a fall
 probability**. Missing/obscured bodies and camera angles can cause misses.
 

@@ -172,10 +172,10 @@ async function startSample(page, sample) {
       await enriched.page.getByRole('button', { name: 'Mark reviewed', exact: true }).waitFor({ timeout: 30000 });
       await enriched.page.getByRole('button', { name: 'Mark reviewed', exact: true }).click();
       await enriched.page.getByText('Closed · reviewed', { exact: true }).waitFor();
-      await enriched.page.getByText('Possible fall — caregiver check requested', { exact: true }).waitFor({ timeout: 30000 });
+      await enriched.page.getByText(/Possible fall · person \d+ — please review/).waitFor({ timeout: 30000 });
       await enriched.page.getByText('AWS coordinator: completed', { exact: true }).waitFor();
       await enriched.page.getByText('Mock Nova confirmed the staged fall sequence.', { exact: true }).waitFor();
-      await enriched.page.getByText('Nova confirmed the visible sequence and Strands prepared the caregiver response.', { exact: false }).waitFor();
+      await enriched.page.getByText('Nova reviewed the whole scene and prepared a caregiver response. Check the person shown in the local alert.', { exact: false }).waitFor();
       await enriched.page.getByText('Closed · reviewed', { exact: true }).waitFor();
       await enriched.page.getByText('On-screen alert · this device', { exact: true }).waitFor();
       assert.equal(enriched.mockedPublicDemoStarts(), 1, 'Mocked AWS session must be requested once');

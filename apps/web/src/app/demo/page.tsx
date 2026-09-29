@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { DemoGate } from "@/components/demo-gate";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function DemoPage() {
-  return <DemoGate />;
+  redirect("/live");
 }

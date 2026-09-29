@@ -114,10 +114,10 @@ export function LoginPage() {
         <div className={styles.visualShade} />
         <Link className={styles.wordmark} href="/"><span><FiActivity /></span>artae</Link>
         <div className={styles.visualCopy}>
-          <p>FALL MONITORING PROTOTYPE</p>
-          <h1>Review a possible<br />fall sooner.</h1>
-          <span>Use the same fall monitor with account-backed agents, footage, and incident history.</span>
-          <div className={styles.visualSteps}><span><FiCheck /> Connect video</span><span><FiCheck /> Detect a possible fall</span><span><FiCheck /> Review the evidence</span></div>
+          <p>CAMERA MONITORING PROTOTYPE</p>
+          <h1>Review a visual<br />event sooner.</h1>
+          <span>Use the same monitor with saved agents, footage, and incident history.</span>
+          <div className={styles.visualSteps}><span><FiCheck /> Connect video</span><span><FiCheck /> Choose what to watch</span><span><FiCheck /> Review the evidence</span></div>
         </div>
       </section>
 
@@ -126,7 +126,7 @@ export function LoginPage() {
         <div className={styles.formWrap}>
           <p className={styles.eyebrow}>ACCOUNT ACCESS</p>
           <h2>{mode === "login" ? "Welcome back." : "Create your account."}</h2>
-          <p className={styles.intro}>{mode === "login" ? "Sign in to use the fall monitor with saved agents, footage, and incident history." : "Create an account to save fall-monitoring agents, footage, and incident reviews."}</p>
+          <p className={styles.intro}>{mode === "login" ? "Sign in to use the monitor with saved agents, footage, and incident history." : "Create an account to save monitoring agents, footage, and incident reviews."}</p>
           <div className={styles.authMode} role="group" aria-label="Authentication mode">
             <button className={mode === "login" ? styles.activeMode : ""} onClick={() => { setMode("login"); setError(""); setMessage(""); }} type="button">Log in</button>
             <button className={mode === "signup" ? styles.activeMode : ""} onClick={() => { setMode("signup"); setError(""); setMessage(""); }} type="button">Create account</button>
@@ -162,7 +162,7 @@ export function LoginPage() {
             <button disabled={working} type="submit">{working ? "Please wait…" : mode === "login" ? "Continue to workspace" : "Create account"} <span><FiArrowRight /></span></button>
           </form>
           {localDemoAvailable ? <p className={styles.previewNote}>Local demo account: <strong>{LOCAL_DEMO_EMAIL}</strong> / <strong>{LOCAL_DEMO_PASSWORD}</strong></p> : null}
-          <p className={styles.previewNote}><Link href="/live">Try the fall monitor without an account →</Link></p>
+          <p className={styles.previewNote}><Link href="/live">Try the monitor without an account →</Link></p>
           {!isSupabaseConfigured() ? <p className={styles.previewNote}>Account sign-in is unavailable until Supabase is configured. Guest recordings are not cloud backups.</p> : null}
         </div>
         <p className={styles.legal}>By continuing, you agree to the Terms and Privacy Policy.</p>

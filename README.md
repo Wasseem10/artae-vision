@@ -9,19 +9,21 @@ The recording shows a licensed staged fall, local pose detection, evidence and
 human review, then a sitting clip as a negative control. Cloud API calls were
 disabled during capture, so this demonstrates the browser workflow only.
 
-The original camera-agent landing page is at `/`. Its fall-demo link opens
-`/live`, where visitors can complete the staged fall, evidence, and review flow
-without signing in. Signing in through `/login` returns to that same monitor
-with account-backed agents and history; the old `/app` entry point forwards
-there after resolving its authentication callback. `/demo` remains a separate
-upload-and-prompt experiment.
+The original camera-agent landing page is at `/`. Its demo link opens
+`/live`, the single browser monitor for fall, presence, and prompted visual
+conditions. Visitors can run a staged fall, record evidence, and review an
+incident without signing in. Signing in through `/login` returns to that same
+monitor with account-backed agents and history. Old `/app` and `/demo` links
+forward there.
 
-> **Current status:** `/live` is the one-click fall prototype. Its staged sample
+> **Current status:** `/live` is the browser monitoring prototype. Its staged fall sample
 > runs real on-device MediaPipe pose sensing, records evidence, and lets a person
 > review the resulting incident without an account, API, or AWS setup. When the
 > public demo API is available, guest fall candidates can also receive Nova
-> visual review and Strands incident coordination. `/demo` is a separate
-> AWS-backed upload-and-prompt workflow.
+> visual review and Strands incident coordination. The same page accepts a
+> prompted visual condition with consent to send sampled frames to AWS.
+> Fall monitoring detects up to four visible poses and keeps separate, session-only
+> motion histories for them.
 > This is a hackathon prototype, not a validated medical, emergency-response, or
 > unattended monitoring product. See [tested scope](docs/browser-demo.md) and
 > the [supervised fall pilot plan](docs/fall-pilot-plan.md).
