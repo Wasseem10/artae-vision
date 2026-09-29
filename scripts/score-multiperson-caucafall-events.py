@@ -40,7 +40,7 @@ def main() -> None:
     provenance = report["provenance"]
     if (report["status"] != "complete" or report["schemaVersion"] != 4 or
         report["dataset"]["datasetId"] != manifest["datasetId"] or
-        provenance["detector"]["rule"] != "MultiPersonFallTracker/fall-v1" or
+        provenance["detector"]["rule"] != "FusedMultiPersonFallRule/fall-v1" or
         provenance["detector"]["maxPoses"] != 4 or
         provenance["localSourceHashes"]["apps/web/public/vision/caucafall/manifest.json"] != digest(MANIFEST) or
         provenance["localSourceHashes"]["apps/web/src/lib/multi-person-fall.ts"] !=
@@ -118,6 +118,7 @@ def main() -> None:
         "browserReportSha256": digest(REPORT),
         "baselineReportSha256": digest(BASELINE),
         "sourceHashes": provenance["localSourceHashes"],
+        "detectorRule": provenance["detector"]["rule"],
         "codeRevision": provenance["localGitRevision"],
         "codeDirtyDuringReplay": provenance["localGitDirty"],
         "baseline": baseline["metrics"]["liveTemporal"],

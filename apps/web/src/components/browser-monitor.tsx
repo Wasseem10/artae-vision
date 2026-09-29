@@ -9,7 +9,7 @@ import {
   type Landmark,
 } from "@/lib/browser-pose";
 import { type PoseWindowModel } from "@/lib/pose-window-fall";
-import { MultiPersonFallTracker } from "@/lib/multi-person-fall";
+import { FusedMultiPersonFallRule } from "@/lib/multi-person-fall";
 import windowModel from "@/lib/fall-window-model.json";
 import {
   createCloudSession,
@@ -452,7 +452,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     let visiblePoses: { id: number; landmarks: Landmark[] }[] = [];
     let recentPose: { at: number; found: boolean }[] = [];
     const engine = new BrowserPoseRule("presence");
-    const fallTracker = job === "fall" ? new MultiPersonFallTracker(windowModel as PoseWindowModel) : null;
+    const fallTracker = job === "fall" ? new FusedMultiPersonFallRule(windowModel as PoseWindowModel) : null;
     const frameCanvas = document.createElement("canvas");
     const visualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
@@ -681,9 +681,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         const poses: Landmark[][] = data.poses ?? [data.landmarks ?? []];
         const usable = poses.map((landmarks) => ({ landmarks, features: poseFeatures(landmarks, canvas.width, canvas.height) }))
           .filter((pose): pose is { landmarks: Landmark[]; features: NonNullable<ReturnType<typeof poseFeatures>> } => !!pose.features);
-        const tracked = fallTracker?.update(usable.map((pose) => pose.features), lastSent) ?? [];
+        const primaryLandmarks: Landmark[] = data.primaryLandmarks ?? data.landmarks ?? [];
+        const primaryFeatures = poseFeatures(primaryLandmarks, canvas.width, canvas.height);
+        const tracked = fallTracker?.update(primaryFeatures, usable.map((pose) => pose.features), lastSent) ?? [];
         visiblePoses = job === "fall"
-          ? tracked.map((pose) => ({ id: pose.id, landmarks: usable[pose.index].landmarks }))
+          ? tracked.map((pose) => ({ id: pose.id, landmarks: pose.source === "primary" ? primaryLandmarks : usable[pose.index].landmarks }))
           : usable[0] ? [{ id: 1, landmarks: usable[0].landmarks }] : [];
         const f = usable[0]?.features ?? null;
         if (job === "fall") {

@@ -3,6 +3,7 @@
 self.exports = {};
 importScripts('/vision/vision.js');
 let model;
+let primaryModel;
 self.onmessage = async ({ data }) => {
   try {
     if (data.type === 'init') {
@@ -13,12 +14,21 @@ self.onmessage = async ({ data }) => {
         minPoseDetectionConfidence: 0.6, minPosePresenceConfidence: 0.6,
         minTrackingConfidence: 0.6,
       });
+      if (Number(data.numPoses) > 1) {
+        primaryModel = await self.exports.PoseLandmarker.createFromOptions(files, {
+          baseOptions: { modelAssetPath: '/vision/pose_landmarker_lite.task', delegate: 'CPU' },
+          runningMode: 'VIDEO', numPoses: 1,
+          minPoseDetectionConfidence: 0.6, minPosePresenceConfidence: 0.6,
+          minTrackingConfidence: 0.6,
+        });
+      }
       self.postMessage({ type: 'ready' });
     } else if (data.type === 'frame') {
       if (!model) throw new Error('Pose model is not ready');
       const began = performance.now();
+      const primaryResult = primaryModel?.detectForVideo(data.bitmap, data.timestamp);
       const result = model.detectForVideo(data.bitmap, data.timestamp);
-      self.postMessage({ type: 'result', poses: result.landmarks || [], landmarks: result.landmarks[0] || [], timestamp: data.timestamp, inferenceMs:performance.now()-began });
+      self.postMessage({ type: 'result', poses: result.landmarks || [], landmarks: result.landmarks[0] || [], primaryLandmarks: primaryResult?.landmarks[0] || result.landmarks[0] || [], timestamp: data.timestamp, inferenceMs:performance.now()-began });
     }
   } catch (error) {
     self.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });

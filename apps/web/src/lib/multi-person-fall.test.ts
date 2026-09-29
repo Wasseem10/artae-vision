@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import model from "./fall-window-model.json";
-import { MultiPersonFallTracker } from "./multi-person-fall";
+import { FusedMultiPersonFallRule, MultiPersonFallTracker } from "./multi-person-fall";
 import type { PoseFeatures } from "./browser-pose";
 import type { PoseWindowModel } from "./pose-window-fall";
 
@@ -8,6 +8,20 @@ const pose = (x: number, y = .3, verticality = .9, aspect = .5): PoseFeatures =>
   ({ x, y, verticality, aspect, visibility: .95 });
 
 describe("multi-person fall tracking", () => {
+  it("retains the primary fall rule while tracking an additional person", () => {
+    const rule = new FusedMultiPersonFallRule(model as PoseWindowModel);
+    const alerts: number[] = [];
+    for (let frame = 0; frame <= 17; frame++) {
+      const t = frame / 10;
+      const falling = frame <= 6 ? pose(.25) : frame === 7 ? pose(.25, .35)
+        : pose(.25, .7, .3, 1.2);
+      const result = rule.update(falling, [falling, pose(.75)], t);
+      expect(result.map((person) => person.id)).toEqual([1, 2]);
+      alerts.push(...result.filter((person) => person.temporalHit).map((person) => person.id));
+    }
+    expect(alerts).toEqual([1]);
+  });
+
   it("keeps two people's motion separate when pose result order changes", () => {
     const tracker = new MultiPersonFallTracker(model as PoseWindowModel);
     const alerts: number[] = [];

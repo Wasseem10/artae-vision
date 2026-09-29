@@ -426,7 +426,7 @@ export function buildMultiPersonFallEvaluationExport(
       ...base.provenance,
       detector: {
         ...FALL_EVALUATION_DETECTOR,
-        rule: "MultiPersonFallTracker/fall-v1",
+        rule: "FusedMultiPersonFallRule/fall-v1",
         trackerSource: "apps/web/src/lib/multi-person-fall.ts",
         maxPoses: 4,
       },

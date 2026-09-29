@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserPoseRule, PostureOnlyFallRule, poseFeatures, type Landmark } from "@/lib/browser-pose";
 import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
-import { MultiPersonFallTracker } from "@/lib/multi-person-fall";
+import { FusedMultiPersonFallRule } from "@/lib/multi-person-fall";
 import windowModel from "@/lib/fall-window-model.json";
 import windowModelV2 from "@/lib/fall-window-model-v2.json";
 import {
@@ -27,6 +27,7 @@ type WorkerReply = {
   type: "ready" | "result" | "error";
   landmarks?: Landmark[];
   poses?: Landmark[][];
+  primaryLandmarks?: Landmark[];
   inferenceMs?: number;
   message?: string;
 };
@@ -143,7 +144,7 @@ async function runCase(
     const postureBaseline = new PostureOnlyFallRule();
     const windowCandidate = new PoseWindowFallRule(windowModel as PoseWindowModel);
     const windowCandidateV2 = new PoseWindowFallRule(windowModelV2 as PoseWindowModel);
-    const multiPerson = detectorMode === "multi" ? new MultiPersonFallTracker(windowModel as PoseWindowModel) : null;
+    const multiPerson = detectorMode === "multi" ? new FusedMultiPersonFallRule(windowModel as PoseWindowModel) : null;
     for (let frame = 0; frame <= totalFrames; frame += 1) {
       if (cancelled()) throw new Error("Evaluation cancelled");
       const seconds = Math.min(
@@ -171,7 +172,8 @@ async function runCase(
       if (multiPerson) {
         const visibleFeatures = (response.poses ?? []).map((pose) => poseFeatures(pose, video.videoWidth, video.videoHeight))
           .filter((pose): pose is NonNullable<typeof pose> => !!pose);
-        const tracked = multiPerson.update(visibleFeatures, seconds);
+        const primaryFeatures = poseFeatures(response.primaryLandmarks ?? [], video.videoWidth, video.videoHeight);
+        const tracked = multiPerson.update(primaryFeatures, visibleFeatures, seconds);
         if (tracked.length) framesWithPose += 1;
         maxVisiblePeople = Math.max(maxVisiblePeople, tracked.length);
         for (const person of tracked) {

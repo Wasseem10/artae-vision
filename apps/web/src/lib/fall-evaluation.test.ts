@@ -41,7 +41,7 @@ describe("fall evaluation scoring", () => {
     }));
     const exportData = buildMultiPersonFallEvaluationExport("complete", clips);
     expect(exportData.provenance.detector).toMatchObject({
-      rule: "MultiPersonFallTracker/fall-v1", maxPoses: 4,
+      rule: "FusedMultiPersonFallRule/fall-v1", maxPoses: 4,
     });
     expect(exportData.windowModelSummary).toBeNull();
     expect(exportData.results[0].multiPersonEvents?.[0].trackId).toBe(2);
