@@ -8,9 +8,12 @@ import {
   poseFeatures,
   type Landmark,
 } from "@/lib/browser-pose";
+import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
+import windowModel from "@/lib/fall-window-model.json";
 import {
   createCloudSession,
   createPublicDemo,
+  eventsPendingCloudSave,
   analyzeCloudFrames,
   analyzePublicDemo,
   cloudEventFields,
@@ -95,6 +98,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     playbackRef = useRef<HTMLVideoElement>(null);
   const current = useRef<BrowserSession | null>(null),
     stopRef = useRef<() => void>(() => {}),
+    endRef = useRef<() => void>(() => {}),
     active = useRef(false),
     mounted = useRef(true);
   const accountScope = useRef("guest"),
@@ -125,6 +129,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     [sound, setSound] = useState(true);
   const [fallSample, setFallSample] = useState("fall-lateral");
   const [inferenceMs, setInferenceMs] = useState(0);
+  const [poseCoverage, setPoseCoverage] = useState<number | null>(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured());
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<string | null>(null);
@@ -182,7 +187,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setReviewing(event.id);
     setSaveProblem(null);
     try {
-      if (s.scope === "guest") {
+      if (s.scope === "guest" || event.reviewOnly) {
         event.review = {
           status: outcome === "acknowledged" ? "acknowledged" : "resolved",
           outcome, reviewed_at: new Date().toISOString(),
@@ -195,12 +200,12 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           throw new Error("Save this alert to your account before reviewing it.");
         Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome, details)));
       }
-      // Guest reviews require a committed device copy before success. Account
-      // reviews were already committed remotely; local storage is optional.
-      if (s.scope === "guest") await saveLocal(s);
+      // Device-only suggestions and guest reviews need a committed local copy.
+      // Account alerts were already committed remotely.
+      if (s.scope === "guest" || event.reviewOnly) await saveLocal(s);
       persist(s);
     } catch (e) {
-      if (s.scope === "guest") event.review = previousReview;
+      if (s.scope === "guest" || event.reviewOnly) event.review = previousReview;
       setSaveProblem(e instanceof Error ? e.message : "Review could not be saved. Please retry.");
     } finally {
       setReviewing(null);
@@ -402,6 +407,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setPhase("Loading pose model…");
     setVisualStatus("");
     setVisualFrames(0);
+    setPoseCoverage(null);
     setMetrics({ frames: 0, people: 0, seconds: 0, state: "Loading" });
     const s: BrowserSession = {
       id: crypto.randomUUID(),
@@ -431,7 +437,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       recorder: MediaRecorder | null = null;
     let animation: ReturnType<typeof setInterval> | undefined,
       timer: ReturnType<typeof setTimeout> | undefined,
-      loadTimer: ReturnType<typeof setTimeout> | undefined;
+      loadTimer: ReturnType<typeof setTimeout> | undefined,
+      endTimer: ReturnType<typeof setTimeout> | undefined;
     let sourceUrl: string | null = null,
       stopped = false,
       bitmapPending = false,
@@ -442,7 +449,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       startTime = 0;
     let cancelLoading: (() => void) | undefined;
     let points: Landmark[] = [];
+    let recentPose: { at: number; found: boolean }[] = [];
     const engine = new BrowserPoseRule(job === "custom" ? "presence" : job);
+    const windowEngine = job === "fall" ? new PoseWindowFallRule(windowModel as PoseWindowModel) : null;
     const frameCanvas = document.createElement("canvas");
     const visualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
@@ -461,6 +470,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       clearInterval(animation);
       clearTimeout(timer);
       clearTimeout(loadTimer);
+      clearTimeout(endTimer);
       worker?.terminate();
       if (recorder && recorder.state !== "inactive") recorder.stop();
       recordingStream?.getTracks().forEach((t) => t.stop());
@@ -479,6 +489,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       }
     };
     stopRef.current = stop;
+    // A recorded clip can end while its final frame is still in the pose
+    // worker. Let the last sampled frame finish before closing the session.
+    endRef.current = () => {
+      if (!stopped && !endTimer) endTimer = setTimeout(stop, 500);
+    };
     try {
       if (sound) {
         audio.current ??= new AudioContext();
@@ -658,18 +673,54 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         points = data.landmarks;
         frames++;
         const f = poseFeatures(points, canvas.width, canvas.height);
-        if (job !== "custom" && engine.update(f, lastSent) && s.events.length < 20) {
-          const event = {
-            id: crypto.randomUUID(),
-            at: lastSent,
-            title:
-              job === "fall"
-                ? "Possible fall — please review"
-                : "Person detected",
+        if (job === "fall") {
+          recentPose = recentPose.filter((sample) => lastSent - sample.at <= 5);
+          recentPose.push({ at: lastSent, found: !!f });
+          if (recentPose.length >= 10 && lastSent - recentPose[0].at >= 1.5) {
+            setPoseCoverage(Math.round(100 * recentPose.filter((sample) => sample.found).length / recentPose.length));
+          }
+        }
+        const temporalHit = job !== "custom" && engine.update(f, lastSent);
+        const windowHit = windowEngine?.update(f, lastSent) ?? false;
+        const urgentCount = s.events.filter((event) => !event.reviewOnly).length;
+        const reviewCount = s.events.filter((event) => event.reviewOnly).length;
+        if (windowHit && !temporalHit && reviewCount < 20 &&
+            !s.events.some((event) => Math.abs(event.at - lastSent) <= 3)) {
+          s.events.push({
+            id: crypto.randomUUID(), at: lastSent,
+            title: "Motion to review — unverified",
             visibility: f?.visibility ?? 0,
-            review: { status: "open", outcome: null } as const,
-          };
-          s.events.push(event);
+            reviewOnly: true,
+            detectionSource: "pose_window_v1",
+            review: { status: "open", outcome: null },
+          });
+          // Suggestions are saved locally for footage review. They never beep,
+          // request browser notifications, call AWS review, or create cloud alerts.
+          persist(s);
+        }
+        if (temporalHit && urgentCount < 20) {
+          const recentReview = [...s.events].reverse().find((event) =>
+            event.reviewOnly && !event.review?.outcome &&
+            lastSent >= event.at && lastSent - event.at <= 3);
+          let event: BrowserEvent;
+          if (recentReview) {
+            event = recentReview;
+            event.at = lastSent;
+            event.title = job === "fall" ? "Possible fall — please review" : "Person detected";
+            event.visibility = f?.visibility ?? 0;
+            event.reviewOnly = false;
+            event.detectionSource = "temporal_and_pose_window";
+          } else {
+            event = {
+              id: crypto.randomUUID(),
+              at: lastSent,
+              title: job === "fall" ? "Possible fall — please review" : "Person detected",
+              visibility: f?.visibility ?? 0,
+              detectionSource: "temporal_rule",
+              review: { status: "open", outcome: null },
+            };
+            s.events.push(event);
+          }
           persist(s);
           beep();
           notifyCaregiver(event.title);
@@ -721,7 +772,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               persist(s);
             });
           }
-          if (s.events.length >= 20) {
+          if (urgentCount + 1 >= 20) {
             stop();
             setPhase("Stopped at the 20-alert session limit · logs and footage kept");
           }
@@ -830,7 +881,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         }
         if (
           !bitmapPending &&
-          lastAt - lastSent >= 0.12 &&
+          lastAt - lastSent >= 0.095 &&
           video.currentTime !== lastVideo &&
           video.readyState >= 2
         ) {
@@ -862,7 +913,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       draw();
       // Sampling must not depend on browser paint callbacks. Chrome may reduce
       // requestAnimationFrame cadence for embedded/occluded previews to ~1 FPS.
-      // Inference remains bounded to ~8 FPS; the recorder gets 20 FPS updates.
+      // Inference is best-effort ~10 FPS, matching the scored browser replay.
       animation = setInterval(draw, 50);
     } catch (e) {
       if (!stopped)
@@ -883,11 +934,10 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     queueCloud(s, async () => {
       await createCloudSession(s);
       s.cloud = true;
-      for (const e of s.events)
-        if (!e.saved) {
-          const result = await saveCloudEvent(s, e);
-          Object.assign(e, cloudEventFields(result));
-        }
+      for (const e of eventsPendingCloudSave(s)) {
+        const result = await saveCloudEvent(s, e);
+        Object.assign(e, cloudEventFields(result));
+      }
       for (const clip of s.clips)
         if (!clip.saved && clip.blob) await saveCloudClip(s, clip);
       persist(s);
@@ -1036,7 +1086,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           </button>
         </div>
         {seniorSafety && <div className={styles.caregiverSetup}>
-          <div><strong>3. Choose how the caregiver is alerted</strong><p>The live incident feed and sound always work while this page is open.</p></div>
+          <div><strong>3. Choose how the caregiver is alerted</strong><p>The live incident feed and sound work while this page is open. Extra motion review suggestions are saved on this device without sound, SMS, or browser alerts.</p></div>
           <button type="button" onClick={() => void enableBrowserNotifications()} disabled={notificationState === "granted" || notificationState === "unsupported"}>
             {notificationState === "granted" ? "Browser alert enabled" : notificationState === "unsupported" ? "Browser alerts unavailable" : "Enable browser alert"}
           </button>
@@ -1083,7 +1133,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 ref={videoRef}
                 muted
                 playsInline
-                onEnded={() => stopRef.current()}
+                onEnded={() => endRef.current()}
               />
               <canvas
                 ref={canvasRef}
@@ -1107,6 +1157,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <span>{metrics.state}</span>
             </div>
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
+            {running && job === "fall" && poseCoverage !== null && <p className={styles.note} role="status">
+              Body pose visible in {poseCoverage}% of recent frames. {poseCoverage < 70
+                ? "Detection may miss a fall. Reposition the camera so one person’s full body is visible."
+                : "Keep the full body in view."}
+            </p>}
             {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS review is optional; local detection and evidence run in this browser." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
@@ -1158,18 +1213,16 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             <div aria-live="polite">
               {session?.events.length ? (
                 session.events.map((event) => (
-                  <article key={event.id}>
+                  <article key={event.id} className={event.reviewOnly ? styles.reviewSuggestion : undefined}>
                     <i />
                     <div>
                       <strong>{event.title}</strong>
                       <small>
                         {formatTime(event.at)} · {event.visibility > 0 ? `Landmark visibility ${Math.round(event.visibility * 100)}%` : "AWS visual observation · review required"}
                       </small>
-                      <span>
-                        {event.saved
-                          ? "Account alert saved"
-                          : "On-screen alert · this device"}
-                      </span>
+                      <span>{event.reviewOnly
+                        ? "Review suggestion · this device · no caregiver alert"
+                        : event.saved ? "Account alert saved" : "On-screen alert · this device"}</span>
                       {event.coordinator && (
                         <small>
                           AWS coordinator:{" "}
@@ -1220,7 +1273,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                         onExport={() => downloadIncidentReport(event)}
                       />
                       {event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}{event.sms.error ? ` · ${event.sms.error}` : ""}</small>}
-                      <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" ? "on this device" : "to account"}` : event.sms?.status === "accepted" ? "AWS accepted the caregiver text; carrier delivery is not guaranteed." : "Awaiting caregiver review."}</small>
+                      <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" || event.reviewOnly ? "on this device" : "to account"}` : event.reviewOnly ? "Unverified motion. Inspect footage before taking action." : event.sms?.status === "accepted" ? "AWS accepted the caregiver text; carrier delivery is not guaranteed." : "Awaiting caregiver review."}</small>
                     </div>
                   </article>
                 ))
@@ -1333,7 +1386,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <strong>{s.name}</strong>
               <span>
                 {new Date(s.createdAt).toLocaleString()} ·{" "}
-                {s.events.length ? `${s.events.length} ${s.events.length === 1 ? "alert" : "alerts"}` : "No alerts"} ·{" "}
+                {s.events.length ? `${s.events.filter((event) => !event.reviewOnly).length} alerts · ${s.events.filter((event) => event.reviewOnly).length} review suggestions` : "No alerts"} ·{" "}
                 {s.cloud ? "Account" : "This device"}
               </span>
             </button>

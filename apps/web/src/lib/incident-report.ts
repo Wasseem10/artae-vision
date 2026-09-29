@@ -126,6 +126,7 @@ export function buildIncidentReport(
     "Video is not embedded in this report. Open the incident in Artae to inspect any available recording.",
     "Reviewer identity and checklist completion are not recorded by this report.",
   ];
+  if (event.reviewOnly) limitations.push("This was a device-only motion review suggestion. No caregiver alert was sent for this suggestion.");
   if (!clips.length) limitations.push("No matching recording metadata was available when this report was generated.");
   if (requestedRecordingIds.some((id) => !clips.some((clip) => clip.id === id)))
     limitations.push("At least one requested recording was not found in this session snapshot.");
@@ -138,7 +139,7 @@ export function buildIncidentReport(
       name: session.name,
       job: session.job,
       startedAt,
-      storage: session.scope === "guest" ? "device" : event.saved ? "account_saved" : "account_unconfirmed",
+      storage: session.scope === "guest" || event.reviewOnly ? "device" : event.saved ? "account_saved" : "account_unconfirmed",
     },
     event: {
       id: event.id,
@@ -157,8 +158,12 @@ export function buildIncidentReport(
       reviewerNote: options.reviewerNote?.trim() || null,
     },
     provenance: {
-      detection: session.job === "fall"
-        ? "Browser fall monitoring candidate"
+      detection: event.reviewOnly
+        ? "PoseWindowLogistic/v1 device-only motion review suggestion"
+        : event.detectionSource === "temporal_and_pose_window"
+        ? "BrowserPoseRule/fall-v2 possible fall alert with PoseWindowLogistic/v1 agreement"
+        : session.job === "fall"
+        ? "BrowserPoseRule/fall-v2 possible fall alert"
         : session.job === "custom" ? "Configured visual condition candidate" : "Browser monitoring candidate",
       optionalCloudReviewStatus: event.coordinator || null,
       recordedActions: [...new Set(event.actions ?? [])],

@@ -139,6 +139,55 @@ describe("fall evaluation scoring", () => {
     }] })).toThrow();
   });
 
+  it("keeps the RealBiomFall check clip-level and local", () => {
+    const digest = "a".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "realbiomfall-100-v3",
+      source: "https://zenodo.org/records/11636174", citation: "RealBiomFall",
+      license: "CC BY 4.0", split: "fresh source", labelNote: "clip-level only",
+      sourceRevision: "zenodo-11636174-v3", cases: [{
+        id: "realbiom-fall-001", name: "RealBiomFall clip 001", category: "fall",
+        partition: "holdout", videoUrl: "/vision/realbiomfall/realbiom-fall-001.mp4",
+        expectedEvents: 1, sourceFilename: "clip_1.mp4", sourceVideoSha256: digest,
+        sourceZipSha256: digest, videoSha256: digest,
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(1);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], eventStartSeconds: 1,
+    }] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], videoUrl: "https://example.com/clip.mp4",
+    }] })).toThrow();
+  });
+
+  it("accepts only pinned IMU-video activity labels and local paths", () => {
+    const digest = "b".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "imu-video-fall-adl-v1",
+      source: "source", citation: "citation", license: "research", split: "fresh source",
+      labelNote: "clip-level", sourceRevision: "a895be0ed80a33b55363468c804a9e4d7af95b9c",
+      cases: [{
+        id: "imu-adl-001", name: "Walk", category: "daily_activity",
+        partition: "holdout", videoUrl: "/vision/imuadlfall/imu-adl-001.mp4",
+        expectedEvents: 0, sourcePath: "Daily_Activity_01/walk_P01_T01_video.mp4",
+        sourceGitBlobSha1: "a".repeat(40), sourceVideoSha256: digest, videoSha256: digest,
+      }, {
+        id: "imu-fall-001", name: "Fall", category: "fall",
+        partition: "holdout", videoUrl: "/vision/imuadlfall/imu-fall-001.mp4",
+        expectedEvents: 1, sourcePath: "Daily_Activity_04/fall_bwd_P01_T01_video.mp4",
+        sourceGitBlobSha1: "a".repeat(40), sourceVideoSha256: digest, videoSha256: digest,
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(2);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[1], category: "daily_activity",
+    }] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], sourcePath: "Daily_Activity_04/fall_bwd_P01_T01_video.mp4",
+    }] })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(

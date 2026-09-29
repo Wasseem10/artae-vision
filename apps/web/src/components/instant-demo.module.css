@@ -337,6 +337,8 @@
 .seniorPage .log header strong { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
 .seniorPage .log header > span { background:#263847; color:#e3f1fb; }
 .seniorPage .log article > i { background:#b2d6f5; }
+.seniorPage .log article.reviewSuggestion > i { background:#8794a0; }
+.seniorPage .log article.reviewSuggestion span { color:#aebbc5; }
 .seniorPage .log article strong { color:#f3f7fa; }
 .seniorPage .log article small,.seniorPage .log .incidentSummary,.seniorPage .actionTrace,.seniorPage .incidentReview p { color:#afbfcc; }
 .seniorPage .log article span,.seniorPage .incidentReview summary { color:#b4d8f5; }

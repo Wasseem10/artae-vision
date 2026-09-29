@@ -45,4 +45,6 @@ apps/web/public/vision/*.task
 apps/web/public/vision/urfall/
 apps/web/public/vision/gmdcsa24/
 apps/web/public/vision/caucafall/
+apps/web/public/vision/realbiomfall/
+apps/web/public/vision/imuadlfall/
 browser-monitor-*.png

@@ -11,10 +11,13 @@ const { chromium } = require(require.resolve('playwright', {
 
 const baseUrl = process.env.ARTAE_BENCHMARK_URL || 'http://127.0.0.1:3000';
 const dataset = process.env.ARTAE_BENCHMARK_DATASET || 'urfall';
-assert.ok(['urfall', 'gmdcsa24', 'caucafall'].includes(dataset), 'Unsupported benchmark dataset');
-const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation.json`);
+assert.ok(['urfall', 'gmdcsa24', 'caucafall', 'realbiomfall', 'imuadlfall'].includes(dataset), 'Unsupported benchmark dataset');
+const poseModel = process.env.ARTAE_BENCHMARK_POSE_MODEL || 'lite';
+assert.ok(['lite', 'full', 'heavy'].includes(poseModel), 'Unsupported pose model');
+const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${poseModel === 'lite' ? '' : `-${poseModel}`}.json`);
 const root = path.resolve(__dirname, '..');
 const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
+const poseModelPath = path.join(root, `apps/web/public/vision/pose_landmarker_${poseModel}.task`);
 
 async function fileHash(relativePath) {
   return crypto.createHash('sha256')
@@ -31,10 +34,18 @@ async function fileHash(relativePath) {
   try {
     const page = await browser.newPage({ acceptDownloads: true });
     page.on('pageerror', (error) => console.error('PAGE:', error.message));
+    if (poseModel !== 'lite') {
+      await fs.access(poseModelPath);
+      // Swap only the worker's model response. Every clip and detector rule is unchanged.
+      await page.route('**/vision/pose_landmarker_lite.task', (route) =>
+        route.fulfill({ path: poseModelPath, contentType: 'application/octet-stream' }));
+    }
     await page.goto(`${baseUrl}/evaluation/fall?dataset=${dataset}`, { waitUntil: 'domcontentloaded' });
     const datasetButton = page.getByRole('button', {
       name: dataset === 'urfall' ? /UR Fall research set/ :
-        dataset === 'gmdcsa24' ? /GMDCSA-24 subject split/ : /CAUCAFall independent source/,
+        dataset === 'gmdcsa24' ? /GMDCSA-24 subject split/ :
+          dataset === 'caucafall' ? /CAUCAFall independent source/ :
+            dataset === 'realbiomfall' ? /RealBiomFall fresh source/ : /IMU-video fresh source/,
     });
     await datasetButton.waitFor({ timeout: 30000 });
     assert.equal(await datasetButton.getAttribute('aria-pressed'), 'true');
@@ -73,6 +84,9 @@ async function fileHash(relativePath) {
     assert.equal(result.status, 'complete');
     assert.equal(result.results.length, manifest.cases.length);
     assert.equal(result.dataset.datasetId, manifest.datasetId);
+    result.provenance.detector.model = `MediaPipe Pose Landmarker ${poseModel} float16/1`;
+    result.provenance.detector.modelSha256 = await fileHash(`apps/web/public/vision/pose_landmarker_${poseModel}.task`);
+    result.provenance.detector.modelAsset = `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${poseModel}/float16/1/pose_landmarker_${poseModel}.task`;
     result.provenance.localSourceHashes = Object.fromEntries(await Promise.all([
       'apps/web/src/lib/browser-pose.ts',
       'apps/web/src/lib/fall-evaluation.ts',

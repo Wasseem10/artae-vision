@@ -224,15 +224,15 @@ export function FallEvaluationRunner() {
   const [currentCase, setCurrentCase] = useState("");
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall", FallEvaluationDataset>>>({});
-  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall">("builtin");
+  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>>({});
+  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall">("builtin");
   const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
     ? externalDatasets[datasetMode] : BUILTIN_FALL_DATASET;
   const cases = dataset.cases;
 
   useEffect(() => {
     let active = true;
-    const sources = ["urfall", "gmdcsa24", "caucafall"] as const;
+    const sources = ["urfall", "gmdcsa24", "caucafall", "realbiomfall", "imuadlfall"] as const;
     void Promise.all(sources.map(async (source) => {
       try {
         const response = await fetch(`/vision/${source}/manifest.json`, { cache: "no-store" });
@@ -242,17 +242,17 @@ export function FallEvaluationRunner() {
     })).then((loaded) => {
       if (!active) return;
       const available = Object.fromEntries(loaded.filter((item) => item !== null)) as
-        Partial<Record<"urfall" | "gmdcsa24" | "caucafall", FallEvaluationDataset>>;
+        Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>;
       setExternalDatasets(available);
       const requested = new URLSearchParams(window.location.search).get("dataset");
-      if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall") && available[requested]) {
+      if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall" || requested === "realbiomfall" || requested === "imuadlfall") && available[requested]) {
         setDatasetMode(requested);
       }
     });
     return () => { active = false; };
   }, []);
 
-  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24" | "caucafall") {
+  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall") {
     if (running) return;
     setDatasetMode(mode);
     setRunStatus("idle");
@@ -377,6 +377,10 @@ export function FallEvaluationRunner() {
           onClick={() => selectDataset("gmdcsa24")}>GMDCSA-24 subject split ({externalDatasets.gmdcsa24.cases.length})</button>}
         {externalDatasets.caucafall && <button type="button" aria-pressed={datasetMode === "caucafall"} disabled={running}
           onClick={() => selectDataset("caucafall")}>CAUCAFall independent source ({externalDatasets.caucafall.cases.length})</button>}
+        {externalDatasets.realbiomfall && <button type="button" aria-pressed={datasetMode === "realbiomfall"} disabled={running}
+          onClick={() => selectDataset("realbiomfall")}>RealBiomFall fresh source ({externalDatasets.realbiomfall.cases.length})</button>}
+        {externalDatasets.imuadlfall && <button type="button" aria-pressed={datasetMode === "imuadlfall"} disabled={running}
+          onClick={() => selectDataset("imuadlfall")}>IMU-video fresh source ({externalDatasets.imuadlfall.cases.length})</button>}
         <span>{dataset.split}</span>
       </nav>
 
