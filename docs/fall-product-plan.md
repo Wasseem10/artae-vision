@@ -48,6 +48,14 @@ positions and a sitting negative. This is a development result, not a fresh
 multi-person validation; the next detector gate needs labeled footage with
 more than one person and longer non-fall exposure.
 
+A first-look [real multi-person source check](mpfdd-first-look-result.md) now
+shows why that gate matters. On the 28 accessible MPFDD clips, both the
+original and fused alert paths detected only 2/22 fall clips and alerted on
+0/6 daily-activity clips. The additional tracks did not add a successful
+fall clip; the activity footage lasted just 63 seconds. Improve person
+observation and track continuity before changing alert thresholds or making
+multi-person performance claims.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
