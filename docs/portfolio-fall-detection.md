@@ -15,7 +15,7 @@ cloud API calls disabled.
 
 I built a reproducible evaluation path because three successful demo falls
 could not answer whether the detector would work on other people and camera
-angles. Preparation scripts download licensed research footage locally, pin
+angles. Preparation scripts obtain permitted research footage locally, pin
 source revisions and media SHA-256 values, and run the same browser pose worker
 and fall rule used by the demo. The reports preserve code/model hashes, per-clip
 detections, pose coverage, and timing without publishing participant footage.
@@ -25,9 +25,12 @@ detections, pose coverage, and timing without publishing participant footage.
 ```mermaid
 flowchart LR
     A[Camera or permitted clip] --> B[Browser MediaPipe pose worker]
-    B --> C[Temporal rule or pose-window candidate]
-    C --> D[Possible-fall incident]
+    B --> C[Conservative temporal rule]
+    C --> D[Possible-fall alert]
     D --> E[Playable evidence and human review]
+    B --> H[Pose-window candidate]
+    H --> I[Device-only review suggestion]
+    I --> E
     B --> F[Hash-verified benchmark replay]
     F --> G[Per-clip results and failure analysis]
 ```
@@ -37,8 +40,9 @@ pose history, including normalized body position, torso angle, box shape,
 recent changes, and pose coverage. It requires observed motion and two
 consecutive positive samples, and clears stale history after tracking loss.
 The Python trainer and TypeScript runtime agreed on all 80 development clips.
-The candidate is evaluated alongside the live rule and is **not** creating
-live incidents.
+The frozen v1 candidate now creates **device-only, unverified review
+suggestions**. These do not send sound, browser, or caregiver notifications.
+Only the conservative temporal rule can create a possible-fall alert.
 
 ## Measured result
 
@@ -63,6 +67,15 @@ by healthy volunteers. Clip classification on a few minutes of negative video
 does not establish real-world fall recall, alert workload, or safety.
 The [failure audit](fall-failure-audit.md) records the bed-fall slice and the
 next independent test gate.
+
+A later [five-source audit](fall-cross-source-v4.md) includes 525 staged fall
+and daily-activity clips. The temporal rule found 1/35 staged falls in one
+new source. The review-only candidate found 27/35 there but only 11/100 in a
+different, correlated-source fall set. A multi-source training experiment
+improved some development folds but fell to 3/50 CAUCAFall clips when that
+source was held out at a zero-activity-alert setting. We rejected that model.
+The negative footage across four sources totals only about 0.49 hours, so
+these numbers do not establish a field false-alert rate.
 
 The [committed UR result](benchmarks/urfall-browser-v2.json) and
 [subject-separated GMDCSA result](benchmarks/gmdcsa24-subject-holdout-v1.json)
@@ -93,10 +106,10 @@ live alert path and exposed the need for stronger cross-scene generalization.
 
 ## Resume bullet
 
-> Built an on-device fall-detection prototype with MediaPipe, TypeScript, and
-> Next.js, including evidence capture and human review; automated a
-> hash-verified 330-clip benchmark across three research datasets with
-> person- and source-separated holdouts, exposing cross-scene detection failures.
+> Built an on-device fall-monitoring prototype with MediaPipe, TypeScript,
+> and Next.js, including evidence capture and human review; benchmarked 525
+> staged fall and daily-activity clips across five research sources, exposing
+> cross-scene failures and separating automatic alerts from unverified review suggestions.
 
 This bullet describes engineering work and evaluation scope. It does not claim
 that the system is reliable for unattended monitoring.

@@ -126,3 +126,7 @@ fall/sitting/AWS fallback browser checks, 63 web unit tests, lint, and the
 production build passed. This verifies the prototype behavior on selected
 clips; the aggregate benchmark numbers above are not live-stream accuracy
 measurements.
+
+The subsequent [cross-source failure audit](fall-cross-source-v4.md) compares
+five already-examined source collections, tests a source-balanced development
+candidate, and records why it was rejected. It does not change the live rule.

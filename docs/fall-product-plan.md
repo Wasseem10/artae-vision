@@ -1,6 +1,6 @@
 # Fall detection: prototype to supervised pilot
 
-Status: September 28, 2026. The [pilot protocol](fall-pilot-plan.md) has the
+Status: September 29, 2026. The [pilot protocol](fall-pilot-plan.md) has the
 operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
@@ -30,11 +30,20 @@ on 0/50 daily-activity clips; the expanded-training pose-window candidate
 caught only 3/50. Its failure rules out promotion. The activity footage
 lasted about 8.6 minutes, far too little to estimate a field false-alert rate.
 
+The subsequent [five-source audit](fall-cross-source-v4.md) confirmed that
+misses are not explained by low pose visibility alone. A multi-source pose
+classifier still failed on a held-out source, so it was not promoted. The
+existing pose-window model supplies only device-local review suggestions;
+the conservative temporal rule remains the automatic alert path. The five
+source collections total 525 short clips, with about 0.49 hours of negative
+video across four collections. Longer negative exposure and a new independent
+test source remain necessary.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
 | --- | --- | --- |
-| 1. Independent detector check | Completed for the first and second candidates. The new CAUCAFall source exposed only 3/50 fall detections for v2 and 17/50 for the live rule. Use these cases for development and find another untouched source for the next frozen test. | More detector work is required; estimate several engineering days for another candidate, with data acquisition able to extend this. |
+| 1. Independent detector check | Two earlier candidates received independent checks; the third multi-source experiment was development-only and failed its held-out-source stress test. Use the examined cases for development and find another untouched source with longer negative footage for the next frozen test. | More detector work is required; estimate several engineering days for another candidate, with data acquisition able to extend this. |
 | 2. Always-on supervised prototype | Run the selected detector on one approved camera host without a browser tab. Verify startup, shutdown, reconnection, outage/restart recovery, playable evidence, and actual recipient receipt/acknowledgment. | About 1–2 engineering weeks if the host, camera, and notification route are available. |
 | 3. Shadow pilot | Obtain written consent, fixed camera placement, named primary/backup reviewers, data and retention decisions, then measure scheduled versus analyzed hours and every candidate while existing care procedures remain primary. | Setup and observation take weeks; timing depends on participant/site access and actual monitored hours. |
 | 4. Assisted or unattended use | Require the pilot's predeclared event recall, false-alert workload, delivery, evidence, uptime, and privacy gates. Review all failures and intended-use obligations. | No credible calendar date until field evidence passes those gates. |

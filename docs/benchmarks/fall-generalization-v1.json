@@ -1,0 +1,1789 @@
+{
+  "purpose": "already-examined-source development audit",
+  "sources": {
+    "urfall": {
+      "reportSha256": {
+        "artifacts\\urfall\\evaluation.json": "71157de27aa53309c6f84e060b0e6de8a482cd019be97556d257db321a0d227b"
+      },
+      "clips": 70,
+      "falls": 30,
+      "activities": 40,
+      "activityHours": 0.0828,
+      "temporalFallHits": 8,
+      "poseWindowFallHits": null,
+      "poseWindowFallClipsScored": 0,
+      "temporalActivityClipsAlerted": 1,
+      "poseWindowActivityClipsAlerted": null,
+      "poseWindowActivityClipsScored": 0,
+      "temporalMissesWithAtLeast70PercentPose": 17,
+      "temporalMissesWithAllThreePoseSignals": 12,
+      "misses": [
+        {
+          "id": "fall-01",
+          "windowHit": null,
+          "poseCoverage": 0.7777777777777778,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-03",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-08",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-09",
+          "windowHit": null,
+          "poseCoverage": 0.7903225806451613,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-13",
+          "windowHit": null,
+          "poseCoverage": 0.896551724137931,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "fall-14",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-15",
+          "windowHit": null,
+          "poseCoverage": 0.8333333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-16",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-17",
+          "windowHit": null,
+          "poseCoverage": 0.84375,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-18",
+          "windowHit": null,
+          "poseCoverage": 0.6818181818181818,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-19",
+          "windowHit": null,
+          "poseCoverage": 0.47058823529411764,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-20",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-21",
+          "windowHit": null,
+          "poseCoverage": 0.6842105263157895,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-22",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-23",
+          "windowHit": null,
+          "poseCoverage": 0.8846153846153846,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-24",
+          "windowHit": null,
+          "poseCoverage": 0.8571428571428571,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-25",
+          "windowHit": null,
+          "poseCoverage": 0.7931034482758621,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-26",
+          "windowHit": null,
+          "poseCoverage": 0.5714285714285714,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "fall-27",
+          "windowHit": null,
+          "poseCoverage": 0.8064516129032258,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-28",
+          "windowHit": null,
+          "poseCoverage": 0.7391304347826086,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-29",
+          "windowHit": null,
+          "poseCoverage": 0.7272727272727273,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "fall-30",
+          "windowHit": null,
+          "poseCoverage": 0.6666666666666666,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        }
+      ]
+    },
+    "gmdcsa24": {
+      "reportSha256": {
+        "artifacts\\gmdcsa24\\development-subjects-1-2.json": "a6a2c711ec1008efda9e8ce664d3fec6239273aa3c248683e11851567111dfff",
+        "artifacts\\gmdcsa24\\evaluation.json": "a07cac909eb5e71c91bc8d019cbc88cb3ba6d6262e003deeae9c7cdd86a8796d"
+      },
+      "clips": 160,
+      "falls": 79,
+      "activities": 81,
+      "activityHours": 0.2078,
+      "temporalFallHits": 52,
+      "poseWindowFallHits": 24,
+      "poseWindowFallClipsScored": 38,
+      "temporalActivityClipsAlerted": 3,
+      "poseWindowActivityClipsAlerted": 2,
+      "poseWindowActivityClipsScored": 42,
+      "temporalMissesWithAtLeast70PercentPose": 20,
+      "temporalMissesWithAllThreePoseSignals": 11,
+      "misses": [
+        {
+          "id": "gmd-s1-fall-01",
+          "windowHit": null,
+          "poseCoverage": 0.6521739130434783,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s1-fall-02",
+          "windowHit": null,
+          "poseCoverage": 0.46875,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s2-fall-03",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s2-fall-05",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s2-fall-14",
+          "windowHit": null,
+          "poseCoverage": 0.35398230088495575,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s2-fall-18",
+          "windowHit": null,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s3-fall-01",
+          "windowHit": true,
+          "poseCoverage": 0.9743589743589743,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s3-fall-02",
+          "windowHit": false,
+          "poseCoverage": 0.9090909090909091,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s3-fall-06",
+          "windowHit": true,
+          "poseCoverage": 0.9824561403508771,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s3-fall-08",
+          "windowHit": true,
+          "poseCoverage": 0.890625,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s3-fall-09",
+          "windowHit": false,
+          "poseCoverage": 0.9841269841269841,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s3-fall-10",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s3-fall-12",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s3-fall-13",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s3-fall-17",
+          "windowHit": false,
+          "poseCoverage": 0.313953488372093,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s3-fall-19",
+          "windowHit": true,
+          "poseCoverage": 0.6379310344827587,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-02",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-03",
+          "windowHit": false,
+          "poseCoverage": 0.7058823529411765,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s4-fall-04",
+          "windowHit": true,
+          "poseCoverage": 0.7708333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-05",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s4-fall-08",
+          "windowHit": false,
+          "poseCoverage": 0.9523809523809523,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-09",
+          "windowHit": false,
+          "poseCoverage": 0.9836065573770492,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s4-fall-10",
+          "windowHit": false,
+          "poseCoverage": 0.6078431372549019,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-12",
+          "windowHit": false,
+          "poseCoverage": 0.46808510638297873,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-13",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "gmd-s4-fall-14",
+          "windowHit": false,
+          "poseCoverage": 0.7169811320754716,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "gmd-s4-fall-17",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        }
+      ]
+    },
+    "caucafall": {
+      "reportSha256": {
+        "artifacts\\caucafall\\evaluation.json": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf"
+      },
+      "clips": 100,
+      "falls": 50,
+      "activities": 50,
+      "activityHours": 0.1428,
+      "temporalFallHits": 17,
+      "poseWindowFallHits": 4,
+      "poseWindowFallClipsScored": 50,
+      "temporalActivityClipsAlerted": 0,
+      "poseWindowActivityClipsAlerted": 0,
+      "poseWindowActivityClipsScored": 50,
+      "temporalMissesWithAtLeast70PercentPose": 17,
+      "temporalMissesWithAllThreePoseSignals": 11,
+      "misses": [
+        {
+          "id": "cauca-s1-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.6744186046511628,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s2-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 0.9833333333333333,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s2-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.5283018867924528,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s2-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.9873417721518988,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s3-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 0.5595238095238095,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s3-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.4025974025974026,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s3-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.8837209302325582,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s3-fall-right",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s3-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.4158415841584158,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s4-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.7529411764705882,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s4-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.8518518518518519,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s4-fall-right",
+          "windowHit": false,
+          "poseCoverage": 0.9736842105263158,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s4-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.98,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s5-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.7128712871287128,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s5-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.5241935483870968,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s6-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 0.4017094017094017,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s6-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.6138613861386139,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s6-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.1565217391304348,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s6-fall-right",
+          "windowHit": false,
+          "poseCoverage": 0.28695652173913044,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s6-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.912,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s7-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.5185185185185185,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s7-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.8301886792452831,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s7-fall-right",
+          "windowHit": true,
+          "poseCoverage": 0.9880952380952381,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s7-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.9423076923076923,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s8-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 0.33962264150943394,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s8-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s8-fall-left",
+          "windowHit": false,
+          "poseCoverage": 0.18811881188118812,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s8-fall-right",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "cauca-s8-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.7094017094017094,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s9-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s10-fall-backwards",
+          "windowHit": false,
+          "poseCoverage": 0.927007299270073,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s10-fall-forward",
+          "windowHit": false,
+          "poseCoverage": 0.8278688524590164,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "cauca-s10-fall-sitting",
+          "windowHit": false,
+          "poseCoverage": 0.6206896551724138,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        }
+      ]
+    },
+    "imu_video": {
+      "reportSha256": {
+        "artifacts\\imuadlfall\\evaluation.json": "695724a59e51a30cb1f5efb477e6fef10b940b40bfcb4d811359048910f6baa2"
+      },
+      "clips": 95,
+      "falls": 35,
+      "activities": 60,
+      "activityHours": 0.0629,
+      "temporalFallHits": 1,
+      "poseWindowFallHits": 27,
+      "poseWindowFallClipsScored": 35,
+      "temporalActivityClipsAlerted": 0,
+      "poseWindowActivityClipsAlerted": 0,
+      "poseWindowActivityClipsScored": 60,
+      "temporalMissesWithAtLeast70PercentPose": 18,
+      "temporalMissesWithAllThreePoseSignals": 24,
+      "misses": [
+        {
+          "id": "imu-fall-001",
+          "windowHit": true,
+          "poseCoverage": 0.9838709677419355,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-002",
+          "windowHit": false,
+          "poseCoverage": 0.9714285714285714,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-003",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-004",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-005",
+          "windowHit": true,
+          "poseCoverage": 0.9090909090909091,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-006",
+          "windowHit": false,
+          "poseCoverage": 0.6851851851851852,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-007",
+          "windowHit": true,
+          "poseCoverage": 0.5517241379310345,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-008",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-009",
+          "windowHit": true,
+          "poseCoverage": 0.9272727272727272,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-010",
+          "windowHit": true,
+          "poseCoverage": 0.5121951219512195,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-011",
+          "windowHit": true,
+          "poseCoverage": 0.6415094339622641,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-012",
+          "windowHit": true,
+          "poseCoverage": 0.8518518518518519,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-013",
+          "windowHit": true,
+          "poseCoverage": 0.5517241379310345,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-014",
+          "windowHit": false,
+          "poseCoverage": 0.4444444444444444,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-015",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-017",
+          "windowHit": false,
+          "poseCoverage": 0.9583333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "imu-fall-018",
+          "windowHit": true,
+          "poseCoverage": 0.6363636363636364,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-019",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-020",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-021",
+          "windowHit": true,
+          "poseCoverage": 0.4897959183673469,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-022",
+          "windowHit": false,
+          "poseCoverage": 0.8947368421052632,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-023",
+          "windowHit": true,
+          "poseCoverage": 0.9393939393939394,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-024",
+          "windowHit": true,
+          "poseCoverage": 0.98,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-025",
+          "windowHit": false,
+          "poseCoverage": 0.6447368421052632,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-026",
+          "windowHit": true,
+          "poseCoverage": 0.62,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-027",
+          "windowHit": false,
+          "poseCoverage": 0.3157894736842105,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "imu-fall-028",
+          "windowHit": true,
+          "poseCoverage": 0.625,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-029",
+          "windowHit": true,
+          "poseCoverage": 0.9696969696969697,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-030",
+          "windowHit": false,
+          "poseCoverage": 0.32,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "imu-fall-031",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-032",
+          "windowHit": true,
+          "poseCoverage": 0.6538461538461539,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-033",
+          "windowHit": true,
+          "poseCoverage": 0.4782608695652174,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-034",
+          "windowHit": true,
+          "poseCoverage": 0.78125,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "imu-fall-035",
+          "windowHit": true,
+          "poseCoverage": 0.3181818181818182,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        }
+      ]
+    },
+    "realbiomfall": {
+      "reportSha256": {
+        "artifacts\\realbiomfall\\evaluation.json": "4e4fb3bd3d8bbcd82ad79dec99b7f3152c5865dc200a02a428196688d52bfca5"
+      },
+      "clips": 100,
+      "falls": 100,
+      "activities": 0,
+      "activityHours": 0.0,
+      "temporalFallHits": 5,
+      "poseWindowFallHits": 11,
+      "poseWindowFallClipsScored": 100,
+      "temporalActivityClipsAlerted": 0,
+      "poseWindowActivityClipsAlerted": null,
+      "poseWindowActivityClipsScored": 0,
+      "temporalMissesWithAtLeast70PercentPose": 28,
+      "temporalMissesWithAllThreePoseSignals": 12,
+      "misses": [
+        {
+          "id": "realbiom-fall-001",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-002",
+          "windowHit": false,
+          "poseCoverage": 0.8372093023255814,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-003",
+          "windowHit": false,
+          "poseCoverage": 0.4878048780487805,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-004",
+          "windowHit": true,
+          "poseCoverage": 0.3157894736842105,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-005",
+          "windowHit": false,
+          "poseCoverage": 0.9534883720930233,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-006",
+          "windowHit": false,
+          "poseCoverage": 0.9166666666666666,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-007",
+          "windowHit": false,
+          "poseCoverage": 0.8793103448275862,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-009",
+          "windowHit": false,
+          "poseCoverage": 0.32653061224489793,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-010",
+          "windowHit": false,
+          "poseCoverage": 0.8695652173913043,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-011",
+          "windowHit": false,
+          "poseCoverage": 0.046511627906976744,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-012",
+          "windowHit": false,
+          "poseCoverage": 0.3181818181818182,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-013",
+          "windowHit": false,
+          "poseCoverage": 0.43902439024390244,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-014",
+          "windowHit": false,
+          "poseCoverage": 0.8947368421052632,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-015",
+          "windowHit": false,
+          "poseCoverage": 0.39285714285714285,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-016",
+          "windowHit": false,
+          "poseCoverage": 0.8076923076923077,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-017",
+          "windowHit": false,
+          "poseCoverage": 0.9782608695652174,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-018",
+          "windowHit": false,
+          "poseCoverage": 0.0967741935483871,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-019",
+          "windowHit": true,
+          "poseCoverage": 1.0,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-020",
+          "windowHit": false,
+          "poseCoverage": 0.65,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-021",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-022",
+          "windowHit": false,
+          "poseCoverage": 0.6103896103896104,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-023",
+          "windowHit": false,
+          "poseCoverage": 0.014084507042253521,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-024",
+          "windowHit": false,
+          "poseCoverage": 0.24675324675324675,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-025",
+          "windowHit": false,
+          "poseCoverage": 0.7272727272727273,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-026",
+          "windowHit": false,
+          "poseCoverage": 0.625,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-027",
+          "windowHit": true,
+          "poseCoverage": 0.6097560975609756,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-028",
+          "windowHit": false,
+          "poseCoverage": 0.14583333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-029",
+          "windowHit": false,
+          "poseCoverage": 0.14583333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-030",
+          "windowHit": false,
+          "poseCoverage": 0.36065573770491804,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-031",
+          "windowHit": false,
+          "poseCoverage": 0.6710526315789473,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-032",
+          "windowHit": false,
+          "poseCoverage": 0.5888888888888889,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-034",
+          "windowHit": false,
+          "poseCoverage": 0.35,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-035",
+          "windowHit": false,
+          "poseCoverage": 0.8269230769230769,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-036",
+          "windowHit": false,
+          "poseCoverage": 0.2222222222222222,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-037",
+          "windowHit": false,
+          "poseCoverage": 0.18181818181818182,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-038",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-039",
+          "windowHit": false,
+          "poseCoverage": 0.8260869565217391,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-040",
+          "windowHit": true,
+          "poseCoverage": 0.34375,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-041",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-042",
+          "windowHit": false,
+          "poseCoverage": 0.7916666666666666,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-043",
+          "windowHit": false,
+          "poseCoverage": 0.58,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-044",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-045",
+          "windowHit": false,
+          "poseCoverage": 0.6739130434782609,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-046",
+          "windowHit": true,
+          "poseCoverage": 0.5660377358490566,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-047",
+          "windowHit": false,
+          "poseCoverage": 0.9787234042553191,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-048",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-049",
+          "windowHit": false,
+          "poseCoverage": 0.11428571428571428,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-050",
+          "windowHit": false,
+          "poseCoverage": 0.1935483870967742,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-051",
+          "windowHit": false,
+          "poseCoverage": 0.6785714285714286,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-052",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-053",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-054",
+          "windowHit": false,
+          "poseCoverage": 0.15517241379310345,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-055",
+          "windowHit": false,
+          "poseCoverage": 0.39705882352941174,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-056",
+          "windowHit": false,
+          "poseCoverage": 0.0784313725490196,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-057",
+          "windowHit": true,
+          "poseCoverage": 0.4117647058823529,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-058",
+          "windowHit": false,
+          "poseCoverage": 0.6511627906976745,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-059",
+          "windowHit": false,
+          "poseCoverage": 0.05333333333333334,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-060",
+          "windowHit": false,
+          "poseCoverage": 0.8775510204081632,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-061",
+          "windowHit": false,
+          "poseCoverage": 0.3333333333333333,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-062",
+          "windowHit": false,
+          "poseCoverage": 0.5483870967741935,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-063",
+          "windowHit": false,
+          "poseCoverage": 0.7804878048780488,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-064",
+          "windowHit": false,
+          "poseCoverage": 0.7681159420289855,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-065",
+          "windowHit": false,
+          "poseCoverage": 0.027522935779816515,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-066",
+          "windowHit": false,
+          "poseCoverage": 0.09433962264150944,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-067",
+          "windowHit": false,
+          "poseCoverage": 0.627906976744186,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-068",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-069",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-070",
+          "windowHit": false,
+          "poseCoverage": 0.9333333333333333,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-071",
+          "windowHit": false,
+          "poseCoverage": 0.11864406779661017,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-072",
+          "windowHit": false,
+          "poseCoverage": 0.2702702702702703,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-073",
+          "windowHit": false,
+          "poseCoverage": 0.125,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-074",
+          "windowHit": false,
+          "poseCoverage": 0.4507042253521127,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-076",
+          "windowHit": false,
+          "poseCoverage": 0.008547008547008548,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-077",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-078",
+          "windowHit": false,
+          "poseCoverage": 0.5441176470588235,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-079",
+          "windowHit": false,
+          "poseCoverage": 0.953125,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-080",
+          "windowHit": false,
+          "poseCoverage": 0.8235294117647058,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-081",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-083",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-084",
+          "windowHit": false,
+          "poseCoverage": 0.7608695652173914,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-085",
+          "windowHit": false,
+          "poseCoverage": 0.9655172413793104,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-086",
+          "windowHit": false,
+          "poseCoverage": 0.5909090909090909,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-087",
+          "windowHit": false,
+          "poseCoverage": 0.7560975609756098,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-088",
+          "windowHit": false,
+          "poseCoverage": 0.5636363636363636,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-089",
+          "windowHit": false,
+          "poseCoverage": 0.9310344827586207,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-090",
+          "windowHit": true,
+          "poseCoverage": 0.7142857142857143,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-091",
+          "windowHit": false,
+          "poseCoverage": 0.673469387755102,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-092",
+          "windowHit": false,
+          "poseCoverage": 0.0,
+          "uprightObserved": false,
+          "horizontalObserved": false,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-093",
+          "windowHit": false,
+          "poseCoverage": 0.5178571428571429,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-094",
+          "windowHit": false,
+          "poseCoverage": 0.42592592592592593,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-095",
+          "windowHit": false,
+          "poseCoverage": 0.25252525252525254,
+          "uprightObserved": false,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-096",
+          "windowHit": false,
+          "poseCoverage": 0.7317073170731707,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": false
+        },
+        {
+          "id": "realbiom-fall-098",
+          "windowHit": false,
+          "poseCoverage": 0.7083333333333334,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-099",
+          "windowHit": false,
+          "poseCoverage": 0.5862068965517241,
+          "uprightObserved": true,
+          "horizontalObserved": false,
+          "descentObserved": true
+        },
+        {
+          "id": "realbiom-fall-100",
+          "windowHit": true,
+          "poseCoverage": 0.7636363636363637,
+          "uprightObserved": true,
+          "horizontalObserved": true,
+          "descentObserved": true
+        }
+      ]
+    }
+  }
+}
