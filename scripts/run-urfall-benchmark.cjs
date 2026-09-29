@@ -14,7 +14,9 @@ const dataset = process.env.ARTAE_BENCHMARK_DATASET || 'urfall';
 assert.ok(['urfall', 'gmdcsa24', 'caucafall', 'realbiomfall', 'imuadlfall'].includes(dataset), 'Unsupported benchmark dataset');
 const poseModel = process.env.ARTAE_BENCHMARK_POSE_MODEL || 'lite';
 assert.ok(['lite', 'full', 'heavy'].includes(poseModel), 'Unsupported pose model');
-const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${poseModel === 'lite' ? '' : `-${poseModel}`}.json`);
+const detectorMode = process.env.ARTAE_BENCHMARK_DETECTOR || 'legacy';
+assert.ok(['legacy', 'multi'].includes(detectorMode), 'Unsupported detector mode');
+const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${detectorMode === 'multi' ? '-multiperson' : ''}${poseModel === 'lite' ? '' : `-${poseModel}`}.json`);
 const root = path.resolve(__dirname, '..');
 const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
 const poseModelPath = path.join(root, `apps/web/public/vision/pose_landmarker_${poseModel}.task`);
@@ -40,7 +42,8 @@ async function fileHash(relativePath) {
       await page.route('**/vision/pose_landmarker_lite.task', (route) =>
         route.fulfill({ path: poseModelPath, contentType: 'application/octet-stream' }));
     }
-    await page.goto(`${baseUrl}/evaluation/fall?dataset=${dataset}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${baseUrl}/evaluation/fall?dataset=${dataset}&detector=${detectorMode}`, { waitUntil: 'domcontentloaded' });
+    if (detectorMode === 'multi') await page.getByRole('heading', { name: 'Multi-person fall evaluation' }).waitFor();
     const datasetButton = page.getByRole('button', {
       name: dataset === 'urfall' ? /UR Fall research set/ :
         dataset === 'gmdcsa24' ? /GMDCSA-24 subject split/ :
@@ -89,6 +92,7 @@ async function fileHash(relativePath) {
     result.provenance.detector.modelAsset = `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${poseModel}/float16/1/pose_landmarker_${poseModel}.task`;
     result.provenance.localSourceHashes = Object.fromEntries(await Promise.all([
       'apps/web/src/lib/browser-pose.ts',
+      'apps/web/src/lib/multi-person-fall.ts',
       'apps/web/src/lib/fall-evaluation.ts',
       'apps/web/src/components/fall-evaluation-runner.tsx',
       'apps/web/src/lib/pose-window-fall.ts',

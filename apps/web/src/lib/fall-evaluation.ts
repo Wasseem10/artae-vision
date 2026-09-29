@@ -33,6 +33,10 @@ export type FallEvaluationResult = FallEvaluationCase & {
   framesAnalyzed: number;
   framesWithPose: number;
   detectedAtSeconds: number[];
+  /** Session-local pose tracks for the four-pose browser pipeline. */
+  multiPersonEvents?: { atSeconds: number; trackId: number }[];
+  maxVisiblePeople?: number;
+  trackIdsSeen?: number;
   postureBaselineDetectedAtSeconds?: number[];
   windowModelDetectedAtSeconds?: number[];
   windowModelV2DetectedAtSeconds?: number[];
@@ -405,6 +409,36 @@ export function buildFallEvaluationExport(
     results,
     limitation:
       "Staged research footage does not establish medical or field reliability; clip-level classification is distinct from event-level accuracy.",
+  };
+}
+
+export function buildMultiPersonFallEvaluationExport(
+  status: FallEvaluationRunStatus,
+  results: FallEvaluationResult[],
+  generatedAt: string = new Date().toISOString(),
+  dataset: FallEvaluationDataset = BUILTIN_FALL_DATASET,
+) {
+  const base = buildFallEvaluationExport(status, results, generatedAt, dataset);
+  return {
+    ...base,
+    schemaVersion: 4,
+    provenance: {
+      ...base.provenance,
+      detector: {
+        ...FALL_EVALUATION_DETECTOR,
+        rule: "MultiPersonFallTracker/fall-v1",
+        trackerSource: "apps/web/src/lib/multi-person-fall.ts",
+        maxPoses: 4,
+      },
+    },
+    postureBaselineSummary: null,
+    windowModelSummary: null,
+    windowModelV2Summary: null,
+    partitions: (["development", "holdout"] as const).flatMap((partition) => {
+      const subset = results.filter((result) => result.partition === partition);
+      return subset.length ? [{ name: partition, cases: subset.length, summary: scoreFallEvaluation(subset) }] : [];
+    }),
+    limitation: "Single-person staged research clips measure detector regression, not multi-person identity accuracy or field reliability. Event tracks are session-only.",
   };
 }
 

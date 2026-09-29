@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserPoseRule, PostureOnlyFallRule, poseFeatures, type Landmark } from "@/lib/browser-pose";
 import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
+import { MultiPersonFallTracker } from "@/lib/multi-person-fall";
 import windowModel from "@/lib/fall-window-model.json";
 import windowModelV2 from "@/lib/fall-window-model-v2.json";
 import {
   BUILTIN_FALL_DATASET,
   buildFallEvaluationExport,
+  buildMultiPersonFallEvaluationExport,
   FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS,
   isCompleteFallEvaluation,
   parseFallEvaluationDataset,
@@ -24,6 +26,7 @@ import styles from "./fall-evaluation-runner.module.css";
 type WorkerReply = {
   type: "ready" | "result" | "error";
   landmarks?: Landmark[];
+  poses?: Landmark[][];
   inferenceMs?: number;
   message?: string;
 };
@@ -107,6 +110,7 @@ async function runCase(
   video: HTMLVideoElement,
   cancelled: () => boolean,
   onProgress: (frame: number, total: number) => void,
+  detectorMode: "legacy" | "multi",
 ): Promise<FallEvaluationResult> {
   const worker = new Worker("/vision/pose-worker.js");
   const inferenceTimes: number[] = [];
@@ -117,10 +121,13 @@ async function runCase(
   const poseTrace: FallPoseTrace[] = [];
   let framesAnalyzed = 0;
   let framesWithPose = 0;
+  const multiPersonEvents: { atSeconds: number; trackId: number }[] = [];
+  const trackIds = new Set<number>();
+  let maxVisiblePeople = 0;
   try {
     await waitForWorker(
       worker,
-      () => worker.postMessage({ type: "init" }),
+      () => worker.postMessage({ type: "init", numPoses: detectorMode === "multi" ? 4 : 1 }),
       "ready",
     );
     await loadVideo(video, definition.videoUrl);
@@ -136,6 +143,7 @@ async function runCase(
     const postureBaseline = new PostureOnlyFallRule();
     const windowCandidate = new PoseWindowFallRule(windowModel as PoseWindowModel);
     const windowCandidateV2 = new PoseWindowFallRule(windowModelV2 as PoseWindowModel);
+    const multiPerson = detectorMode === "multi" ? new MultiPersonFallTracker(windowModel as PoseWindowModel) : null;
     for (let frame = 0; frame <= totalFrames; frame += 1) {
       if (cancelled()) throw new Error("Evaluation cancelled");
       const seconds = Math.min(
@@ -160,25 +168,33 @@ async function runCase(
         video.videoHeight,
       );
       framesAnalyzed += 1;
-      if (features) framesWithPose += 1;
-      if (rule.update(features, seconds)) {
-        detectedAtSeconds.push(Number(seconds.toFixed(3)));
-      }
-      if (postureBaseline.update(features, seconds)) {
-        postureBaselineDetectedAtSeconds.push(Number(seconds.toFixed(3)));
-      }
-      if (windowCandidate.update(features, seconds)) {
-        windowModelDetectedAtSeconds.push(Number(seconds.toFixed(3)));
-      }
-      if (windowCandidateV2.update(features, seconds)) {
-        windowModelV2DetectedAtSeconds.push(Number(seconds.toFixed(3)));
+      if (multiPerson) {
+        const visibleFeatures = (response.poses ?? []).map((pose) => poseFeatures(pose, video.videoWidth, video.videoHeight))
+          .filter((pose): pose is NonNullable<typeof pose> => !!pose);
+        const tracked = multiPerson.update(visibleFeatures, seconds);
+        if (tracked.length) framesWithPose += 1;
+        maxVisiblePeople = Math.max(maxVisiblePeople, tracked.length);
+        for (const person of tracked) {
+          trackIds.add(person.id);
+          if (person.temporalHit) {
+            const atSeconds = Number(seconds.toFixed(3));
+            detectedAtSeconds.push(atSeconds);
+            multiPersonEvents.push({ atSeconds, trackId: person.id });
+          }
+        }
+      } else {
+        if (features) framesWithPose += 1;
+        if (rule.update(features, seconds)) detectedAtSeconds.push(Number(seconds.toFixed(3)));
+        if (postureBaseline.update(features, seconds)) postureBaselineDetectedAtSeconds.push(Number(seconds.toFixed(3)));
+        if (windowCandidate.update(features, seconds)) windowModelDetectedAtSeconds.push(Number(seconds.toFixed(3)));
+        if (windowCandidateV2.update(features, seconds)) windowModelV2DetectedAtSeconds.push(Number(seconds.toFixed(3)));
       }
       poseTrace.push({
         seconds: Number(seconds.toFixed(3)),
         y: features ? Number(features.y.toFixed(4)) : null,
         verticality: features ? Number(features.verticality.toFixed(4)) : null,
         aspect: features ? Number(features.aspect.toFixed(4)) : null,
-        phase: rule.status,
+        phase: detectorMode === "multi" ? "multi-person" : rule.status,
       });
       inferenceTimes.push(response.inferenceMs ?? 0);
       if (frame % 5 === 0 || frame === totalFrames) {
@@ -191,6 +207,9 @@ async function runCase(
       framesAnalyzed,
       framesWithPose,
       detectedAtSeconds,
+      multiPersonEvents: detectorMode === "multi" ? multiPersonEvents : undefined,
+      maxVisiblePeople: detectorMode === "multi" ? maxVisiblePeople : undefined,
+      trackIdsSeen: detectorMode === "multi" ? trackIds.size : undefined,
       postureBaselineDetectedAtSeconds,
       windowModelDetectedAtSeconds,
       windowModelV2DetectedAtSeconds,
@@ -224,6 +243,7 @@ export function FallEvaluationRunner() {
   const [currentCase, setCurrentCase] = useState("");
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
+  const [detectorMode, setDetectorMode] = useState<"legacy" | "multi">("legacy");
   const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>>({});
   const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall">("builtin");
   const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
@@ -245,6 +265,7 @@ export function FallEvaluationRunner() {
         Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>;
       setExternalDatasets(available);
       const requested = new URLSearchParams(window.location.search).get("dataset");
+      setDetectorMode(new URLSearchParams(window.location.search).get("detector") === "multi" ? "multi" : "legacy");
       if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall" || requested === "realbiomfall" || requested === "imuadlfall") && available[requested]) {
         setDatasetMode(requested);
       }
@@ -267,9 +288,9 @@ export function FallEvaluationRunner() {
       : null,
     [results, runStatus, cases],
   );
-  const postureSummary = summary ? scoreFallEvaluation(results, "posture") : null;
-  const windowSummary = summary ? scoreFallEvaluation(results, "window") : null;
-  const windowV2Summary = summary ? scoreFallEvaluation(results, "windowV2") : null;
+  const postureSummary = summary && detectorMode === "legacy" ? scoreFallEvaluation(results, "posture") : null;
+  const windowSummary = summary && detectorMode === "legacy" ? scoreFallEvaluation(results, "window") : null;
+  const windowV2Summary = summary && detectorMode === "legacy" ? scoreFallEvaluation(results, "windowV2") : null;
   const splitSummaries = summary ? (["development", "holdout"] as const).flatMap((partition) => {
     const subset = results.filter((result) => result.partition === partition);
     return subset.length ? [{
@@ -307,6 +328,7 @@ export function FallEvaluationRunner() {
                 cases.length) *
                 100,
             ),
+          detectorMode,
         );
         completed.push(result);
         setResults([...completed]);
@@ -330,7 +352,9 @@ export function FallEvaluationRunner() {
 
   function download() {
     if (runStatus !== "complete" || !summary) return;
-    const payload = buildFallEvaluationExport(runStatus, results, new Date().toISOString(), dataset);
+    const payload = detectorMode === "multi"
+      ? buildMultiPersonFallEvaluationExport(runStatus, results, new Date().toISOString(), dataset)
+      : buildFallEvaluationExport(runStatus, results, new Date().toISOString(), dataset);
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
     );
@@ -346,12 +370,12 @@ export function FallEvaluationRunner() {
       <header className={styles.header}>
         <div>
           <span>ARTAE ENGINEERING</span>
-          <h1>Fall detector evaluation</h1>
+          <h1>{detectorMode === "multi" ? "Multi-person fall evaluation" : "Fall detector evaluation"}</h1>
           <p>
-            Run the production browser pose model on staged footage. Compare its
-            temporal rule with a sustained-posture baseline and a research pose-window
-            candidate on the same frames.
-            This local evaluation makes no AWS calls.
+            {detectorMode === "multi"
+              ? "Replay the deployed four-pose tracking and temporal alert path on labeled footage. Track numbers are local to each clip."
+              : "Run the production browser pose model on staged footage. Compare its temporal rule with a sustained-posture baseline and research candidates on the same frames."}
+            {" "}This local evaluation makes no AWS calls.
           </p>
         </div>
         <div className={styles.actions}>
@@ -414,7 +438,7 @@ export function FallEvaluationRunner() {
           </tbody></table>
       </section>}
 
-      {splitSummaries.length > 0 && <section className={styles.comparison} aria-label="Dataset partitions">
+      {detectorMode === "legacy" && splitSummaries.length > 0 && <section className={styles.comparison} aria-label="Dataset partitions">
         <h2>Development and reserved sequences</h2>
         <table><thead><tr><th>Partition</th><th>Clips</th><th>Rule</th><th>Fall clips detected</th><th>Daily activity alerts</th></tr></thead>
           <tbody>{splitSummaries.flatMap((group) => [
@@ -426,10 +450,10 @@ export function FallEvaluationRunner() {
       </section>}
 
       <section className={styles.results}>
-        <header><h2>Clip results</h2><span>MediaPipe + the same temporal rule used by /live</span></header>
+        <header><h2>Clip results</h2><span>{detectorMode === "multi" ? "Four-pose MediaPipe + per-person temporal rules" : "MediaPipe + the same temporal rule used by /live"}</span></header>
         <div className={styles.tableWrap}>
           <table>
-            <thead><tr><th>Clip</th><th>Expected</th><th>Live rule</th><th>Candidate v1</th><th>Candidate v2</th><th>First live event</th><th>Pose coverage</th><th>Inference p95</th><th>Live result</th></tr></thead>
+            <thead><tr><th>Clip</th><th>Expected</th><th>{detectorMode === "multi" ? "Multi-person rule" : "Live rule"}</th>{detectorMode === "legacy" && <><th>Candidate v1</th><th>Candidate v2</th></>}<th>First live event</th><th>Pose coverage</th><th>Inference p95</th>{detectorMode === "multi" && <th>Tracks seen</th>}<th>Live result</th></tr></thead>
             <tbody>
               {cases.map((definition) => {
                 const result = results.find((item) => item.id === definition.id);
@@ -440,11 +464,12 @@ export function FallEvaluationRunner() {
                   <td><strong>{definition.name}</strong><small>{definition.category === "fall" ? "Positive case" : "Negative control"}</small></td>
                   <td>{expected ? "Fall" : "No fall"}</td>
                   <td>{result ? `${result.detectedAtSeconds.length} event${result.detectedAtSeconds.length === 1 ? "" : "s"}` : "Waiting"}</td>
-                  <td>{result ? `${result.windowModelDetectedAtSeconds?.length ?? 0} event${result.windowModelDetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
-                  <td>{result ? `${result.windowModelV2DetectedAtSeconds?.length ?? 0} event${result.windowModelV2DetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
+                  {detectorMode === "legacy" && <><td>{result ? `${result.windowModelDetectedAtSeconds?.length ?? 0} event${result.windowModelDetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
+                  <td>{result ? `${result.windowModelV2DetectedAtSeconds?.length ?? 0} event${result.windowModelV2DetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td></>}
                   <td>{result?.detectedAtSeconds.length ? `${result.detectedAtSeconds[0].toFixed(1)} s` : "—"}</td>
                   <td>{result ? percent(result.framesWithPose / Math.max(1, result.framesAnalyzed)) : "—"}</td>
                   <td>{result ? `${result.p95InferenceMs.toFixed(1)} ms` : "—"}</td>
+                  {detectorMode === "multi" && <td>{result?.trackIdsSeen ?? "—"}</td>}
                   <td><span className={passed === null ? styles.pending : passed ? styles.pass : styles.fail}>{passed === null ? "Pending" : passed ? "Pass" : "Fail"}</span></td>
                 </tr>;
               })}

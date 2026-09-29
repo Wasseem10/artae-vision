@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFallEvaluationExport,
+  buildMultiPersonFallEvaluationExport,
   DEFAULT_FALL_EVALUATION_CASES,
   isCompleteFallEvaluation,
   percentile,
@@ -30,6 +31,22 @@ const result = (
 });
 
 describe("fall evaluation scoring", () => {
+  it("labels four-pose results separately from the legacy detector", () => {
+    const clips = DEFAULT_FALL_EVALUATION_CASES.map((item) => ({
+      ...result(item.id, item.expectedEvents, item.expectedEvents ? [6] : []),
+      ...item,
+      multiPersonEvents: item.expectedEvents ? [{ atSeconds: 6, trackId: 2 }] : [],
+      maxVisiblePeople: 2,
+      trackIdsSeen: 2,
+    }));
+    const exportData = buildMultiPersonFallEvaluationExport("complete", clips);
+    expect(exportData.provenance.detector).toMatchObject({
+      rule: "MultiPersonFallTracker/fall-v1", maxPoses: 4,
+    });
+    expect(exportData.windowModelSummary).toBeNull();
+    expect(exportData.results[0].multiPersonEvents?.[0].trackId).toBe(2);
+  });
+
   it("reports clip-level classification, candidate latency, and false alerts", () => {
     const summary = scoreFallEvaluation([
       result("fall-a", 1, [6]),
