@@ -15,6 +15,8 @@ export type FallEvaluationCase = {
   subjectId?: string;
   videoSha256?: string;
   sourceVideoSha256?: string;
+  sourceFilename?: string;
+  sourcePath?: string;
   eventRanges?: { start: number; end: number }[];
 };
 
@@ -58,9 +60,11 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
   const urfall = candidate.datasetId === "urfall-rgb-cam0-v1";
   const gmdcsa24 = candidate.datasetId === "gmdcsa24-v2.1";
   const caucafall = candidate.datasetId === "caucafall-v4-omnifall-labels-v3";
-  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24 && !caucafall) ||
+  const realbiomfall = candidate.datasetId === "realbiomfall-100-v3";
+  const imuVideo = candidate.datasetId === "imu-video-fall-adl-v1";
+  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24 && !caucafall && !realbiomfall && !imuVideo) ||
       !Array.isArray(candidate.cases) || candidate.cases.length === 0 ||
-      candidate.cases.length > (urfall ? 70 : caucafall ? 100 : 160)) throw new Error("Invalid fall dataset manifest");
+      candidate.cases.length > (urfall ? 70 : imuVideo ? 95 : caucafall || realbiomfall ? 100 : 160)) throw new Error("Invalid fall dataset manifest");
   const cases = candidate.cases as Array<Record<string, unknown>>;
   const ids = new Set<string>();
   for (const item of cases) {
@@ -68,6 +72,8 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
     const urId = typeof item.id === "string" ? /^(fall|adl)-(\d{2})$/.exec(item.id) : null;
     const gmdId = typeof item.id === "string" ? /^gmd-s([1-4])-(fall|adl)-(\d{2})$/.exec(item.id) : null;
     const caucaId = typeof item.id === "string" ? /^cauca-s(10|[1-9])-(fall|adl)-(backwards|forward|left|right|sitting|hop|kneel|pickup|sitdown|walk)$/.exec(item.id) : null;
+    const realbiomId = typeof item.id === "string" ? /^realbiom-fall-(\d{3})$/.exec(item.id) : null;
+    const imuId = typeof item.id === "string" ? /^imu-(adl|fall)-(\d{3})$/.exec(item.id) : null;
     const validUrCase = urfall && urId &&
       item.videoUrl === `/vision/urfall/${item.id}-cam0-rgb.mp4` &&
       item.partition === (Number(urId[2]) <= 10 ? "development" : "holdout") &&
@@ -92,12 +98,33 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
       item.eventRanges.every((range: { start: number; end: number }) =>
         Number.isFinite(range.start) && range.start >= 0 && Number.isFinite(range.end) && range.end > range.start) &&
       (caucaId[2] === "adl" || item.eventStartSeconds === item.eventRanges[0].start);
-    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase && !validCaucaCase) ||
+    const validRealbiomCase = realbiomfall && realbiomId &&
+      Number(realbiomId[1]) >= 1 && Number(realbiomId[1]) <= 100 &&
+      item.videoUrl === `/vision/realbiomfall/${item.id}.mp4` &&
+      item.partition === "holdout" && item.category === "fall" &&
+      typeof item.sourceFilename === "string" && /^[A-Za-z0-9_.-]+\.mp4$/.test(item.sourceFilename) &&
+      typeof item.sourceVideoSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceVideoSha256) &&
+      typeof item.sourceZipSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceZipSha256) &&
+      item.eventStartSeconds === undefined && item.eventRanges === undefined;
+    const imuSource = typeof item.sourcePath === "string" ?
+      /^Daily_Activity_0([1-5])\/(walk|sit|dist_walk|fall_bwd|fall_fwd)_P0[1-4]_T0[1-5]_video\.mp4$/.exec(item.sourcePath) : null;
+    const validImuCase = imuVideo && imuId && imuSource &&
+      Number(imuId[2]) >= 1 && Number(imuId[2]) <= (imuId[1] === "fall" ? 35 : 60) &&
+      ["walk", "sit", "dist_walk", "fall_bwd", "fall_fwd"][Number(imuSource[1]) - 1] === imuSource[2] &&
+      (Number(imuSource[1]) >= 4) === (imuId[1] === "fall") &&
+      item.category === (imuId[1] === "fall" ? "fall" : "daily_activity") &&
+      item.videoUrl === `/vision/imuadlfall/${item.id}.mp4` &&
+      item.partition === "holdout" &&
+      typeof item.sourceGitBlobSha1 === "string" && /^[a-f0-9]{40}$/.test(item.sourceGitBlobSha1) &&
+      typeof item.sourceVideoSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceVideoSha256) &&
+      item.eventStartSeconds === undefined && item.eventRanges === undefined;
+    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase && !validCaucaCase && !validRealbiomCase && !validImuCase) ||
         ids.has(item.id) || typeof item.name !== "string" ||
         item.name.length > 100 || (item.category !== "fall" && item.category !== "daily_activity") ||
         (urfall && urId?.[1] !== (positive ? "fall" : "adl")) ||
         (gmdcsa24 && gmdId?.[2] !== (positive ? "fall" : "adl")) ||
         (caucafall && caucaId?.[2] !== (positive ? "fall" : "adl")) ||
+        (realbiomfall && !positive) ||
         item.expectedEvents !== (positive ? 1 : 0) ||
         (urfall && positive && item.eventStartSeconds === undefined) ||
         (item.eventStartSeconds !== undefined &&
@@ -119,6 +146,12 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
         "mendeley-v4+omnifall-83572a37b9e3081df8c06a56874b1d1f2a19386c" ||
       candidate.sourceAnnotationSha256 !== "a5169d3e95b26080527265516d415d068a83c3dea4cddca8d0828a8d2345fd3a")) {
     throw new Error("Invalid CAUCAFall annotation provenance");
+  }
+  if (realbiomfall && candidate.sourceRevision !== "zenodo-11636174-v3") {
+    throw new Error("Invalid RealBiomFall source revision");
+  }
+  if (imuVideo && candidate.sourceRevision !== "a895be0ed80a33b55363468c804a9e4d7af95b9c") {
+    throw new Error("Invalid IMU-video source revision");
   }
   return candidate as FallEvaluationDataset;
 }

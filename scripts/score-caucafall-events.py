@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import statistics
+import argparse
 from pathlib import Path
 
 
@@ -38,7 +39,13 @@ def percentile(values: list[float], fraction: float) -> float | None:
 
 
 def main() -> None:
-    report = json.loads(REPORT.read_text(encoding="utf-8"))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--report", type=Path, default=REPORT)
+    parser.add_argument("--output", type=Path, default=OUTPUT)
+    args = parser.parse_args()
+    report_path = args.report.resolve()
+    output_path = args.output.resolve()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     if (report["status"] != "complete" or
         report["dataset"]["datasetId"] != "caucafall-v4-omnifall-labels-v3" or
@@ -113,7 +120,9 @@ def main() -> None:
         "annotationSource": "https://huggingface.co/datasets/simplexsigil2/omnifall",
         "sourceAnnotationSha256": manifest["sourceAnnotationSha256"],
         "manifestSha256": sha256(MANIFEST),
-        "browserReportSha256": sha256(REPORT),
+        "browserReportSha256": sha256(report_path),
+        "poseModel": report["provenance"]["detector"]["model"],
+        "poseModelSha256": report["provenance"]["detector"]["modelSha256"],
         "codeRevision": report["provenance"]["localGitRevision"],
         "modelSha256": {name: sha256(ROOT / filename) for name, filename in {
             "poseWindowV1": "apps/web/src/lib/fall-window-model.json",
@@ -124,8 +133,8 @@ def main() -> None:
         "results": per_clip,
         "limitations": "100 short staged clips and less than one hour of negative footage cannot establish field fall sensitivity or operational false-alert rate.",
     }
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(metrics, indent=2))
 
 
