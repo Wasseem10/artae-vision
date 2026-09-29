@@ -62,6 +62,7 @@ async function combinedVideo(page, left, right) {
   try {
     for (const [left, right, expectedFall] of [
       ['fall-lateral', 'person', true],
+      ['person', 'fall-lateral', true],
       ['sitting', 'person', false],
     ]) {
       const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
@@ -85,7 +86,11 @@ async function combinedVideo(page, left, right) {
         assert.equal(falls.length > 0, expectedFall,
           `${left} + ${right}: unexpected fall alerts: ${JSON.stringify(titles)}`);
         if (expectedFall) assert.ok(falls.every((title) => /person \d+/.test(title)), 'Alert needs a person track number');
-        console.log(`${left.toUpperCase()}_WITH_PERSON_OK: two bodies seen, ${falls.length} fall alerts`);
+        if (left === 'person' && right === 'fall-lateral') {
+          assert.ok(falls.some((title) => /person [2-9]\d*/.test(title)),
+            'The additional-person path must alert when the right-hand person falls');
+        }
+        console.log(`${left.toUpperCase()}_WITH_${right.toUpperCase()}_OK: two bodies seen, alerts: ${JSON.stringify(falls)}`);
       } finally {
         await context.close();
       }

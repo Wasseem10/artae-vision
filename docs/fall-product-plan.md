@@ -39,6 +39,15 @@ source collections total 525 short clips, with about 0.49 hours of negative
 video across four collections. Longer negative exposure and a new independent
 test source remain necessary.
 
+The [multi-person browser regression](caucafall-multiperson-regression.md)
+now preserves the one-pose fall rule for the primary observation while tracking
+additional people separately. On the already examined CAUCAFall clips, it
+matched 20/50 staged falls versus 17/50 before, but alerted on 1/50 activity
+clips versus 0/50 before. Side-by-side video smoke tests exercise both fall
+positions and a sitting negative. This is a development result, not a fresh
+multi-person validation; the next detector gate needs labeled footage with
+more than one person and longer non-fall exposure.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
