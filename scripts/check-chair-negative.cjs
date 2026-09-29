@@ -34,11 +34,16 @@ const fixtures = ['empty-chairs.jpg', 'empty-classroom.jpg'];
         }));
     }
     await page.goto(`${baseUrl}/live`, { waitUntil: 'domcontentloaded' });
-    for (const filename of fixtures) {
-      const result = await page.evaluate(async (name) => {
+    for (const filename of fixtures) for (const motion of ['static', 'pan']) {
+      const result = await page.evaluate(async ({ name, motion }) => {
         const image = new Image();
         image.src = `/chair-test/${name}`;
         await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Canvas unavailable');
         const worker = new Worker('/vision/pose-worker.js');
         const receive = (type, send) => new Promise((resolve, reject) => {
           const listener = ({ data }) => {
@@ -56,7 +61,13 @@ const fixtures = ['empty-chairs.jpg', 'empty-classroom.jpg'];
           let framesWithPose = 0;
           let maximumPoses = 0;
           for (let index = 0; index < 31; index++) {
-            const bitmap = await createImageBitmap(image);
+            // A mild digital pan tests whether background motion creates a pose.
+            const scale = motion === 'pan' ? 1.08 : 1;
+            const offset = motion === 'pan' ? index / 30 : 0;
+            context.drawImage(image, -offset * (scale - 1) * canvas.width,
+              -offset * (scale - 1) * canvas.height,
+              scale * canvas.width, scale * canvas.height);
+            const bitmap = await createImageBitmap(canvas);
             const frame = await receive('result', () => worker.postMessage({
               type: 'frame', bitmap, timestamp: index * 100,
             }, [bitmap]));
@@ -64,13 +75,13 @@ const fixtures = ['empty-chairs.jpg', 'empty-classroom.jpg'];
             framesWithPose += Number(count > 0);
             maximumPoses = Math.max(maximumPoses, count);
           }
-          return { name, frames: 31, framesWithPose, maximumPoses };
+          return { name, motion, frames: 31, framesWithPose, maximumPoses };
         } finally {
           worker.terminate();
         }
-      }, filename);
+      }, { name: filename, motion });
       console.log(JSON.stringify({ model: poseModel, ...result }));
-      assert.equal(result.framesWithPose, 0, `${filename}: a chair was detected as a pose`);
+      assert.equal(result.framesWithPose, 0, `${filename} ${motion}: a chair was detected as a pose`);
     }
   } finally {
     await browser.close();

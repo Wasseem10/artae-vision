@@ -8,7 +8,7 @@ from Wikimedia Commons on September 29, 2026:
 - `empty-classroom.jpg`: [Empty class room.jpg](https://commons.wikimedia.org/wiki/File:Empty_class_room.jpg) by Saral Shots; Wikimedia 1280-pixel thumbnail.
 
 With the app running locally, set `ARTAE_BENCHMARK_URL` if needed and run
-`node scripts/check-chair-negative.cjs`. The script runs 31 frames per image
-through the same four-pose worker used by the live monitor. It fails if even
-one frame returns a raw pose. These still images cover two chair scenes,
-not every camera angle, lighting condition, or moving background.
+`node scripts/check-chair-negative.cjs`. The script runs 31 static and 31
+digitally panned frames per image through the same four-pose worker used by
+the live monitor. It fails if even one frame returns a raw pose. These images
+cover two chair scenes, not every camera angle or lighting condition.
