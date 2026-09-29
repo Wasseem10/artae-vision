@@ -10,6 +10,9 @@ export type BrowserEvent = {
   occurredAt?: string;
   title: string;
   visibility: number;
+  /** A pose-window suggestion stored on this device; it does not notify a caregiver. */
+  reviewOnly?: boolean;
+  detectionSource?: "temporal_rule" | "pose_window_v1" | "temporal_and_pose_window";
   saved?: boolean;
   coordinator?: string;
   summary?: string;
@@ -104,6 +107,9 @@ export type BrowserSession = {
 export const sessionMetadata = (s: BrowserSession): BrowserSession => ({
   ...s, clips: s.clips.map((clip) => ({ ...clip, blob: undefined })),
 });
+/** Device-only review suggestions must never enter the cloud alert retry path. */
+export const eventsPendingCloudSave = (s: BrowserSession): BrowserEvent[] =>
+  s.events.filter((event) => !event.saved && !event.reviewOnly);
 export type SavedBrowserJob = { id: string; name: string; job: MonitoringJob; prompt?: string };
 export const listSavedBrowserJobs = () => request<SavedBrowserJob[]>("/browser-sessions/jobs");
 export const saveBrowserJob = (job: SavedBrowserJob) => request<SavedBrowserJob>("/browser-sessions/jobs", {

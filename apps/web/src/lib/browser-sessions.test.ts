@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({API_URL:"https://api.example.test", request:vi.fn()}));
 import { request } from "./api";
-import { analyzePublicDemo, cloudEventFields, createPublicDemo, loadBrowserWorkspace, loadCloudSession, mergeSession, reviewCloudEvent, sessionMetadata, type BrowserSession } from "./browser-sessions";
+import { analyzePublicDemo, cloudEventFields, createPublicDemo, eventsPendingCloudSave, loadBrowserWorkspace, loadCloudSession, mergeSession, reviewCloudEvent, sessionMetadata, type BrowserSession } from "./browser-sessions";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.mocked(request).mockReset(); });
 
@@ -55,6 +55,15 @@ describe("merging account and local history", () => {
     expect(metadata.scope).toBe("account");
     expect(metadata.events[0].review?.response_checklist).toBe("Site steps");
     expect(sessionMetadata({ ...session, scope: "guest" }).events[0].review?.reviewer_note).toBe("Reviewed");
+  });
+  it("never sends a device-only review suggestion through alert retries", () => {
+    const session: BrowserSession = { id: "1", scope: "account", name: "Room", job: "fall",
+      createdAt: "2026-09-09T12:00:00Z", clips: [], events: [
+        { id: "review", at: 2, title: "Unverified motion", visibility: .8, reviewOnly: true },
+        { id: "alert", at: 5, title: "Possible fall", visibility: .8 },
+        { id: "saved", at: 8, title: "Possible fall", visibility: .8, saved: true },
+      ] };
+    expect(eventsPendingCloudSave(session).map((event) => event.id)).toEqual(["alert"]);
   });
   it("restores human review and model summaries without claiming independent detection", () => {
     const fields = cloudEventFields({details:{review:{status:"resolved",outcome:"false_alarm"},strands_agent:{status:"fallback",summary:"Model unavailable"}}});

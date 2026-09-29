@@ -85,4 +85,24 @@ describe("incident report", () => {
     expect(report.event.occurredAt).toBe("2026-09-26T12:01:00.000Z");
     expect(report.event.timestampSource).toBe("event");
   });
+
+  it("identifies a review suggestion as device-only even in an account session", () => {
+    const report = buildIncidentReport(
+      { ...session, scope: "account-1" },
+      { ...event, reviewOnly: true, detectionSource: "pose_window_v1", saved: false },
+    );
+    expect(report.session.storage).toBe("device");
+    expect(report.provenance.detection).toContain("PoseWindowLogistic/v1");
+    expect(report.limitations).toContain(
+      "This was a device-only motion review suggestion. No caregiver alert was sent for this suggestion.",
+    );
+  });
+
+  it("records agreement when both fall rules flag the same motion", () => {
+    const report = buildIncidentReport(session, {
+      ...event, detectionSource: "temporal_and_pose_window",
+    });
+    expect(report.provenance.detection).toContain("fall-v2");
+    expect(report.provenance.detection).toContain("PoseWindowLogistic/v1");
+  });
 });
