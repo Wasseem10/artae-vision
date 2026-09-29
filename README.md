@@ -43,6 +43,11 @@ daily activities**, versus 17/38 and 1/42 for the live rule. It was not
 promoted: 14 staged falls remained undetected and the activity alert count
 rose. The [per-clip result](docs/benchmarks/gmdcsa24-subject-holdout-v1.json)
 records both methods and the posture baseline.
+An independent [CAUCAFall benchmark](docs/caucafall-independent-result.md)
+then tested 100 more staged clips. The current live rule caught 17/50 falls;
+the two pose-window candidates caught 4/50 and 3/50. All methods stayed
+silent on 50 daily-activity clips totaling only about 8.6 minutes. Neither
+candidate was promoted, and these clips cannot establish field reliability.
 The [fall product plan](docs/fall-product-plan.md) tracks the independent
 detector check, always-on camera work, and supervised pilot gates.
 The [failure audit](docs/fall-failure-audit.md) breaks down the candidate's

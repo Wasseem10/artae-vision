@@ -68,6 +68,13 @@ The [committed UR result](benchmarks/urfall-browser-v2.json) and
 [subject-separated GMDCSA result](benchmarks/gmdcsa24-subject-holdout-v1.json)
 make the comparison auditable. Research media stays local and ignored by Git.
 
+I then froze a second candidate before a new [CAUCAFall cross-source test](caucafall-independent-result.md):
+all 100 videos were hash-verified and replayed through the same browser worker.
+The live rule caught 17/50 staged falls, the first pose-window model 4/50,
+and the expanded-training model only 3/50; none alerted on the 50 short
+daily-activity clips. This negative result kept both candidates out of the
+live alert path and exposed the need for stronger cross-scene generalization.
+
 ## Engineering choices I can explain in an interview
 
 - **Avoiding demo overclaim:** a 3/3 staged-fall smoke test triggered an
@@ -88,8 +95,8 @@ make the comparison auditable. Research media stays local and ignored by Git.
 
 > Built an on-device fall-detection prototype with MediaPipe, TypeScript, and
 > Next.js, including evidence capture and human review; automated a
-> hash-verified 230-clip benchmark across two research datasets with a
-> person-separated holdout and compared three pose-based detection methods.
+> hash-verified 330-clip benchmark across three research datasets with
+> person- and source-separated holdouts, exposing cross-scene detection failures.
 
 This bullet describes engineering work and evaluation scope. It does not claim
 that the system is reliable for unattended monitoring.
