@@ -1,4 +1,5 @@
 import windowModel from "./fall-window-model.json";
+import windowModelV2 from "./fall-window-model-v2.json";
 
 export type FallEvaluationCase = {
   id: string;
@@ -13,6 +14,8 @@ export type FallEvaluationCase = {
   sourceGitBlobSha1?: string;
   subjectId?: string;
   videoSha256?: string;
+  sourceVideoSha256?: string;
+  eventRanges?: { start: number; end: number }[];
 };
 
 export type FallPoseTrace = {
@@ -30,6 +33,7 @@ export type FallEvaluationResult = FallEvaluationCase & {
   detectedAtSeconds: number[];
   postureBaselineDetectedAtSeconds?: number[];
   windowModelDetectedAtSeconds?: number[];
+  windowModelV2DetectedAtSeconds?: number[];
   poseTrace?: FallPoseTrace[];
   meanInferenceMs: number;
   p95InferenceMs: number;
@@ -44,6 +48,7 @@ export type FallEvaluationDataset = {
   split: string;
   labelNote: string;
   sourceRevision?: string;
+  sourceAnnotationSha256?: string;
   cases: FallEvaluationCase[];
 };
 
@@ -52,15 +57,17 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
   const candidate = value as Record<string, unknown>;
   const urfall = candidate.datasetId === "urfall-rgb-cam0-v1";
   const gmdcsa24 = candidate.datasetId === "gmdcsa24-v2.1";
-  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24) ||
+  const caucafall = candidate.datasetId === "caucafall-v4-omnifall-labels-v3";
+  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24 && !caucafall) ||
       !Array.isArray(candidate.cases) || candidate.cases.length === 0 ||
-      candidate.cases.length > (urfall ? 70 : 160)) throw new Error("Invalid fall dataset manifest");
+      candidate.cases.length > (urfall ? 70 : caucafall ? 100 : 160)) throw new Error("Invalid fall dataset manifest");
   const cases = candidate.cases as Array<Record<string, unknown>>;
   const ids = new Set<string>();
   for (const item of cases) {
     const positive = item.category === "fall";
     const urId = typeof item.id === "string" ? /^(fall|adl)-(\d{2})$/.exec(item.id) : null;
     const gmdId = typeof item.id === "string" ? /^gmd-s([1-4])-(fall|adl)-(\d{2})$/.exec(item.id) : null;
+    const caucaId = typeof item.id === "string" ? /^cauca-s(10|[1-9])-(fall|adl)-(backwards|forward|left|right|sitting|hop|kneel|pickup|sitdown|walk)$/.exec(item.id) : null;
     const validUrCase = urfall && urId &&
       item.videoUrl === `/vision/urfall/${item.id}-cam0-rgb.mp4` &&
       item.partition === (Number(urId[2]) <= 10 ? "development" : "holdout") &&
@@ -71,11 +78,26 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
       item.partition === (Number(gmdId[1]) <= 2 ? "development" : "holdout") &&
       item.subjectId === `subject-${gmdId[1]}` &&
       typeof item.sourceGitBlobSha1 === "string" && /^[a-f0-9]{40}$/.test(item.sourceGitBlobSha1);
-    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase) ||
+    const caucaStems: Record<string, string> = {
+      backwards: "FallBackwards", forward: "FallForward", left: "FallLeft",
+      right: "FallRight", sitting: "FallSitting", hop: "Hop", kneel: "Kneel",
+      pickup: "Pickupobject", sitdown: "SitDown", walk: "Walk",
+    };
+    const validCaucaCase = caucafall && caucaId &&
+      item.videoUrl === `/vision/caucafall/Subject.${caucaId[1]}/${caucaStems[caucaId[3]]}S${caucaId[1]}.mp4` &&
+      item.partition === "holdout" && item.subjectId === `subject-${caucaId[1]}` &&
+      (caucaId[2] === "fall") === ["backwards", "forward", "left", "right", "sitting"].includes(caucaId[3]) &&
+      typeof item.sourceVideoSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceVideoSha256) &&
+      Array.isArray(item.eventRanges) && item.eventRanges.length === (caucaId[2] === "fall" ? 1 : 0) &&
+      item.eventRanges.every((range: { start: number; end: number }) =>
+        Number.isFinite(range.start) && range.start >= 0 && Number.isFinite(range.end) && range.end > range.start) &&
+      (caucaId[2] === "adl" || item.eventStartSeconds === item.eventRanges[0].start);
+    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase && !validCaucaCase) ||
         ids.has(item.id) || typeof item.name !== "string" ||
         item.name.length > 100 || (item.category !== "fall" && item.category !== "daily_activity") ||
         (urfall && urId?.[1] !== (positive ? "fall" : "adl")) ||
         (gmdcsa24 && gmdId?.[2] !== (positive ? "fall" : "adl")) ||
+        (caucafall && caucaId?.[2] !== (positive ? "fall" : "adl")) ||
         item.expectedEvents !== (positive ? 1 : 0) ||
         (urfall && positive && item.eventStartSeconds === undefined) ||
         (item.eventStartSeconds !== undefined &&
@@ -92,6 +114,11 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
   }
   if (gmdcsa24 && candidate.sourceRevision !== "5abac7693229900cf80f722e878fbb119211fc1c") {
     throw new Error("Invalid GMDCSA-24 source revision");
+  }
+  if (caucafall && (candidate.sourceRevision !==
+        "mendeley-v4+omnifall-83572a37b9e3081df8c06a56874b1d1f2a19386c" ||
+      candidate.sourceAnnotationSha256 !== "a5169d3e95b26080527265516d415d068a83c3dea4cddca8d0828a8d2345fd3a")) {
+    throw new Error("Invalid CAUCAFall annotation provenance");
   }
   return candidate as FallEvaluationDataset;
 }
@@ -214,7 +241,7 @@ function mean(values: number[]): number | null {
 
 export function scoreFallEvaluation(
   results: FallEvaluationResult[],
-  detector: "temporal" | "posture" | "window" = "temporal",
+  detector: "temporal" | "posture" | "window" | "windowV2" = "temporal",
 ): FallEvaluationSummary {
   let truePositives = 0;
   let falsePositives = 0;
@@ -228,7 +255,8 @@ export function scoreFallEvaluation(
   for (const result of results) {
     const detections = detector === "temporal" ? result.detectedAtSeconds :
       detector === "posture" ? result.postureBaselineDetectedAtSeconds ?? [] :
-        result.windowModelDetectedAtSeconds ?? [];
+        detector === "window" ? result.windowModelDetectedAtSeconds ?? [] :
+          result.windowModelV2DetectedAtSeconds ?? [];
     const expectedPositive = result.expectedEvents > 0;
     const detected = detections.length > 0;
     if (expectedPositive && detected) truePositives += 1;
@@ -274,7 +302,8 @@ export function scoreFallEvaluation(
     totalDetections: results.reduce((total, result) => total + (
       detector === "temporal" ? result.detectedAtSeconds.length :
         detector === "posture" ? result.postureBaselineDetectedAtSeconds?.length ?? 0 :
-          result.windowModelDetectedAtSeconds?.length ?? 0
+          detector === "window" ? result.windowModelDetectedAtSeconds?.length ?? 0 :
+            result.windowModelV2DetectedAtSeconds?.length ?? 0
     ), 0),
     extraDetections,
   };
@@ -306,6 +335,7 @@ export function buildFallEvaluationExport(
       split: dataset.split,
       labelNote: dataset.labelNote,
       sourceRevision: dataset.sourceRevision ?? null,
+      sourceAnnotationSha256: dataset.sourceAnnotationSha256 ?? null,
     },
     provenance: {
       detector: FALL_EVALUATION_DETECTOR,
@@ -315,12 +345,19 @@ export function buildFallEvaluationExport(
         threshold: windowModel.threshold,
         training: windowModel.training,
       },
+      candidateV2: {
+        name: windowModelV2.name,
+        source: "apps/web/src/lib/fall-window-model-v2.json",
+        threshold: windowModelV2.threshold,
+        training: windowModelV2.training,
+      },
       codeRevision,
       codeRevisionSource: codeRevision ? "NEXT_PUBLIC_GIT_COMMIT_SHA" : null,
     },
     summary: scoreFallEvaluation(results),
     postureBaselineSummary: scoreFallEvaluation(results, "posture"),
     windowModelSummary: scoreFallEvaluation(results, "window"),
+    windowModelV2Summary: scoreFallEvaluation(results, "windowV2"),
     partitions: (["development", "holdout"] as const).flatMap((partition) => {
       const subset = results.filter((result) => result.partition === partition);
       return subset.length ? [{
@@ -329,6 +366,7 @@ export function buildFallEvaluationExport(
         summary: scoreFallEvaluation(subset),
         postureBaselineSummary: scoreFallEvaluation(subset, "posture"),
         windowModelSummary: scoreFallEvaluation(subset, "window"),
+        windowModelV2Summary: scoreFallEvaluation(subset, "windowV2"),
       }] : [];
     }),
     results,

@@ -44,4 +44,5 @@ apps/web/public/vision/vision.cjs
 apps/web/public/vision/*.task
 apps/web/public/vision/urfall/
 apps/web/public/vision/gmdcsa24/
+apps/web/public/vision/caucafall/
 browser-monitor-*.png

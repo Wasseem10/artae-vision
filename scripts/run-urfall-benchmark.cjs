@@ -11,7 +11,7 @@ const { chromium } = require(require.resolve('playwright', {
 
 const baseUrl = process.env.ARTAE_BENCHMARK_URL || 'http://127.0.0.1:3000';
 const dataset = process.env.ARTAE_BENCHMARK_DATASET || 'urfall';
-assert.ok(['urfall', 'gmdcsa24'].includes(dataset), 'Unsupported benchmark dataset');
+assert.ok(['urfall', 'gmdcsa24', 'caucafall'].includes(dataset), 'Unsupported benchmark dataset');
 const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation.json`);
 const root = path.resolve(__dirname, '..');
 const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
@@ -33,7 +33,8 @@ async function fileHash(relativePath) {
     page.on('pageerror', (error) => console.error('PAGE:', error.message));
     await page.goto(`${baseUrl}/evaluation/fall?dataset=${dataset}`, { waitUntil: 'domcontentloaded' });
     const datasetButton = page.getByRole('button', {
-      name: dataset === 'urfall' ? /UR Fall research set/ : /GMDCSA-24 subject split/,
+      name: dataset === 'urfall' ? /UR Fall research set/ :
+        dataset === 'gmdcsa24' ? /GMDCSA-24 subject split/ : /CAUCAFall independent source/,
     });
     await datasetButton.waitFor({ timeout: 30000 });
     assert.equal(await datasetButton.getAttribute('aria-pressed'), 'true');
@@ -78,6 +79,7 @@ async function fileHash(relativePath) {
       'apps/web/src/components/fall-evaluation-runner.tsx',
       'apps/web/src/lib/pose-window-fall.ts',
       'apps/web/src/lib/fall-window-model.json',
+      'apps/web/src/lib/fall-window-model-v2.json',
       'scripts/train-pose-window-fall.py',
       'apps/web/public/vision/pose-worker.js',
       manifestPath,
@@ -94,6 +96,7 @@ async function fileHash(relativePath) {
       temporal: result.summary,
       postureBaseline: result.postureBaselineSummary,
       windowCandidate: result.windowModelSummary,
+      windowCandidateV2: result.windowModelV2Summary,
       partitions: result.partitions,
     }, null, 2));
   } finally {

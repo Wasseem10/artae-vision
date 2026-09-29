@@ -113,6 +113,32 @@ describe("fall evaluation scoring", () => {
     ] })).toThrow();
   });
 
+  it("accepts only hash-verified CAUCAFall holdout paths and fall intervals", () => {
+    const digest = "a".repeat(64);
+    const manifest = {
+      schemaVersion: 1, datasetId: "caucafall-v4-omnifall-labels-v3",
+      source: "source", citation: "citation", license: "CC BY 4.0",
+      split: "cross-source holdout", labelNote: "event intervals",
+      sourceRevision: "mendeley-v4+omnifall-83572a37b9e3081df8c06a56874b1d1f2a19386c",
+      sourceAnnotationSha256: "a5169d3e95b26080527265516d415d068a83c3dea4cddca8d0828a8d2345fd3a",
+      cases: [{
+        id: "cauca-s1-fall-backwards", name: "Subject 1 · Fall backwards",
+        category: "fall", partition: "holdout", subjectId: "subject-1",
+        videoUrl: "/vision/caucafall/Subject.1/FallBackwardsS1.mp4",
+        videoSha256: digest, sourceVideoSha256: digest,
+        expectedEvents: 1, eventStartSeconds: 1.5,
+        eventRanges: [{ start: 1.5, end: 3.2 }],
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(1);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], eventRanges: [{ start: 3.2, end: 1.5 }],
+    }] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], videoUrl: "/vision/caucafall/Subject.2/FallBackwardsS1.mp4",
+    }] })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(
