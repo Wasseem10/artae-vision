@@ -8,7 +8,8 @@ import {
   poseFeatures,
   type Landmark,
 } from "@/lib/browser-pose";
-import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
+import { type PoseWindowModel } from "@/lib/pose-window-fall";
+import { MultiPersonFallTracker } from "@/lib/multi-person-fall";
 import windowModel from "@/lib/fall-window-model.json";
 import {
   createCloudSession,
@@ -387,15 +388,15 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     const video = videoRef.current,
       canvas = canvasRef.current;
     if (!video || !canvas) return;
-    if (job === "custom" && (scope === "guest" || !cloudConsent || !prompt.trim())) {
-      setProblem("Sign in, describe a visible condition, and allow AWS frame analysis before starting.");
+    if (job === "custom" && (!cloudConsent || !prompt.trim())) {
+      setProblem("Describe a visible condition and allow AWS frame analysis before starting.");
       return;
     }
     if (source === "file" && !file) {
       setProblem("Choose a video file first.");
       return;
     }
-    if (smsEnabled && !/^\+[1-9]\d{7,14}$/.test(caregiverPhone.trim())) {
+    if (job === "fall" && smsEnabled && !/^\+[1-9]\d{7,14}$/.test(caregiverPhone.trim())) {
       setProblem("Enter the caregiver phone in international format, such as +12065550142.");
       return;
     }
@@ -448,16 +449,17 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       frames = 0,
       startTime = 0;
     let cancelLoading: (() => void) | undefined;
-    let points: Landmark[] = [];
+    let visiblePoses: { id: number; landmarks: Landmark[] }[] = [];
     let recentPose: { at: number; found: boolean }[] = [];
-    const engine = new BrowserPoseRule(job === "custom" ? "presence" : job);
-    const windowEngine = job === "fall" ? new PoseWindowFallRule(windowModel as PoseWindowModel) : null;
+    const engine = new BrowserPoseRule("presence");
+    const fallTracker = job === "fall" ? new MultiPersonFallTracker(windowModel as PoseWindowModel) : null;
     const frameCanvas = document.createElement("canvas");
     const visualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let visualPending = false, lastVisualSample = -1, lastVisualCheck = -5;
     const fallVisualBuffer: { at_seconds: number; jpeg: string }[] = [];
     let lastFallVisualSample = -1;
     let publicFallSessionPromise: Promise<PublicDemoSession | null> | null = null;
+    let publicCustomSessionPromise: Promise<PublicDemoSession> | null = null;
     const now = () =>
       source === "webcam"
         ? (performance.now() - startTime) / 1000
@@ -511,6 +513,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           return null;
         });
       }
+      if (scope === "guest" && job === "custom") {
+        setVisualStatus("Connecting AWS visual checks…");
+        publicCustomSessionPromise = createPublicDemo(prompt.trim());
+        await publicCustomSessionPromise;
+      }
       worker = new Worker("/vision/pose-worker.js");
       await new Promise<void>((resolve, reject) => {
         cancelLoading = () => reject(new Error("Start cancelled"));
@@ -540,7 +547,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             reject(new Error(data.message));
           }
         };
-        worker!.postMessage({ type: "init" });
+        worker!.postMessage({ type: "init", numPoses: job === "fall" ? 4 : 1 });
       });
       cancelLoading = undefined;
       if (stopped) return;
@@ -670,26 +677,37 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         }
         if (data.type !== "result") return;
         setInferenceMs(Math.round(data.inferenceMs ?? 0));
-        points = data.landmarks;
         frames++;
-        const f = poseFeatures(points, canvas.width, canvas.height);
+        const poses: Landmark[][] = data.poses ?? [data.landmarks ?? []];
+        const usable = poses.map((landmarks) => ({ landmarks, features: poseFeatures(landmarks, canvas.width, canvas.height) }))
+          .filter((pose): pose is { landmarks: Landmark[]; features: NonNullable<ReturnType<typeof poseFeatures>> } => !!pose.features);
+        const tracked = fallTracker?.update(usable.map((pose) => pose.features), lastSent) ?? [];
+        visiblePoses = job === "fall"
+          ? tracked.map((pose) => ({ id: pose.id, landmarks: usable[pose.index].landmarks }))
+          : usable[0] ? [{ id: 1, landmarks: usable[0].landmarks }] : [];
+        const f = usable[0]?.features ?? null;
         if (job === "fall") {
           recentPose = recentPose.filter((sample) => lastSent - sample.at <= 5);
-          recentPose.push({ at: lastSent, found: !!f });
+          recentPose.push({ at: lastSent, found: tracked.length > 0 });
           if (recentPose.length >= 10 && lastSent - recentPose[0].at >= 1.5) {
             setPoseCoverage(Math.round(100 * recentPose.filter((sample) => sample.found).length / recentPose.length));
           }
         }
-        const temporalHit = job !== "custom" && engine.update(f, lastSent);
-        const windowHit = windowEngine?.update(f, lastSent) ?? false;
+        const presenceHit = job === "presence" && engine.update(f, lastSent);
+        const detections = job === "fall" ? tracked.map((pose) => ({
+          id: pose.id, features: pose.features, temporalHit: pose.temporalHit, windowHit: pose.windowHit,
+        })) : job === "presence" ? [{ id: 1, features: f, temporalHit: presenceHit, windowHit: false }] : [];
+        for (const detection of detections) {
+        const { id: personTrackId, features, temporalHit, windowHit } = detection;
         const urgentCount = s.events.filter((event) => !event.reviewOnly).length;
         const reviewCount = s.events.filter((event) => event.reviewOnly).length;
         if (windowHit && !temporalHit && reviewCount < 20 &&
-            !s.events.some((event) => Math.abs(event.at - lastSent) <= 3)) {
+            !s.events.some((event) => event.personTrackId === personTrackId && Math.abs(event.at - lastSent) <= 3)) {
           s.events.push({
             id: crypto.randomUUID(), at: lastSent,
-            title: "Motion to review — unverified",
-            visibility: f?.visibility ?? 0,
+            title: `Motion to review · person ${personTrackId} — unverified`,
+            visibility: features?.visibility ?? 0,
+            personTrackId,
             reviewOnly: true,
             detectionSource: "pose_window_v1",
             review: { status: "open", outcome: null },
@@ -701,21 +719,23 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         if (temporalHit && urgentCount < 20) {
           const recentReview = [...s.events].reverse().find((event) =>
             event.reviewOnly && !event.review?.outcome &&
+            event.personTrackId === personTrackId &&
             lastSent >= event.at && lastSent - event.at <= 3);
           let event: BrowserEvent;
           if (recentReview) {
             event = recentReview;
             event.at = lastSent;
-            event.title = job === "fall" ? "Possible fall — please review" : "Person detected";
-            event.visibility = f?.visibility ?? 0;
+            event.title = job === "fall" ? `Possible fall · person ${personTrackId} — please review` : "Person detected";
+            event.visibility = features?.visibility ?? 0;
             event.reviewOnly = false;
             event.detectionSource = "temporal_and_pose_window";
           } else {
             event = {
               id: crypto.randomUUID(),
               at: lastSent,
-              title: job === "fall" ? "Possible fall — please review" : "Person detected",
-              visibility: f?.visibility ?? 0,
+              title: job === "fall" ? `Possible fall · person ${personTrackId} — please review` : "Person detected",
+              visibility: features?.visibility ?? 0,
+              personTrackId: job === "fall" ? personTrackId : undefined,
               detectionSource: "temporal_rule",
               review: { status: "open", outcome: null },
             };
@@ -723,7 +743,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           }
           persist(s);
           beep();
-          notifyCaregiver(event.title);
+          if (job === "fall") notifyCaregiver(event.title);
           if (scope === "guest" && job === "fall") {
             const batch = fallVisualBuffer.slice(-8);
             if (!publicFallSessionPromise || !batch.length) {
@@ -744,7 +764,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 if (!result) return;
                 if (mounted.current && current.current === s)
                   setVisualFrames((n) => n + result.frames_analyzed);
-                event.title = result.status === "match" ? "Possible fall — caregiver check requested" : "Possible fall candidate — human review required";
+                event.title = `Possible fall · person ${personTrackId} — please review`;
                 const existingReview = event.review;
                 const enrichment = result.event ? cloudEventFields(result.event) : { summary: result.summary };
                 Object.assign(event, enrichment, {
@@ -755,7 +775,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 });
                 if (mounted.current && current.current === s)
                   setVisualStatus(result.event
-                    ? "Nova confirmed the visible sequence and Strands prepared the caregiver response."
+                    ? "Nova reviewed the whole scene and prepared a caregiver response. Check the person shown in the local alert."
                     : `Nova result: ${result.summary} The local candidate remains available for human review.`);
                 persist(s);
               }).catch((error) => {
@@ -777,17 +797,18 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             setPhase("Stopped at the 20-alert session limit · logs and footage kept");
           }
         }
+        }
         setMetrics({
           frames,
-          people: f ? 1 : 0,
+          people: visiblePoses.length,
           seconds: lastSent,
-          state: f
+          state: visiblePoses.length
             ? {
                 unarmed: "Watching posture",
                 upright: "Person tracked",
                 descending: "Checking movement",
                 alerted: "Event detected",
-              }[engine.status]
+              }[job === "fall" ? (tracked.find((pose) => pose.status === "descending")?.status ?? tracked.find((pose) => pose.status === "alerted")?.status ?? tracked[0]?.status ?? "unarmed") : engine.status]
             : "No clear body pose",
         });
       };
@@ -831,17 +852,19 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             lastVisualCheck = lastAt;
             const batch = [...visualBuffer];
             setVisualStatus("AWS is checking four sampled frames…");
-            queueCloud(s, async () => {
+            const checkVisualCondition = async () => {
               try {
-                await createCloudSession(s);
-                const result = await analyzeCloudFrames(s, batch);
+                if (scope !== "guest") await createCloudSession(s);
+                const result = scope === "guest"
+                  ? await analyzePublicDemo(await publicCustomSessionPromise!, batch)
+                  : await analyzeCloudFrames(s, batch);
                 if (accountScope.current !== s.scope) return;
                 setVisualFrames((n) => n + result.frames_analyzed);
                 setVisualStatus(`${result.status === "match" ? "Condition matched" : result.status === "no_match" ? "Not seen" : result.status === "uncertain" ? "Uncertain" : "Unsupported request"}: ${result.summary}${result.cooldown ? " (duplicate alert suppressed)" : ""}`);
                 if (result.event) {
                   s.events.push({ id: result.event.source_event_id, at: result.event.occurred_at_seconds,
-                    title: "Visual condition matched", visibility: 0, ...cloudEventFields(result.event) });
-                  s.cloud = true;
+                    title: "Visual condition matched", visibility: 0, ...cloudEventFields(result.event), saved: scope !== "guest" });
+                  if (scope !== "guest") s.cloud = true;
                   persist(s);
                   if (!stopped) beep();
                 }
@@ -859,14 +882,17 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 lastVisualCheck = now();
                 visualPending = false;
               }
-            });
+            };
+            if (scope === "guest") void checkVisualCondition();
+            else queueCloud(s, checkVisualCondition);
           }
         }
-        ctx.strokeStyle = "#43df86";
+        ctx.strokeStyle = "#d8e7f3";
         ctx.lineWidth = 3;
+        for (const pose of visiblePoses) {
         for (const [a, b] of POSE_CONNECTIONS) {
-          const p = points[a],
-            q = points[b];
+          const p = pose.landmarks[a],
+            q = pose.landmarks[b];
           if (
             !p ||
             !q ||
@@ -878,6 +904,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           ctx.moveTo(p.x * canvas.width, p.y * canvas.height);
           ctx.lineTo(q.x * canvas.width, q.y * canvas.height);
           ctx.stroke();
+        }
+        const head = pose.landmarks[0];
+        if (head && (head.visibility ?? 0) >= 0.6 && job === "fall") {
+          ctx.font = "bold 18px Arial";
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(`P${pose.id}`, head.x * canvas.width + 8, head.y * canvas.height - 10);
+        }
         }
         if (
           !bitmapPending &&
@@ -997,13 +1030,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         </div>
       </header>
       <section className={styles.intro}>
-        <small>{seniorSafety ? "COMMUNITY SENIOR SAFETY · HUMAN REVIEW REQUIRED" : "REAL DETECTION · NO INSTALLATION"}</small>
-        <h1>
-          {seniorSafety ? <>Help caregivers notice<br />{" "}a possible fall sooner.</> : <>Give your camera<br />one clear job.</>}
-        </h1>
+        <small>{seniorSafety ? "ONE MONITOR · CHOOSE WHAT TO WATCH" : "REAL DETECTION · NO INSTALLATION"}</small>
+        <h1>Give your camera<br />one clear job.</h1>
         <p>
           {seniorSafety
-            ? "Artae watches permitted shared-space footage, flags a possible fall, preserves the moment, and asks an on-duty caregiver to check the person."
+            ? "Watch for a possible fall across multiple people, or describe another visible condition. Review alerts and recorded footage in one workspace."
             : "Choose a job, connect video, and watch real detections appear. Start with person detection to check your setup."}
         </p>
       </section>
@@ -1017,19 +1048,18 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           </button>
         </div>}
         <div className={styles.setup}>
-          {!seniorSafety && <label>
+          <label>
             1. What should it watch for?
             <select
               value={job}
               disabled={running || saving > 0}
               onChange={(e) => { setJob(e.target.value as MonitoringJob); setSelectedAgent(undefined); }}
             >
-              <option value="presence">A person in view</option>
               <option value="fall">A possible fall · experimental</option>
-              <option value="custom" disabled={scope === "guest"}>Describe a visual condition · AWS · sign-in required</option>
+              <option value="presence">A person in view</option>
+              <option value="custom">Describe a visual condition · AWS</option>
             </select>
-          </label>}
-          {seniorSafety && <div className={styles.fixedJob}><small>1. CARE JOB</small><strong>Possible fall in a shared room</strong><span>On-device pose detection, recorded evidence, and caregiver review. Optional AWS review is available for guest runs.</span></div>}
+          </label>
           <label>
             2. Connect video
             <select
@@ -1085,7 +1115,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             {running ? "Stop agent" : !authReady ? "Checking account…" : loadedScope !== scope ? "Loading your workspace…" : saving > 0 ? "Finishing uploads…" : "Start agent"}
           </button>
         </div>
-        {seniorSafety && <div className={styles.caregiverSetup}>
+        {job === "fall" && <div className={styles.caregiverSetup}>
           <div><strong>3. Choose how the caregiver is alerted</strong><p>The live incident feed and sound work while this page is open. Extra motion review suggestions are saved on this device without sound, SMS, or browser alerts.</p></div>
           <button type="button" onClick={() => void enableBrowserNotifications()} disabled={notificationState === "granted" || notificationState === "unsupported"}>
             {notificationState === "granted" ? "Browser alert enabled" : notificationState === "unsupported" ? "Browser alerts unavailable" : "Enable browser alert"}
@@ -1107,7 +1137,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         </div>}
         <p className={styles.note}>
           {job === "custom" ? "Describe one observable condition. Clear lighting and an unobstructed view improve results. An AI match still needs your review." : job === "fall"
-            ? "Keep one person’s full body visible. A possible fall requires upright posture, descent, then a sustained horizontal posture. Use a recorded clip; do not fall to test this. This is experimental, not an emergency monitoring system."
+            ? "Keep each person’s full body visible. Up to four people are tracked in this browser session; a possible fall requires upright posture, descent, then a sustained horizontal posture. Use a recorded clip; do not fall to test this. This is experimental, not an emergency monitoring system."
             : "A visible body pose sustained for one second creates an alert. One person is tracked at a time; small or obscured people may not be detected."}{" "}
           This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, or when you press Stop. No audio is recorded. The browser must stay open; closing your laptop stops monitoring.
         </p>
@@ -1151,7 +1181,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             </div>
             <div className={styles.controls}>
               <span>
-                {metrics.frames} frames analyzed · {metrics.people} person ·{" "}
+                {metrics.frames} frames analyzed · {metrics.people} {metrics.people === 1 ? "person" : "people"} ·{" "}
                 {formatTime(metrics.seconds)}
               </span>
               <span>{metrics.state}</span>
@@ -1159,8 +1189,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
             {running && job === "fall" && poseCoverage !== null && <p className={styles.note} role="status">
               Body pose visible in {poseCoverage}% of recent frames. {poseCoverage < 70
-                ? "Detection may miss a fall. Reposition the camera so one person’s full body is visible."
-                : "Keep the full body in view."}
+                ? "Detection may miss a fall. Reposition the camera so each person's full body is visible."
+                : "Keep each full body in view."}
             </p>}
             {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS review is optional; local detection and evidence run in this browser." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>

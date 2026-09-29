@@ -98,7 +98,7 @@ export function MarketingPage() {
       {mobileOpen && <nav className={styles.mobileNav} aria-label="Mobile navigation">
         <button type="button" aria-expanded={mobileExploreOpen} onClick={() => setMobileExploreOpen((value) => !value)}><span>Explore</span><b>{mobileExploreOpen ? "−" : "+"}</b></button>
         {mobileExploreOpen && <div className={styles.mobileExplore}><a href="#agents">Visual agents</a><a href="#remember">Video search</a><a href="#features">Operations workflows</a><a href="#faq">Security and privacy</a></div>}
-        <Link href="/live">Try fall demo <FiArrowRight /></Link><Link href="/demo">Upload & prompt <FiArrowRight /></Link><a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
+        <Link href="/live">Try the monitor <FiArrowRight /></Link><a href="#use-cases">Use cases <FiArrowRight /></a><a href="#features">Pricing <FiArrowRight /></a><a href="#features">Enterprise <FiArrowRight /></a><a href="#faq">Security <FiArrowRight /></a><Link href="/login">Sign in <FiArrowRight /></Link><Link className={styles.downloadButton} href="/login">Open Artae</Link>
       </nav>}
 
       <aside className={styles.saleBar}><span>● &nbsp; LIVE + RECORDED VIDEO</span><strong>Describe the event. Artae watches for it.</strong><code>SEE IT WORK</code><span>SAVE EVIDENCE · SEND ALERTS · RUN ACTIONS <FiArrowRight /></span></aside>
@@ -107,7 +107,7 @@ export function MarketingPage() {
         <div className={styles.heroEyebrow}><i /> AI video agents for safety and operations</div>
         <h1>Tell your cameras what to watch for.<br /><span>Artae alerts you and takes action.</span></h1>
         <p>Connect a live camera or upload video, then describe the event in plain language. Artae watches for it, saves the evidence, and sends an alert or triggers the action you choose.</p>
-        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/live"><FiVideo /> Run the staged fall demo</Link><Link className={styles.heroSecondary} href="/demo"><FiEye /> Upload & prompt analysis <b>→</b></Link></div>
+        <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/live"><FiVideo /> Try the monitor</Link></div>
         <div className={styles.heroSteps} aria-label="How Artae works">
           <span><b>01</b> Connect video</span><FiArrowRight /><span><b>02</b> Describe the event</span><FiArrowRight /><span><b>03</b> Get alerts and actions</span>
         </div>
@@ -221,7 +221,7 @@ export function MarketingPage() {
       </section>
 
       <footer className={styles.footer}>
-        <section className={styles.footerCta}><p>No installation needed</p><h2>Run a camera agent from start to alert.</h2><span>Try experimental fall detection with a staged sample, an uploaded video, or your webcam. See the body-pose overlay, replay footage, and review the event log.</span><div><Link className={styles.heroPrimary} href="/live">Try fall detection</Link><Link href="/demo">Upload & prompt analysis</Link></div></section>
+        <section className={styles.footerCta}><p>No installation needed</p><h2>Run a camera agent from start to alert.</h2><span>Try experimental fall detection or another visual condition with a staged sample, an uploaded video, or your webcam. See the body-pose overlay, replay footage, and review the event log.</span><div><Link className={styles.heroPrimary} href="/live">Try the monitor</Link></div></section>
         <div className={styles.footerGrid}><div className={styles.footerBrand}><Link className={styles.brand} href="#top"><span className={styles.brandMark}><FiActivity /></span><strong>artae</strong></Link><p>Visual intelligence powered by everything your cameras have seen.</p><small>Account-saved · live · recorded</small></div>{[
           ["Product", ["Overview", "Agents", "Footage", "Alerts"]], ["Solutions", ["Workplace safety", "Loading docks", "Vehicle access", "Video review"]], ["Company", ["About", "Principles", "Contact", "Sign in"]], ["Trust", ["Security", "Privacy", "Retention", "Evidence review"]]
         ].map(([title, links]) => <nav key={title as string}><h3>{title}</h3>{(links as string[]).map((link) => <a href={link === "Sign in" ? "/login" : "#top"} key={link}>{link}</a>)}</nav>)}</div>

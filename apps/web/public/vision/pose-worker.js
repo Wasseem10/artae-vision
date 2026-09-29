@@ -9,7 +9,7 @@ self.onmessage = async ({ data }) => {
       const files = await self.exports.FilesetResolver.forVisionTasks('/vision/wasm');
       model = await self.exports.PoseLandmarker.createFromOptions(files, {
         baseOptions: { modelAssetPath: '/vision/pose_landmarker_lite.task', delegate: 'CPU' },
-        runningMode: 'VIDEO', numPoses: 1,
+        runningMode: 'VIDEO', numPoses: Math.max(1, Math.min(4, Number(data.numPoses) || 1)),
         minPoseDetectionConfidence: 0.6, minPosePresenceConfidence: 0.6,
         minTrackingConfidence: 0.6,
       });
@@ -18,7 +18,7 @@ self.onmessage = async ({ data }) => {
       if (!model) throw new Error('Pose model is not ready');
       const began = performance.now();
       const result = model.detectForVideo(data.bitmap, data.timestamp);
-      self.postMessage({ type: 'result', landmarks: result.landmarks[0] || [], timestamp: data.timestamp, inferenceMs:performance.now()-began });
+      self.postMessage({ type: 'result', poses: result.landmarks || [], landmarks: result.landmarks[0] || [], timestamp: data.timestamp, inferenceMs:performance.now()-began });
     }
   } catch (error) {
     self.postMessage({ type: 'error', message: error instanceof Error ? error.message : String(error) });

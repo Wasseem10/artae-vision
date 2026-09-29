@@ -10,6 +10,8 @@ export type BrowserEvent = {
   occurredAt?: string;
   title: string;
   visibility: number;
+  /** Local, session-only pose track; not a persistent identity. */
+  personTrackId?: number;
   /** A pose-window suggestion stored on this device; it does not notify a caregiver. */
   reviewOnly?: boolean;
   detectionSource?: "temporal_rule" | "pose_window_v1" | "temporal_and_pose_window";
@@ -242,6 +244,7 @@ export async function saveCloudEvent(
       id: event.id,
       at_seconds: event.at,
       landmark_visibility: event.visibility,
+      track_id: event.personTrackId ?? 1,
     }),
   });
 }
@@ -365,6 +368,7 @@ export async function loadCloudSession(
         occurred_at: string;
         confidence: number;
         event_type: string;
+        track_id?: number;
         details: CloudEventResult["details"];
       }[]
     >(`/browser-sessions/${s.id}/events`),
@@ -386,9 +390,10 @@ export async function loadCloudSession(
       at: e.occurred_at_seconds,
       occurredAt: e.occurred_at,
       visibility: e.confidence,
+      personTrackId: e.event_type === "person_fall" ? e.track_id : undefined,
       title:
         e.event_type === "visual_match" ? "Visual condition matched" : e.event_type === "person_fall"
-          ? "Possible fall — please review"
+          ? `Possible fall · person ${e.track_id ?? 1} — please review`
           : "Person detected",
       ...cloudEventFields(e),
     })),
