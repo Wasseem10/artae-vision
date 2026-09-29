@@ -246,15 +246,15 @@ export function FallEvaluationRunner() {
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
   const [detectorMode, setDetectorMode] = useState<"legacy" | "multi">("legacy");
-  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>>({});
-  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall">("builtin");
+  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall" | "mpfdd", FallEvaluationDataset>>>({});
+  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall" | "mpfdd">("builtin");
   const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
     ? externalDatasets[datasetMode] : BUILTIN_FALL_DATASET;
   const cases = dataset.cases;
 
   useEffect(() => {
     let active = true;
-    const sources = ["urfall", "gmdcsa24", "caucafall", "realbiomfall", "imuadlfall"] as const;
+    const sources = ["urfall", "gmdcsa24", "caucafall", "realbiomfall", "imuadlfall", "mpfdd"] as const;
     void Promise.all(sources.map(async (source) => {
       try {
         const response = await fetch(`/vision/${source}/manifest.json`, { cache: "no-store" });
@@ -264,18 +264,18 @@ export function FallEvaluationRunner() {
     })).then((loaded) => {
       if (!active) return;
       const available = Object.fromEntries(loaded.filter((item) => item !== null)) as
-        Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall", FallEvaluationDataset>>;
+        Partial<Record<"urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall" | "mpfdd", FallEvaluationDataset>>;
       setExternalDatasets(available);
       const requested = new URLSearchParams(window.location.search).get("dataset");
       setDetectorMode(new URLSearchParams(window.location.search).get("detector") === "multi" ? "multi" : "legacy");
-      if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall" || requested === "realbiomfall" || requested === "imuadlfall") && available[requested]) {
+      if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall" || requested === "realbiomfall" || requested === "imuadlfall" || requested === "mpfdd") && available[requested]) {
         setDatasetMode(requested);
       }
     });
     return () => { active = false; };
   }, []);
 
-  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall") {
+  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24" | "caucafall" | "realbiomfall" | "imuadlfall" | "mpfdd") {
     if (running) return;
     setDatasetMode(mode);
     setRunStatus("idle");
@@ -407,13 +407,15 @@ export function FallEvaluationRunner() {
           onClick={() => selectDataset("realbiomfall")}>RealBiomFall fresh source ({externalDatasets.realbiomfall.cases.length})</button>}
         {externalDatasets.imuadlfall && <button type="button" aria-pressed={datasetMode === "imuadlfall"} disabled={running}
           onClick={() => selectDataset("imuadlfall")}>IMU-video fresh source ({externalDatasets.imuadlfall.cases.length})</button>}
+        {externalDatasets.mpfdd && <button type="button" aria-pressed={datasetMode === "mpfdd"} disabled={running}
+          onClick={() => selectDataset("mpfdd")}>MPFDD multi-person source ({externalDatasets.mpfdd.cases.length})</button>}
         <span>{dataset.split}</span>
       </nav>
 
       <section className={styles.status} aria-live="polite">
         <div>
           <strong>{runStatus === "idle" ? "Ready" : currentCase}</strong>
-          <span>{running ? `${Math.round(progress)}% processed` : runStatus === "complete" ? `${cases.length}/${cases.length} clips processed` : runStatus === "stopped" || runStatus === "failed" ? `${results.length}/${cases.length} clips processed · incomplete run, no summary` : `${cases.length} licensed evaluation clips`}</span>
+          <span>{running ? `${Math.round(progress)}% processed` : runStatus === "complete" ? `${cases.length}/${cases.length} clips processed` : runStatus === "stopped" || runStatus === "failed" ? `${results.length}/${cases.length} clips processed · incomplete run, no summary` : `${cases.length} evaluation clips`}</span>
         </div>
         <div className={styles.progress} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress)}>
           <i style={{ width: `${progress}%` }} />
@@ -452,7 +454,7 @@ export function FallEvaluationRunner() {
       </section>}
 
       <section className={styles.results}>
-        <header><h2>Clip results</h2><span>{detectorMode === "multi" ? "Four-pose MediaPipe + per-person temporal rules" : "MediaPipe + the same temporal rule used by /live"}</span></header>
+        <header><h2>Clip results</h2><span>{detectorMode === "multi" ? "One-pose primary plus four-pose tracking and per-person temporal rules" : "MediaPipe + the same temporal rule used by /live"}</span></header>
         <div className={styles.tableWrap}>
           <table>
             <thead><tr><th>Clip</th><th>Expected</th><th>{detectorMode === "multi" ? "Multi-person rule" : "Live rule"}</th>{detectorMode === "legacy" && <><th>Candidate v1</th><th>Candidate v2</th></>}<th>First live event</th><th>Pose coverage</th><th>Inference p95</th>{detectorMode === "multi" && <th>Tracks seen</th>}<th>Live result</th></tr></thead>
