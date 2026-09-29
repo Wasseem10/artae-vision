@@ -98,6 +98,12 @@ these are already examined, single-person clips, the numbers are development
 evidence rather than independent multi-person accuracy. A side-by-side video
 smoke test checks fall alerts with another person visible on either side.
 
+The first [shared-frame MPFDD evaluation](mpfdd-first-look-result.md) then
+exposed a harder failure: both browser alert paths detected just 2/22 staged
+fall clips, with 0/6 activity clips alerted. The source supplies no timed or
+person-identity labels and only 63 seconds of negative footage. We did not
+convert the synthetic two-person smoke result into a real-world accuracy claim.
+
 ## Engineering choices I can explain in an interview
 
 - **Avoiding demo overclaim:** a 3/3 staged-fall smoke test triggered an
@@ -121,9 +127,10 @@ smoke test checks fall alerts with another person visible on either side.
 ## Resume bullet
 
 > Built an on-device fall-monitoring prototype with MediaPipe, TypeScript,
-> and Next.js, including evidence capture and human review; benchmarked 525
-> staged fall and daily-activity clips across five research sources, exposing
-> cross-scene failures and separating automatic alerts from unverified review suggestions.
+> and Next.js, including multi-person tracking, evidence capture, and human
+> review; benchmarked 553 staged fall and daily-activity clips across six
+> research sources, diagnosing cross-scene failures and separating automatic
+> alerts from unverified review suggestions.
 
 This bullet describes engineering work and evaluation scope. It does not claim
 that the system is reliable for unattended monitoring.

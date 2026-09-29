@@ -17,6 +17,7 @@ export type FallEvaluationCase = {
   sourceVideoSha256?: string;
   sourceFilename?: string;
   sourcePath?: string;
+  fallingPeopleCount?: number;
   eventRanges?: { start: number; end: number }[];
 };
 
@@ -66,9 +67,10 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
   const caucafall = candidate.datasetId === "caucafall-v4-omnifall-labels-v3";
   const realbiomfall = candidate.datasetId === "realbiomfall-100-v3";
   const imuVideo = candidate.datasetId === "imu-video-fall-adl-v1";
-  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24 && !caucafall && !realbiomfall && !imuVideo) ||
+  const mpfdd = candidate.datasetId === "mpfdd-github-available-v1";
+  if (candidate.schemaVersion !== 1 || (!urfall && !gmdcsa24 && !caucafall && !realbiomfall && !imuVideo && !mpfdd) ||
       !Array.isArray(candidate.cases) || candidate.cases.length === 0 ||
-      candidate.cases.length > (urfall ? 70 : imuVideo ? 95 : caucafall || realbiomfall ? 100 : 160)) throw new Error("Invalid fall dataset manifest");
+      candidate.cases.length > (mpfdd ? 28 : urfall ? 70 : imuVideo ? 95 : caucafall || realbiomfall ? 100 : 160)) throw new Error("Invalid fall dataset manifest");
   const cases = candidate.cases as Array<Record<string, unknown>>;
   const ids = new Set<string>();
   for (const item of cases) {
@@ -78,6 +80,7 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
     const caucaId = typeof item.id === "string" ? /^cauca-s(10|[1-9])-(fall|adl)-(backwards|forward|left|right|sitting|hop|kneel|pickup|sitdown|walk)$/.exec(item.id) : null;
     const realbiomId = typeof item.id === "string" ? /^realbiom-fall-(\d{3})$/.exec(item.id) : null;
     const imuId = typeof item.id === "string" ? /^imu-(adl|fall)-(\d{3})$/.exec(item.id) : null;
+    const mpfddId = typeof item.id === "string" ? /^mpfdd-s([1-4])-p([2-5])-f([0-5])-(adl|fall)-(\d+)$/.exec(item.id) : null;
     const validUrCase = urfall && urId &&
       item.videoUrl === `/vision/urfall/${item.id}-cam0-rgb.mp4` &&
       item.partition === (Number(urId[2]) <= 10 ? "development" : "holdout") &&
@@ -122,7 +125,17 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
       typeof item.sourceGitBlobSha1 === "string" && /^[a-f0-9]{40}$/.test(item.sourceGitBlobSha1) &&
       typeof item.sourceVideoSha256 === "string" && /^[a-f0-9]{64}$/.test(item.sourceVideoSha256) &&
       item.eventStartSeconds === undefined && item.eventRanges === undefined;
-    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase && !validCaucaCase && !validRealbiomCase && !validImuCase) ||
+    const mpfddSource = mpfddId ? `Scene_${mpfddId[1]}/S${mpfddId[1]}-P${mpfddId[2]}-F${mpfddId[3]}-${mpfddId[4].toUpperCase()}-${mpfddId[5]}.mp4` : "";
+    const validMpfddCase = mpfdd && mpfddId &&
+      item.sourcePath === mpfddSource &&
+      item.videoUrl === `/vision/mpfdd/${mpfddSource}` &&
+      item.partition === "holdout" &&
+      item.category === (Number(mpfddId[3]) ? "fall" : "daily_activity") &&
+      item.fallingPeopleCount === Number(mpfddId[3]) &&
+      Number(mpfddId[3]) <= Number(mpfddId[2]) &&
+      typeof item.sourceGitBlobSha1 === "string" && /^[a-f0-9]{40}$/.test(item.sourceGitBlobSha1) &&
+      item.eventStartSeconds === undefined && item.eventRanges === undefined;
+    if (typeof item.id !== "string" || (!validUrCase && !validGmdCase && !validCaucaCase && !validRealbiomCase && !validImuCase && !validMpfddCase) ||
         ids.has(item.id) || typeof item.name !== "string" ||
         item.name.length > 100 || (item.category !== "fall" && item.category !== "daily_activity") ||
         (urfall && urId?.[1] !== (positive ? "fall" : "adl")) ||
@@ -156,6 +169,9 @@ export function parseFallEvaluationDataset(value: unknown): FallEvaluationDatase
   }
   if (imuVideo && candidate.sourceRevision !== "a895be0ed80a33b55363468c804a9e4d7af95b9c") {
     throw new Error("Invalid IMU-video source revision");
+  }
+  if (mpfdd && candidate.sourceRevision !== "ec6cbcd81ed27e745ba5f6918192d7ec302d31c2") {
+    throw new Error("Invalid MPFDD source revision");
   }
   return candidate as FallEvaluationDataset;
 }

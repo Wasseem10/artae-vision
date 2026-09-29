@@ -205,6 +205,28 @@ describe("fall evaluation scoring", () => {
     }] })).toThrow();
   });
 
+  it("keeps MPFDD labels clip-level and rejects a swapped faller count", () => {
+    const manifest = {
+      schemaVersion: 1, datasetId: "mpfdd-github-available-v1",
+      source: "source", citation: "citation", license: "license", split: "first look",
+      labelNote: "filename class only", sourceRevision: "ec6cbcd81ed27e745ba5f6918192d7ec302d31c2",
+      cases: [{
+        id: "mpfdd-s1-p2-f1-fall-1", name: "Two people, one faller", category: "fall",
+        partition: "holdout", sourcePath: "Scene_1/S1-P2-F1-FALL-1.mp4",
+        videoUrl: "/vision/mpfdd/Scene_1/S1-P2-F1-FALL-1.mp4",
+        fallingPeopleCount: 1, expectedEvents: 1,
+        sourceGitBlobSha1: "a".repeat(40), videoSha256: "b".repeat(64),
+      }],
+    };
+    expect(parseFallEvaluationDataset(manifest).cases).toHaveLength(1);
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], fallingPeopleCount: 2,
+    }] })).toThrow();
+    expect(() => parseFallEvaluationDataset({ ...manifest, cases: [{
+      ...manifest.cases[0], videoUrl: "/vision/mpfdd/Scene_2/S1-P2-F1-FALL-1.mp4",
+    }] })).toThrow();
+  });
+
   it("does not treat partial, failed, or stopped runs as complete exports", () => {
     const complete = DEFAULT_FALL_EVALUATION_CASES.map((definition) => ({
       ...result(

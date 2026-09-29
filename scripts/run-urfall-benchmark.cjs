@@ -11,7 +11,7 @@ const { chromium } = require(require.resolve('playwright', {
 
 const baseUrl = process.env.ARTAE_BENCHMARK_URL || 'http://127.0.0.1:3000';
 const dataset = process.env.ARTAE_BENCHMARK_DATASET || 'urfall';
-assert.ok(['urfall', 'gmdcsa24', 'caucafall', 'realbiomfall', 'imuadlfall'].includes(dataset), 'Unsupported benchmark dataset');
+assert.ok(['urfall', 'gmdcsa24', 'caucafall', 'realbiomfall', 'imuadlfall', 'mpfdd'].includes(dataset), 'Unsupported benchmark dataset');
 const poseModel = process.env.ARTAE_BENCHMARK_POSE_MODEL || 'lite';
 assert.ok(['lite', 'full', 'heavy'].includes(poseModel), 'Unsupported pose model');
 const detectorMode = process.env.ARTAE_BENCHMARK_DETECTOR || 'legacy';
@@ -48,7 +48,8 @@ async function fileHash(relativePath) {
       name: dataset === 'urfall' ? /UR Fall research set/ :
         dataset === 'gmdcsa24' ? /GMDCSA-24 subject split/ :
           dataset === 'caucafall' ? /CAUCAFall independent source/ :
-            dataset === 'realbiomfall' ? /RealBiomFall fresh source/ : /IMU-video fresh source/,
+          dataset === 'realbiomfall' ? /RealBiomFall fresh source/ :
+            dataset === 'mpfdd' ? /MPFDD multi-person source/ : /IMU-video fresh source/,
     });
     await datasetButton.waitFor({ timeout: 30000 });
     assert.equal(await datasetButton.getAttribute('aria-pressed'), 'true');
