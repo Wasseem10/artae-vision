@@ -25,7 +25,7 @@ detections, pose coverage, and timing without publishing participant footage.
 ```mermaid
 flowchart LR
     A[Camera or permitted clip] --> B[Browser MediaPipe pose worker]
-    B --> C[Conservative temporal rule]
+    B --> C[Primary rule plus additional person tracks]
     C --> D[Possible-fall alert]
     D --> E[Playable evidence and human review]
     B --> H[Pose-window candidate]
@@ -43,6 +43,8 @@ The Python trainer and TypeScript runtime agreed on all 80 development clips.
 The frozen v1 candidate now creates **device-only, unverified review
 suggestions**. These do not send sound, browser, or caregiver notifications.
 Only the conservative temporal rule can create a possible-fall alert.
+The current browser path keeps that rule for the primary pose and runs
+independent temporal rules on additional session-only person tracks.
 
 ## Measured result
 
@@ -88,6 +90,14 @@ and the expanded-training model only 3/50; none alerted on the 50 short
 daily-activity clips. This negative result kept both candidates out of the
 live alert path and exposed the need for stronger cross-scene generalization.
 
+A later [multi-person regression](caucafall-multiperson-regression.md) on those
+same 100 clips found 20/50 staged falls, up from 17/50, while introducing one
+activity alert. The intermediate four-pose-only path had found just 8/50;
+retaining a separate one-pose primary path prevented that regression. Because
+these are already examined, single-person clips, the numbers are development
+evidence rather than independent multi-person accuracy. A side-by-side video
+smoke test checks fall alerts with another person visible on either side.
+
 ## Engineering choices I can explain in an interview
 
 - **Avoiding demo overclaim:** a 3/3 staged-fall smoke test triggered an
@@ -100,6 +110,10 @@ live alert path and exposed the need for stronger cross-scene generalization.
 - **Runtime parity:** tested Python training replay against the TypeScript
   inference rule across every development clip and repeated subject-2 scoring
   in the real browser pipeline.
+- **Multi-person regression control:** froze and replayed the browser pipeline,
+  found that four-pose tracking alone reduced event recall, then preserved the
+  primary rule while adding separately tracked people. Recorded the added
+  false alert and runtime cost alongside the detection gain.
 - **Operational honesty:** a browser tab is not an always-on camera service;
   the [pilot plan](fall-product-plan.md) calls for an independently tested edge
   path, evidence delivery, receipt, and a consented shadow pilot.

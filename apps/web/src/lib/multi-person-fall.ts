@@ -19,6 +19,8 @@ export type TrackedPose = {
   status: BrowserPoseRule["status"];
 };
 
+export type FusedFallPose = TrackedPose & { source: "primary" | "additional" };
+
 const MAX_MATCH_DISTANCE = 0.22;
 const MAX_GAP_SECONDS = 0.9;
 const AMBIGUITY_MARGIN = 0.04;
@@ -26,9 +28,11 @@ const AMBIGUITY_MARGIN = 0.04;
 /** Local, session-only track numbers. They do not identify a person across runs. */
 export class MultiPersonFallTracker {
   private tracks: Track[] = [];
-  private nextId = 1;
+  private nextId: number;
 
-  constructor(private readonly model: PoseWindowModel, private readonly maxPeople = 4) {}
+  constructor(private readonly model: PoseWindowModel, private readonly maxPeople = 4, firstId = 1) {
+    this.nextId = firstId;
+  }
 
   update(features: PoseFeatures[], t: number): TrackedPose[] {
     if (!Number.isFinite(t)) return [];
@@ -104,5 +108,34 @@ export class MultiPersonFallTracker {
       return t - track.lastSeen <= MAX_GAP_SECONDS;
     });
     return result;
+  }
+}
+
+/** Preserve the established single-pose alert path and add independent tracks
+ * for poses that do not correspond to that primary observation. */
+export class FusedMultiPersonFallRule {
+  private readonly primary = new BrowserPoseRule("fall");
+  private readonly primaryWindow: PoseWindowFallRule;
+  private readonly additional: MultiPersonFallTracker;
+
+  constructor(model: PoseWindowModel) {
+    this.primaryWindow = new PoseWindowFallRule(model);
+    this.additional = new MultiPersonFallTracker(model, 3, 2);
+  }
+
+  update(primary: PoseFeatures | null, multi: PoseFeatures[], t: number): FusedFallPose[] {
+    const distinct = multi.map((features, index) => ({ features, index })).filter(({ features }) =>
+      !primary || Math.hypot(features.x - primary.x, (features.y - primary.y) * .4) > .12 ||
+        Math.abs(features.verticality - primary.verticality) > .3);
+    const additional = this.additional.update(distinct.map((pose) => pose.features), t)
+      .map((pose): FusedFallPose => ({
+        ...pose, index: distinct[pose.index].index, source: "additional",
+      }));
+    const temporalHit = this.primary.update(primary, t);
+    const windowHit = this.primaryWindow.update(primary, t);
+    return primary ? [{
+      index: -1, id: 1, features: primary, temporalHit, windowHit,
+      status: this.primary.status, source: "primary",
+    }, ...additional] : additional;
   }
 }

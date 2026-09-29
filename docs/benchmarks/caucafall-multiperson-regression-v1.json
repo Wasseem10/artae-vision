@@ -1,0 +1,1812 @@
+{
+  "schemaVersion": 1,
+  "scope": "Regression on 100 previously examined, single-person CAUCAFall staged clips",
+  "manifestSha256": "b984a772a641d225479b3416e0c77f75fe649827f8adb0e696fd844524bada54",
+  "browserReportSha256": "35f1bf706228c138e86deb81cad00e92f9411178e07a2fa14b9714e2ed5e9c74",
+  "baselineReportSha256": "1a4257a42fd58453612d44df647e636babbf3b39ad7bd9a2853caf555aa0df38",
+  "sourceHashes": {
+    "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+    "apps/web/src/lib/multi-person-fall.ts": "9f63f2d110f209d4f2adbbc781f33092bc4f231ede906ab7885645abe0a0f692",
+    "apps/web/src/lib/fall-evaluation.ts": "a8e6906898552a6778daefc4028d919d967d31e13aa57d03a2de4bbe48e10051",
+    "apps/web/src/components/fall-evaluation-runner.tsx": "cc1c02bbe504dc7924a3c3d66c76f38c949e37382a447596c73cfb8e9c27bff7",
+    "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+    "apps/web/src/lib/fall-window-model.json": "a3f6b1643982269552ab996e0f506bf334296c881349855bf8f1c82303c36804",
+    "apps/web/src/lib/fall-window-model-v2.json": "ff8c455fe1832df221968b7d09a8dcd68d101a3880b87fec3667f6d3c98116d3",
+    "scripts/train-pose-window-fall.py": "10f7dfe519c9b9203086cc65facd8bd8ea9717489532d2cb63443876299f6528",
+    "apps/web/public/vision/pose-worker.js": "0a8738666bd51729325561648df7cd3b175d999a241573f4d6e878770b364bbb",
+    "apps/web/public/vision/caucafall/manifest.json": "b984a772a641d225479b3416e0c77f75fe649827f8adb0e696fd844524bada54"
+  },
+  "detectorRule": "FusedMultiPersonFallRule/fall-v1",
+  "codeRevision": "9e974061c158ee2c35570ce310cdd44b76500737",
+  "codeDirtyDuringReplay": false,
+  "baseline": {
+    "fallEventsDetected": 17,
+    "fallEventsTotal": 50,
+    "eventRecall": 0.34,
+    "unmatchedAlerts": 0,
+    "eventPrecision": 1.0,
+    "dailyActivityClipsAlerted": 0,
+    "dailyActivityClipsTotal": 50,
+    "dailyActivityAlerts": 0,
+    "analyzedDailyActivityHours": 0.1428,
+    "dailyActivityAlertsPerAnalyzedHour": 0.0,
+    "medianMatchedLatencySeconds": 2.67,
+    "p95MatchedLatencySeconds": 4.15
+  },
+  "multiPerson": {
+    "fallEventsDetected": 20,
+    "fallEventsTotal": 50,
+    "eventRecall": 0.4,
+    "unmatchedAlerts": 1,
+    "eventPrecision": 0.9524,
+    "dailyActivityClipsAlerted": 1,
+    "dailyActivityClipsTotal": 50,
+    "dailyActivityAlerts": 1,
+    "analyzedDailyActivityHours": 0.1428,
+    "dailyActivityAlertsPerAnalyzedHour": 7.0,
+    "medianMatchedLatencySeconds": 2.58,
+    "p95MatchedLatencySeconds": 3.75,
+    "clipsWithMoreThanOnePose": 42,
+    "clipsWithMoreThanOneTrackId": 42,
+    "meanClipPoseCoverage": 0.7986,
+    "medianClipInferenceMs": 49.12
+  },
+  "results": [
+    {
+      "id": "cauca-s1-fall-backwards",
+      "subjectId": "subject-1",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.9299999475479126,
+          "end": 3.7699999809265137
+        }
+      ],
+      "durationSeconds": 6.25,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 4.6,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.77,
+      "p95InferenceMs": 54
+    },
+    {
+      "id": "cauca-s1-fall-forward",
+      "subjectId": "subject-1",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 5.320000171661377,
+          "end": 7.639999866485596
+        }
+      ],
+      "durationSeconds": 9.5,
+      "poseCoverage": 0.3958,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 7.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 40.32,
+      "p95InferenceMs": 52.9
+    },
+    {
+      "id": "cauca-s1-fall-left",
+      "subjectId": "subject-1",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.9100000262260437,
+          "end": 2.990000009536743
+        }
+      ],
+      "durationSeconds": 4.3,
+      "poseCoverage": 0.7674,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.41,
+      "p95InferenceMs": 63.5
+    },
+    {
+      "id": "cauca-s1-fall-right",
+      "subjectId": "subject-1",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.5299999713897705,
+          "end": 3.430000066757202
+        }
+      ],
+      "durationSeconds": 5.7,
+      "poseCoverage": 0.8966,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 4.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 54.04,
+      "p95InferenceMs": 70.9
+    },
+    {
+      "id": "cauca-s1-fall-sitting",
+      "subjectId": "subject-1",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.850000023841858,
+          "end": 5.989999771118164
+        }
+      ],
+      "durationSeconds": 9.1,
+      "poseCoverage": 0.989,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [
+        {
+          "atSeconds": 5.6,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.48,
+      "p95InferenceMs": 54.4
+    },
+    {
+      "id": "cauca-s1-adl-hop",
+      "subjectId": "subject-1",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.1,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 48.94,
+      "p95InferenceMs": 53.9
+    },
+    {
+      "id": "cauca-s1-adl-kneel",
+      "subjectId": "subject-1",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.95,
+      "poseCoverage": 0.9545,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.33,
+      "p95InferenceMs": 65.7
+    },
+    {
+      "id": "cauca-s1-adl-pickup",
+      "subjectId": "subject-1",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 5.85,
+      "poseCoverage": 0.661,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 45.78,
+      "p95InferenceMs": 65.2
+    },
+    {
+      "id": "cauca-s1-adl-sitdown",
+      "subjectId": "subject-1",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.35,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.2,
+      "p95InferenceMs": 61.7
+    },
+    {
+      "id": "cauca-s1-adl-walk",
+      "subjectId": "subject-1",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 12.1,
+      "poseCoverage": 0.8595,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.92,
+      "p95InferenceMs": 61.4
+    },
+    {
+      "id": "cauca-s2-fall-backwards",
+      "subjectId": "subject-2",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.059999942779541,
+          "end": 4.659999847412109
+        }
+      ],
+      "durationSeconds": 5.95,
+      "poseCoverage": 0.9833,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 53.79,
+      "p95InferenceMs": 58.3
+    },
+    {
+      "id": "cauca-s2-fall-forward",
+      "subjectId": "subject-2",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0,
+          "end": 1.8799999952316284
+        }
+      ],
+      "durationSeconds": 5.3,
+      "poseCoverage": 0.7358,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 52.6,
+      "p95InferenceMs": 73
+    },
+    {
+      "id": "cauca-s2-fall-left",
+      "subjectId": "subject-2",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.6100000143051147,
+          "end": 3.2300000190734863
+        }
+      ],
+      "durationSeconds": 5.45,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 3.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 52.93,
+      "p95InferenceMs": 58.2
+    },
+    {
+      "id": "cauca-s2-fall-right",
+      "subjectId": "subject-2",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.059999942779541,
+          "end": 2.619999885559082
+        }
+      ],
+      "durationSeconds": 7.3,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 3.2,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 51.41,
+      "p95InferenceMs": 58.5
+    },
+    {
+      "id": "cauca-s2-fall-sitting",
+      "subjectId": "subject-2",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.240000009536743,
+          "end": 5.619999885559082
+        }
+      ],
+      "durationSeconds": 7.85,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 51.13,
+      "p95InferenceMs": 61.8
+    },
+    {
+      "id": "cauca-s2-adl-hop",
+      "subjectId": "subject-2",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.55,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 52.58,
+      "p95InferenceMs": 58.6
+    },
+    {
+      "id": "cauca-s2-adl-kneel",
+      "subjectId": "subject-2",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 6.5,
+      "poseCoverage": 0.9697,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 56.2,
+      "p95InferenceMs": 68.3
+    },
+    {
+      "id": "cauca-s2-adl-pickup",
+      "subjectId": "subject-2",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.3,
+      "poseCoverage": 0.8571,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.29,
+      "p95InferenceMs": 60.7
+    },
+    {
+      "id": "cauca-s2-adl-sitdown",
+      "subjectId": "subject-2",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 5.6,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 50.9,
+      "p95InferenceMs": 56.8
+    },
+    {
+      "id": "cauca-s2-adl-walk",
+      "subjectId": "subject-2",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 12.2,
+      "poseCoverage": 0.9016,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 53.15,
+      "p95InferenceMs": 68.5
+    },
+    {
+      "id": "cauca-s3-fall-backwards",
+      "subjectId": "subject-3",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.2200000286102295,
+          "end": 5
+        }
+      ],
+      "durationSeconds": 8.3,
+      "poseCoverage": 0.5714,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 41.74,
+      "p95InferenceMs": 57.8
+    },
+    {
+      "id": "cauca-s3-fall-forward",
+      "subjectId": "subject-3",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 3.009999990463257,
+          "end": 5.190000057220459
+        }
+      ],
+      "durationSeconds": 7.65,
+      "poseCoverage": 0.4156,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 42.78,
+      "p95InferenceMs": 67.6
+    },
+    {
+      "id": "cauca-s3-fall-left",
+      "subjectId": "subject-3",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 4.269999980926514,
+          "end": 6.130000114440918
+        }
+      ],
+      "durationSeconds": 8.55,
+      "poseCoverage": 0.9186,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 4,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 57.01,
+      "p95InferenceMs": 70.2
+    },
+    {
+      "id": "cauca-s3-fall-right",
+      "subjectId": "subject-3",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.7599999904632568,
+          "end": 3.759999990463257
+        }
+      ],
+      "durationSeconds": 11,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 4,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 52.21,
+      "p95InferenceMs": 66.9
+    },
+    {
+      "id": "cauca-s3-fall-sitting",
+      "subjectId": "subject-3",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.5,
+          "end": 3.4200000762939453
+        }
+      ],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.4158,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 52.67,
+      "p95InferenceMs": 63.3
+    },
+    {
+      "id": "cauca-s3-adl-hop",
+      "subjectId": "subject-3",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.1,
+      "poseCoverage": 0.4321,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 39.92,
+      "p95InferenceMs": 65.2
+    },
+    {
+      "id": "cauca-s3-adl-kneel",
+      "subjectId": "subject-3",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.65,
+      "poseCoverage": 0.8224,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 48.25,
+      "p95InferenceMs": 64.4
+    },
+    {
+      "id": "cauca-s3-adl-pickup",
+      "subjectId": "subject-3",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.3,
+      "poseCoverage": 0.7766,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.44,
+      "p95InferenceMs": 69
+    },
+    {
+      "id": "cauca-s3-adl-sitdown",
+      "subjectId": "subject-3",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13.05,
+      "poseCoverage": 0.8092,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.08,
+      "p95InferenceMs": 66.7
+    },
+    {
+      "id": "cauca-s3-adl-walk",
+      "subjectId": "subject-3",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.8,
+      "poseCoverage": 0.6404,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 45.79,
+      "p95InferenceMs": 67.5
+    },
+    {
+      "id": "cauca-s4-fall-backwards",
+      "subjectId": "subject-4",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.1500000953674316,
+          "end": 5.210000038146973
+        }
+      ],
+      "durationSeconds": 9.6,
+      "poseCoverage": 0.9792,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 4.4,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.9,
+      "p95InferenceMs": 60.5
+    },
+    {
+      "id": "cauca-s4-fall-forward",
+      "subjectId": "subject-4",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0,
+          "end": 2
+        }
+      ],
+      "durationSeconds": 8.4,
+      "poseCoverage": 0.8118,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 48.75,
+      "p95InferenceMs": 64.3
+    },
+    {
+      "id": "cauca-s4-fall-left",
+      "subjectId": "subject-4",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.9800000190734863,
+          "end": 4.179999828338623
+        }
+      ],
+      "durationSeconds": 8.1,
+      "poseCoverage": 0.9383,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 4.3,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 53.14,
+      "p95InferenceMs": 69.6
+    },
+    {
+      "id": "cauca-s4-fall-right",
+      "subjectId": "subject-4",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.1799999475479126,
+          "end": 3.180000066757202
+        }
+      ],
+      "durationSeconds": 7.5,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 51.27,
+      "p95InferenceMs": 53.7
+    },
+    {
+      "id": "cauca-s4-fall-sitting",
+      "subjectId": "subject-4",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.259999990463257,
+          "end": 4.099999904632568
+        }
+      ],
+      "durationSeconds": 9.9,
+      "poseCoverage": 0.99,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.53,
+      "p95InferenceMs": 51.8
+    },
+    {
+      "id": "cauca-s4-adl-hop",
+      "subjectId": "subject-4",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 7.2,
+      "poseCoverage": 0.9315,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.1,
+      "p95InferenceMs": 55.9
+    },
+    {
+      "id": "cauca-s4-adl-kneel",
+      "subjectId": "subject-4",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.1,
+      "poseCoverage": 0.991,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.56,
+      "p95InferenceMs": 64.2
+    },
+    {
+      "id": "cauca-s4-adl-pickup",
+      "subjectId": "subject-4",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.95,
+      "poseCoverage": 0.9778,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.59,
+      "p95InferenceMs": 64.5
+    },
+    {
+      "id": "cauca-s4-adl-sitdown",
+      "subjectId": "subject-4",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.95,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.51,
+      "p95InferenceMs": 52.4
+    },
+    {
+      "id": "cauca-s4-adl-walk",
+      "subjectId": "subject-4",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 12,
+      "poseCoverage": 0.9091,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.79,
+      "p95InferenceMs": 56
+    },
+    {
+      "id": "cauca-s5-fall-backwards",
+      "subjectId": "subject-5",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.75,
+          "end": 3.8499999046325684
+        }
+      ],
+      "durationSeconds": 10.7,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 3,
+      "trackIdsSeen": 3,
+      "events": [
+        {
+          "atSeconds": 3.9,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.54,
+      "p95InferenceMs": 57.2
+    },
+    {
+      "id": "cauca-s5-fall-forward",
+      "subjectId": "subject-5",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.940000057220459,
+          "end": 3.6600000858306885
+        }
+      ],
+      "durationSeconds": 10,
+      "poseCoverage": 0.7129,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 43.58,
+      "p95InferenceMs": 54.2
+    },
+    {
+      "id": "cauca-s5-fall-left",
+      "subjectId": "subject-5",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.9700000286102295,
+          "end": 4.489999771118164
+        }
+      ],
+      "durationSeconds": 12.35,
+      "poseCoverage": 0.7258,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 42.16,
+      "p95InferenceMs": 55.9
+    },
+    {
+      "id": "cauca-s5-fall-right",
+      "subjectId": "subject-5",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.799999952316284,
+          "end": 4.800000190734863
+        }
+      ],
+      "durationSeconds": 10.95,
+      "poseCoverage": 0.7545,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 4.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.78,
+      "p95InferenceMs": 66.8
+    },
+    {
+      "id": "cauca-s5-fall-sitting",
+      "subjectId": "subject-5",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.8799999952316284,
+          "end": 4.320000171661377
+        }
+      ],
+      "durationSeconds": 11.45,
+      "poseCoverage": 0.9565,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [
+        {
+          "atSeconds": 4.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.51,
+      "p95InferenceMs": 62.2
+    },
+    {
+      "id": "cauca-s5-adl-hop",
+      "subjectId": "subject-5",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 6.1,
+      "poseCoverage": 0.8033,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.65,
+      "p95InferenceMs": 67.5
+    },
+    {
+      "id": "cauca-s5-adl-kneel",
+      "subjectId": "subject-5",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.4,
+      "poseCoverage": 0.9619,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 53.25,
+      "p95InferenceMs": 67.4
+    },
+    {
+      "id": "cauca-s5-adl-pickup",
+      "subjectId": "subject-5",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13.55,
+      "poseCoverage": 0.1765,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 31.51,
+      "p95InferenceMs": 49.6
+    },
+    {
+      "id": "cauca-s5-adl-sitdown",
+      "subjectId": "subject-5",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13,
+      "poseCoverage": 0.9008,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.56,
+      "p95InferenceMs": 59.8
+    },
+    {
+      "id": "cauca-s5-adl-walk",
+      "subjectId": "subject-5",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.3,
+      "poseCoverage": 0.8509,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 44.41,
+      "p95InferenceMs": 53.8
+    },
+    {
+      "id": "cauca-s6-fall-backwards",
+      "subjectId": "subject-6",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.2200000286102295,
+          "end": 5.920000076293945
+        }
+      ],
+      "durationSeconds": 11.7,
+      "poseCoverage": 0.4188,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 35.02,
+      "p95InferenceMs": 53.2
+    },
+    {
+      "id": "cauca-s6-fall-forward",
+      "subjectId": "subject-6",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.359999895095825,
+          "end": 5.199999809265137
+        }
+      ],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.6139,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 41.43,
+      "p95InferenceMs": 52.6
+    },
+    {
+      "id": "cauca-s6-fall-left",
+      "subjectId": "subject-6",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.0800000429153442,
+          "end": 3.640000104904175
+        }
+      ],
+      "durationSeconds": 11.45,
+      "poseCoverage": 0.1913,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 31.37,
+      "p95InferenceMs": 52.6
+    },
+    {
+      "id": "cauca-s6-fall-right",
+      "subjectId": "subject-6",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.9000000953674316,
+          "end": 5.119999885559082
+        }
+      ],
+      "durationSeconds": 11.45,
+      "poseCoverage": 0.2957,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 33.83,
+      "p95InferenceMs": 52.8
+    },
+    {
+      "id": "cauca-s6-fall-sitting",
+      "subjectId": "subject-6",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.9800000190734863,
+          "end": 6.019999980926514
+        }
+      ],
+      "durationSeconds": 12.4,
+      "poseCoverage": 0.928,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.17,
+      "p95InferenceMs": 56.6
+    },
+    {
+      "id": "cauca-s6-adl-hop",
+      "subjectId": "subject-6",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.1,
+      "poseCoverage": 0.7531,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 43.97,
+      "p95InferenceMs": 55.2
+    },
+    {
+      "id": "cauca-s6-adl-kneel",
+      "subjectId": "subject-6",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.45,
+      "poseCoverage": 0.9684,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.61,
+      "p95InferenceMs": 59.7
+    },
+    {
+      "id": "cauca-s6-adl-pickup",
+      "subjectId": "subject-6",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.5248,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 38.3,
+      "p95InferenceMs": 52.5
+    },
+    {
+      "id": "cauca-s6-adl-sitdown",
+      "subjectId": "subject-6",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.45,
+      "poseCoverage": 0.8105,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.78,
+      "p95InferenceMs": 62.4
+    },
+    {
+      "id": "cauca-s6-adl-walk",
+      "subjectId": "subject-6",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13.3,
+      "poseCoverage": 0.9851,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 51.41,
+      "p95InferenceMs": 58.3
+    },
+    {
+      "id": "cauca-s7-fall-backwards",
+      "subjectId": "subject-7",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 3.0899999141693115,
+          "end": 5.550000190734863
+        }
+      ],
+      "durationSeconds": 12.6,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 5.7,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 47.04,
+      "p95InferenceMs": 54.2
+    },
+    {
+      "id": "cauca-s7-fall-forward",
+      "subjectId": "subject-7",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.7799999713897705,
+          "end": 2.640000104904175
+        }
+      ],
+      "durationSeconds": 8.1,
+      "poseCoverage": 0.5802,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 3.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 43.0,
+      "p95InferenceMs": 66.8
+    },
+    {
+      "id": "cauca-s7-fall-left",
+      "subjectId": "subject-7",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.359999895095825,
+          "end": 4.380000114440918
+        }
+      ],
+      "durationSeconds": 10.6,
+      "poseCoverage": 0.8585,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 48.77,
+      "p95InferenceMs": 65.2
+    },
+    {
+      "id": "cauca-s7-fall-right",
+      "subjectId": "subject-7",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.0299999713897705,
+          "end": 3.0899999141693115
+        }
+      ],
+      "durationSeconds": 8.3,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 51.05,
+      "p95InferenceMs": 56.9
+    },
+    {
+      "id": "cauca-s7-fall-sitting",
+      "subjectId": "subject-7",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.0800000429153442,
+          "end": 4.159999847412109
+        }
+      ],
+      "durationSeconds": 10.35,
+      "poseCoverage": 0.9423,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.26,
+      "p95InferenceMs": 62.7
+    },
+    {
+      "id": "cauca-s7-adl-hop",
+      "subjectId": "subject-7",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.9,
+      "poseCoverage": 0.92,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 50.12,
+      "p95InferenceMs": 55.6
+    },
+    {
+      "id": "cauca-s7-adl-kneel",
+      "subjectId": "subject-7",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.7426,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 47.85,
+      "p95InferenceMs": 69.6
+    },
+    {
+      "id": "cauca-s7-adl-pickup",
+      "subjectId": "subject-7",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 7.65,
+      "poseCoverage": 0.9351,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 50.58,
+      "p95InferenceMs": 59.1
+    },
+    {
+      "id": "cauca-s7-adl-sitdown",
+      "subjectId": "subject-7",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.65,
+      "poseCoverage": 0.9588,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 52.81,
+      "p95InferenceMs": 58.8
+    },
+    {
+      "id": "cauca-s7-adl-walk",
+      "subjectId": "subject-7",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 9.65,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.78,
+      "p95InferenceMs": 53.3
+    },
+    {
+      "id": "cauca-s8-fall-backwards",
+      "subjectId": "subject-8",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.7300000190734863,
+          "end": 4.550000190734863
+        }
+      ],
+      "durationSeconds": 10.6,
+      "poseCoverage": 0.9811,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 4.6,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 46.11,
+      "p95InferenceMs": 52.2
+    },
+    {
+      "id": "cauca-s8-fall-forward",
+      "subjectId": "subject-8",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.7099999785423279,
+          "end": 2.549999952316284
+        }
+      ],
+      "durationSeconds": 6.1,
+      "poseCoverage": 0.0,
+      "maxVisiblePeople": 0,
+      "trackIdsSeen": 0,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 33.96,
+      "p95InferenceMs": 37
+    },
+    {
+      "id": "cauca-s8-fall-left",
+      "subjectId": "subject-8",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1,
+          "end": 3.4000000953674316
+        }
+      ],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.2178,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 33.91,
+      "p95InferenceMs": 52.9
+    },
+    {
+      "id": "cauca-s8-fall-right",
+      "subjectId": "subject-8",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.5800000429153442,
+          "end": 3.680000066757202
+        }
+      ],
+      "durationSeconds": 11.45,
+      "poseCoverage": 0.0,
+      "maxVisiblePeople": 0,
+      "trackIdsSeen": 0,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 30.12,
+      "p95InferenceMs": 37.4
+    },
+    {
+      "id": "cauca-s8-fall-sitting",
+      "subjectId": "subject-8",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.25,
+          "end": 5.550000190734863
+        }
+      ],
+      "durationSeconds": 11.7,
+      "poseCoverage": 0.7949,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 43.52,
+      "p95InferenceMs": 53.6
+    },
+    {
+      "id": "cauca-s8-adl-hop",
+      "subjectId": "subject-8",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 8.3,
+      "poseCoverage": 0.9524,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.48,
+      "p95InferenceMs": 57
+    },
+    {
+      "id": "cauca-s8-adl-kneel",
+      "subjectId": "subject-8",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 12.8,
+      "poseCoverage": 0.3488,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 36.45,
+      "p95InferenceMs": 61.8
+    },
+    {
+      "id": "cauca-s8-adl-pickup",
+      "subjectId": "subject-8",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13.3,
+      "poseCoverage": 0.1045,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 32.15,
+      "p95InferenceMs": 54.6
+    },
+    {
+      "id": "cauca-s8-adl-sitdown",
+      "subjectId": "subject-8",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.6,
+      "poseCoverage": 0.5755,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 45.85,
+      "p95InferenceMs": 58.3
+    },
+    {
+      "id": "cauca-s8-adl-walk",
+      "subjectId": "subject-8",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.8,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.49,
+      "p95InferenceMs": 53.7
+    },
+    {
+      "id": "cauca-s9-fall-backwards",
+      "subjectId": "subject-9",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.659999966621399,
+          "end": 5.079999923706055
+        }
+      ],
+      "durationSeconds": 12.6,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.45,
+      "p95InferenceMs": 55.6
+    },
+    {
+      "id": "cauca-s9-fall-forward",
+      "subjectId": "subject-9",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.25,
+          "end": 3.450000047683716
+        }
+      ],
+      "durationSeconds": 7.4,
+      "poseCoverage": 0.7733,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 3.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 48.47,
+      "p95InferenceMs": 70.4
+    },
+    {
+      "id": "cauca-s9-fall-left",
+      "subjectId": "subject-9",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.9200000166893005,
+          "end": 4.320000171661377
+        }
+      ],
+      "durationSeconds": 10.35,
+      "poseCoverage": 0.9135,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 3.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 54.23,
+      "p95InferenceMs": 65.1
+    },
+    {
+      "id": "cauca-s9-fall-right",
+      "subjectId": "subject-9",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.5,
+          "end": 3.559999942779541
+        }
+      ],
+      "durationSeconds": 9.45,
+      "poseCoverage": 0.9158,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 3,
+      "events": [
+        {
+          "atSeconds": 3.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 49.63,
+      "p95InferenceMs": 56
+    },
+    {
+      "id": "cauca-s9-fall-sitting",
+      "subjectId": "subject-9",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.5399999618530273,
+          "end": 5
+        }
+      ],
+      "durationSeconds": 10.8,
+      "poseCoverage": 1.0,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 5.3,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 50.07,
+      "p95InferenceMs": 56.7
+    },
+    {
+      "id": "cauca-s9-adl-hop",
+      "subjectId": "subject-9",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.6,
+      "poseCoverage": 0.9906,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.52,
+      "p95InferenceMs": 53.7
+    },
+    {
+      "id": "cauca-s9-adl-kneel",
+      "subjectId": "subject-9",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 10.8,
+      "poseCoverage": 0.9633,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 58.18,
+      "p95InferenceMs": 76.7
+    },
+    {
+      "id": "cauca-s9-adl-pickup",
+      "subjectId": "subject-9",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11,
+      "poseCoverage": 0.964,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 4,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 48.54,
+      "p95InferenceMs": 67.3
+    },
+    {
+      "id": "cauca-s9-adl-sitdown",
+      "subjectId": "subject-9",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.9,
+      "poseCoverage": 0.9417,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 4,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.17,
+      "p95InferenceMs": 64.1
+    },
+    {
+      "id": "cauca-s9-adl-walk",
+      "subjectId": "subject-9",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.7,
+      "poseCoverage": 0.8547,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 45.52,
+      "p95InferenceMs": 61.5
+    },
+    {
+      "id": "cauca-s10-fall-backwards",
+      "subjectId": "subject-10",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.909999966621399,
+          "end": 4.409999847412109
+        }
+      ],
+      "durationSeconds": 13.7,
+      "poseCoverage": 0.927,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 50.13,
+      "p95InferenceMs": 65.2
+    },
+    {
+      "id": "cauca-s10-fall-forward",
+      "subjectId": "subject-10",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.8600000143051147,
+          "end": 3.559999942779541
+        }
+      ],
+      "durationSeconds": 12.15,
+      "poseCoverage": 0.8361,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 46.86,
+      "p95InferenceMs": 60.7
+    },
+    {
+      "id": "cauca-s10-fall-left",
+      "subjectId": "subject-10",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 0.9700000286102295,
+          "end": 3.3499999046325684
+        }
+      ],
+      "durationSeconds": 10.6,
+      "poseCoverage": 0.9434,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 4.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 54.14,
+      "p95InferenceMs": 68.6
+    },
+    {
+      "id": "cauca-s10-fall-right",
+      "subjectId": "subject-10",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 2.2699999809265137,
+          "end": 4.409999847412109
+        }
+      ],
+      "durationSeconds": 10.1,
+      "poseCoverage": 0.8812,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [
+        {
+          "atSeconds": 5.1,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": true,
+      "meanInferenceMs": 50.44,
+      "p95InferenceMs": 65.1
+    },
+    {
+      "id": "cauca-s10-fall-sitting",
+      "subjectId": "subject-10",
+      "category": "fall",
+      "eventRanges": [
+        {
+          "start": 1.850000023841858,
+          "end": 4.449999809265137
+        }
+      ],
+      "durationSeconds": 14.4,
+      "poseCoverage": 0.6207,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 44.96,
+      "p95InferenceMs": 67.3
+    },
+    {
+      "id": "cauca-s10-adl-hop",
+      "subjectId": "subject-10",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 12.4,
+      "poseCoverage": 0.984,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 49.14,
+      "p95InferenceMs": 68.5
+    },
+    {
+      "id": "cauca-s10-adl-kneel",
+      "subjectId": "subject-10",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 13.05,
+      "poseCoverage": 0.7481,
+      "maxVisiblePeople": 3,
+      "trackIdsSeen": 7,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 54.01,
+      "p95InferenceMs": 76.5
+    },
+    {
+      "id": "cauca-s10-adl-pickup",
+      "subjectId": "subject-10",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 14.6,
+      "poseCoverage": 0.3878,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 38.39,
+      "p95InferenceMs": 66.5
+    },
+    {
+      "id": "cauca-s10-adl-sitdown",
+      "subjectId": "subject-10",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.7,
+      "poseCoverage": 0.7436,
+      "maxVisiblePeople": 2,
+      "trackIdsSeen": 2,
+      "events": [],
+      "matchedFall": false,
+      "meanInferenceMs": 44.98,
+      "p95InferenceMs": 66.7
+    },
+    {
+      "id": "cauca-s10-adl-walk",
+      "subjectId": "subject-10",
+      "category": "daily_activity",
+      "eventRanges": [],
+      "durationSeconds": 11.2,
+      "poseCoverage": 0.9286,
+      "maxVisiblePeople": 1,
+      "trackIdsSeen": 1,
+      "events": [
+        {
+          "atSeconds": 3.8,
+          "trackId": 1
+        }
+      ],
+      "matchedFall": false,
+      "meanInferenceMs": 53.71,
+      "p95InferenceMs": 71.8
+    }
+  ],
+  "limitations": "This source was examined before the four-pose change and has one participant per clip. It cannot measure multi-person association, field recall, or an operational false-alert rate."
+}
