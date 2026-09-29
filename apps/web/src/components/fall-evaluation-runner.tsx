@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserPoseRule, PostureOnlyFallRule, poseFeatures, type Landmark } from "@/lib/browser-pose";
 import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall";
 import windowModel from "@/lib/fall-window-model.json";
+import windowModelV2 from "@/lib/fall-window-model-v2.json";
 import {
   BUILTIN_FALL_DATASET,
   buildFallEvaluationExport,
@@ -112,6 +113,7 @@ async function runCase(
   const detectedAtSeconds: number[] = [];
   const postureBaselineDetectedAtSeconds: number[] = [];
   const windowModelDetectedAtSeconds: number[] = [];
+  const windowModelV2DetectedAtSeconds: number[] = [];
   const poseTrace: FallPoseTrace[] = [];
   let framesAnalyzed = 0;
   let framesWithPose = 0;
@@ -133,6 +135,7 @@ async function runCase(
     const rule = new BrowserPoseRule("fall");
     const postureBaseline = new PostureOnlyFallRule();
     const windowCandidate = new PoseWindowFallRule(windowModel as PoseWindowModel);
+    const windowCandidateV2 = new PoseWindowFallRule(windowModelV2 as PoseWindowModel);
     for (let frame = 0; frame <= totalFrames; frame += 1) {
       if (cancelled()) throw new Error("Evaluation cancelled");
       const seconds = Math.min(
@@ -167,6 +170,9 @@ async function runCase(
       if (windowCandidate.update(features, seconds)) {
         windowModelDetectedAtSeconds.push(Number(seconds.toFixed(3)));
       }
+      if (windowCandidateV2.update(features, seconds)) {
+        windowModelV2DetectedAtSeconds.push(Number(seconds.toFixed(3)));
+      }
       poseTrace.push({
         seconds: Number(seconds.toFixed(3)),
         y: features ? Number(features.y.toFixed(4)) : null,
@@ -187,6 +193,7 @@ async function runCase(
       detectedAtSeconds,
       postureBaselineDetectedAtSeconds,
       windowModelDetectedAtSeconds,
+      windowModelV2DetectedAtSeconds,
       poseTrace,
       meanInferenceMs:
         inferenceTimes.reduce((total, value) => total + value, 0) /
@@ -217,15 +224,15 @@ export function FallEvaluationRunner() {
   const [currentCase, setCurrentCase] = useState("");
   const [progress, setProgress] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>>({});
-  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24">("builtin");
+  const [externalDatasets, setExternalDatasets] = useState<Partial<Record<"urfall" | "gmdcsa24" | "caucafall", FallEvaluationDataset>>>({});
+  const [datasetMode, setDatasetMode] = useState<"builtin" | "urfall" | "gmdcsa24" | "caucafall">("builtin");
   const dataset = datasetMode !== "builtin" && externalDatasets[datasetMode]
     ? externalDatasets[datasetMode] : BUILTIN_FALL_DATASET;
   const cases = dataset.cases;
 
   useEffect(() => {
     let active = true;
-    const sources = ["urfall", "gmdcsa24"] as const;
+    const sources = ["urfall", "gmdcsa24", "caucafall"] as const;
     void Promise.all(sources.map(async (source) => {
       try {
         const response = await fetch(`/vision/${source}/manifest.json`, { cache: "no-store" });
@@ -235,17 +242,17 @@ export function FallEvaluationRunner() {
     })).then((loaded) => {
       if (!active) return;
       const available = Object.fromEntries(loaded.filter((item) => item !== null)) as
-        Partial<Record<"urfall" | "gmdcsa24", FallEvaluationDataset>>;
+        Partial<Record<"urfall" | "gmdcsa24" | "caucafall", FallEvaluationDataset>>;
       setExternalDatasets(available);
       const requested = new URLSearchParams(window.location.search).get("dataset");
-      if ((requested === "urfall" || requested === "gmdcsa24") && available[requested]) {
+      if ((requested === "urfall" || requested === "gmdcsa24" || requested === "caucafall") && available[requested]) {
         setDatasetMode(requested);
       }
     });
     return () => { active = false; };
   }, []);
 
-  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24") {
+  function selectDataset(mode: "builtin" | "urfall" | "gmdcsa24" | "caucafall") {
     if (running) return;
     setDatasetMode(mode);
     setRunStatus("idle");
@@ -262,6 +269,7 @@ export function FallEvaluationRunner() {
   );
   const postureSummary = summary ? scoreFallEvaluation(results, "posture") : null;
   const windowSummary = summary ? scoreFallEvaluation(results, "window") : null;
+  const windowV2Summary = summary ? scoreFallEvaluation(results, "windowV2") : null;
   const splitSummaries = summary ? (["development", "holdout"] as const).flatMap((partition) => {
     const subset = results.filter((result) => result.partition === partition);
     return subset.length ? [{
@@ -270,6 +278,7 @@ export function FallEvaluationRunner() {
       temporal: scoreFallEvaluation(subset),
       posture: scoreFallEvaluation(subset, "posture"),
       window: scoreFallEvaluation(subset, "window"),
+      windowV2: scoreFallEvaluation(subset, "windowV2"),
     }] : [];
   }) : [];
 
@@ -366,6 +375,8 @@ export function FallEvaluationRunner() {
           onClick={() => selectDataset("urfall")}>UR Fall research set ({externalDatasets.urfall.cases.length})</button>}
         {externalDatasets.gmdcsa24 && <button type="button" aria-pressed={datasetMode === "gmdcsa24"} disabled={running}
           onClick={() => selectDataset("gmdcsa24")}>GMDCSA-24 subject split ({externalDatasets.gmdcsa24.cases.length})</button>}
+        {externalDatasets.caucafall && <button type="button" aria-pressed={datasetMode === "caucafall"} disabled={running}
+          onClick={() => selectDataset("caucafall")}>CAUCAFall independent source ({externalDatasets.caucafall.cases.length})</button>}
         <span>{dataset.split}</span>
       </nav>
 
@@ -388,13 +399,14 @@ export function FallEvaluationRunner() {
         <article><span>Mean candidate latency</span><strong>{summary ? seconds(summary.meanDetectionLatencySeconds) : "—"}</strong><small>{summary ? "From approximate labeled fall onset" : `Complete all ${cases.length} clips`}</small></article>
       </section>
 
-      {summary && postureSummary && windowSummary && <section className={styles.comparison} aria-label="Detector comparison">
-        <h2>Same frames, three methods</h2>
+      {summary && postureSummary && windowSummary && windowV2Summary && <section className={styles.comparison} aria-label="Detector comparison">
+        <h2>Same frames, four methods</h2>
         <table><thead><tr><th>Rule</th><th>Fall recall</th><th>Clip precision</th><th>False alerts / negative hour</th><th>Candidate delay</th></tr></thead>
           <tbody>
             <tr><th>Temporal descent + floor</th><td>{percent(summary.recall)}</td><td>{percent(summary.precision)}</td><td>{summary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(summary.meanDetectionLatencySeconds)}</td></tr>
             <tr><th>Sustained posture only</th><td>{percent(postureSummary.recall)}</td><td>{percent(postureSummary.precision)}</td><td>{postureSummary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(postureSummary.meanDetectionLatencySeconds)}</td></tr>
             <tr><th>Trained pose window · research candidate</th><td>{percent(windowSummary.recall)}</td><td>{percent(windowSummary.precision)}</td><td>{windowSummary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(windowSummary.meanDetectionLatencySeconds)}</td></tr>
+            <tr><th>Expanded training pose window · research candidate</th><td>{percent(windowV2Summary.recall)}</td><td>{percent(windowV2Summary.precision)}</td><td>{windowV2Summary.falseAlertsPerHour?.toFixed(1) ?? "—"}</td><td>{seconds(windowV2Summary.meanDetectionLatencySeconds)}</td></tr>
           </tbody></table>
       </section>}
 
@@ -402,9 +414,10 @@ export function FallEvaluationRunner() {
         <h2>Development and reserved sequences</h2>
         <table><thead><tr><th>Partition</th><th>Clips</th><th>Rule</th><th>Fall clips detected</th><th>Daily activity alerts</th></tr></thead>
           <tbody>{splitSummaries.flatMap((group) => [
-            <tr key={`${group.partition}-temporal`}><th rowSpan={3}>{group.partition}</th><td rowSpan={3}>{group.cases}</td><td>Temporal</td><td>{group.temporal.truePositives}/{group.temporal.truePositives + group.temporal.falseNegatives}</td><td>{group.temporal.falsePositives}</td></tr>,
+            <tr key={`${group.partition}-temporal`}><th rowSpan={4}>{group.partition}</th><td rowSpan={4}>{group.cases}</td><td>Temporal</td><td>{group.temporal.truePositives}/{group.temporal.truePositives + group.temporal.falseNegatives}</td><td>{group.temporal.falsePositives}</td></tr>,
             <tr key={`${group.partition}-posture`}><td>Posture</td><td>{group.posture.truePositives}/{group.posture.truePositives + group.posture.falseNegatives}</td><td>{group.posture.falsePositives}</td></tr>,
             <tr key={`${group.partition}-window`}><td>Pose window candidate</td><td>{group.window.truePositives}/{group.window.truePositives + group.window.falseNegatives}</td><td>{group.window.falsePositives}</td></tr>,
+            <tr key={`${group.partition}-window-v2`}><td>Expanded pose window</td><td>{group.windowV2.truePositives}/{group.windowV2.truePositives + group.windowV2.falseNegatives}</td><td>{group.windowV2.falsePositives}</td></tr>,
           ])}</tbody></table>
       </section>}
 
@@ -412,7 +425,7 @@ export function FallEvaluationRunner() {
         <header><h2>Clip results</h2><span>MediaPipe + the same temporal rule used by /live</span></header>
         <div className={styles.tableWrap}>
           <table>
-            <thead><tr><th>Clip</th><th>Expected</th><th>Live rule</th><th>Candidate</th><th>First live event</th><th>Pose coverage</th><th>Inference p95</th><th>Live result</th></tr></thead>
+            <thead><tr><th>Clip</th><th>Expected</th><th>Live rule</th><th>Candidate v1</th><th>Candidate v2</th><th>First live event</th><th>Pose coverage</th><th>Inference p95</th><th>Live result</th></tr></thead>
             <tbody>
               {cases.map((definition) => {
                 const result = results.find((item) => item.id === definition.id);
@@ -424,6 +437,7 @@ export function FallEvaluationRunner() {
                   <td>{expected ? "Fall" : "No fall"}</td>
                   <td>{result ? `${result.detectedAtSeconds.length} event${result.detectedAtSeconds.length === 1 ? "" : "s"}` : "Waiting"}</td>
                   <td>{result ? `${result.windowModelDetectedAtSeconds?.length ?? 0} event${result.windowModelDetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
+                  <td>{result ? `${result.windowModelV2DetectedAtSeconds?.length ?? 0} event${result.windowModelV2DetectedAtSeconds?.length === 1 ? "" : "s"}` : "Waiting"}</td>
                   <td>{result?.detectedAtSeconds.length ? `${result.detectedAtSeconds[0].toFixed(1)} s` : "—"}</td>
                   <td>{result ? percent(result.framesWithPose / Math.max(1, result.framesAnalyzed)) : "—"}</td>
                   <td>{result ? `${result.p95InferenceMs.toFixed(1)} ms` : "—"}</td>

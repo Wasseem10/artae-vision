@@ -12,20 +12,25 @@ const compiled = typescript.transpileModule(source, {
 const localModule = { exports: {} };
 new Function('module', 'exports', compiled)(localModule, localModule.exports);
 const { PoseWindowFallRule } = localModule.exports;
-const model = JSON.parse(fs.readFileSync(path.join(root, 'apps/web/src/lib/fall-window-model.json')));
-const report = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/gmdcsa24/evaluation.json')));
-const expected = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/gmdcsa24/pose-window-dev-predictions.json')));
-
-for (const result of report.results) {
-  const rule = new PoseWindowFallRule(model);
-  const actual = [];
-  for (const frame of result.poseTrace) {
-    const feature = frame.y === null ? null : {
-      x: 0.5, y: frame.y, verticality: frame.verticality, aspect: frame.aspect,
-      visibility: 1,
-    };
-    if (rule.update(feature, frame.seconds)) actual.push(frame.seconds);
+const development = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/gmdcsa24/development-subjects-1-2.json')));
+const examined = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/gmdcsa24/evaluation.json')));
+for (const config of [
+  { model: 'fall-window-model.json', predictions: 'pose-window-dev-predictions.json', results: development.results },
+  { model: 'fall-window-model-v2.json', predictions: 'pose-window-v2-dev-predictions.json', results: [...development.results, ...examined.results] },
+]) {
+  const model = JSON.parse(fs.readFileSync(path.join(root, 'apps/web/src/lib', config.model)));
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'artifacts/gmdcsa24', config.predictions)));
+  for (const result of config.results) {
+    const rule = new PoseWindowFallRule(model);
+    const actual = [];
+    for (const frame of result.poseTrace) {
+      const feature = frame.y === null ? null : {
+        x: 0.5, y: frame.y, verticality: frame.verticality, aspect: frame.aspect,
+        visibility: 1,
+      };
+      if (rule.update(feature, frame.seconds)) actual.push(frame.seconds);
+    }
+    assert.deepEqual(actual, expected[result.id], `${config.model} runtime differs on ${result.id}`);
   }
-  assert.deepEqual(actual, expected[result.id], `Runtime differs on ${result.id}`);
+  console.log(`${config.model}: Python and TypeScript agreed on ${config.results.length} examined clips`);
 }
-console.log(`Python and TypeScript agreed on all ${report.results.length} development clips`);
