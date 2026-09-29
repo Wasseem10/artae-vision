@@ -264,3 +264,96 @@
   .seniorPage .ruleBar { gap:9px; flex-wrap:wrap; }
   .seniorPage .controls { flex-wrap:wrap; padding-block:12px; }
 }
+
+/* Mission-control treatment for the fall monitor. The monitor grid and controls
+   keep their existing positions; this layer changes only its visual language. */
+.seniorPage {
+  --mission-line:#2a3542;
+  --mission-muted:#9baab9;
+  --mission-blue:#a8c9e8;
+  background:radial-gradient(ellipse 90% 45% at 50% 0%,#192839 0%,#0b121a 60%,#05090d 100%);
+  color:#f5f7fa;
+  color-scheme:dark;
+  font-family:var(--font-mission-body),Arial,sans-serif;
+}
+.seniorPage button,.seniorPage input,.seniorPage select,.seniorPage textarea { font-family:inherit; }
+.seniorPage .header { background:#030608; border-bottom:1px solid var(--mission-line); }
+.seniorPage .brand { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:28px !important; font-weight:700; letter-spacing:.045em; text-transform:uppercase; }
+.seniorPage .header a { color:#cbd3dc; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
+.seniorPage .header a:hover { color:#fff; }
+.seniorPage .header button { background:transparent; border:1px solid #55616d; border-radius:3px; color:#f3f6f8; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+.seniorPage .header button:hover { border-color:#fff; }
+.seniorPage .intro { padding-top:43px; padding-bottom:31px; }
+.seniorPage .intro > small { color:var(--mission-blue); font-size:11px; font-weight:700; letter-spacing:.22em; }
+.seniorPage .intro h1 { color:#fff; font-family:var(--font-mission-display),"Arial Narrow",sans-serif; font-size:clamp(46px,4.2vw,68px); font-weight:600; letter-spacing:.015em; line-height:.92; text-transform:uppercase; }
+.seniorPage .intro > p { color:#afbdc9; font-size:15px; line-height:1.55; }
+.seniorPage .workspace { background:#0c1219; border-color:#3a4855; border-radius:5px; box-shadow:0 28px 75px #0009,0 0 0 1px #ffffff08; }
+.seniorPage .setupPanel { background:#101821; border-right-color:var(--mission-line); }
+.seniorPage .monitorPanel { background:#0c1219; }
+.seniorPage .savedJobSetup label,.seniorPage .setup label { color:#b8c8d5; font-size:10px; font-weight:700; letter-spacing:.16em; }
+.seniorPage .savedJobSetup input,.seniorPage .setup select,.seniorPage .setup input,.seniorPage .phoneField input,.seniorPage .incidentReview textarea,.seniorPage .customJob textarea {
+  background:#080e15; border:1px solid #415061; border-radius:3px; color:#f5f8fa; box-shadow:none;
+}
+.seniorPage input::placeholder,.seniorPage textarea::placeholder { color:#8998a8; }
+.seniorPage select option { background:#101821; color:#f5f8fa; }
+.seniorPage .savedJobSetup button,.seniorPage .caregiverSetup button,.seniorPage .clipList button,.seniorPage .log article button,.seniorPage .storage button,.seniorPage .history button,.seniorPage .controls button {
+  background:#17222d; border:1px solid #506070; border-radius:3px; color:#edf3f8; font-weight:600;
+}
+.seniorPage .savedJobSetup button:hover:not(:disabled),.seniorPage .caregiverSetup button:hover:not(:disabled),.seniorPage .clipList button:hover:not(:disabled),.seniorPage .log article button:hover:not(:disabled),.seniorPage .storage button:hover:not(:disabled),.seniorPage .history button:hover:not(:disabled),.seniorPage .controls button:hover:not(:disabled) { background:#243341; border-color:#a8bdcf; }
+.seniorPage .fixedJob { background:#152330; border:1px solid #4a6275; border-left:3px solid #c8deed; border-radius:3px; }
+.seniorPage .fixedJob small { color:var(--mission-blue); letter-spacing:.17em; }
+.seniorPage .fixedJob strong { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:600; letter-spacing:.01em; text-transform:uppercase; }
+.seniorPage .fixedJob span { color:#b3c1cc; }
+.seniorPage .start { background:#f3f5f7; border-color:#f3f5f7; border-radius:3px; box-shadow:none; color:#091019; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
+.seniorPage .start:hover:not(:disabled) { background:#bcd1e0; border-color:#bcd1e0; }
+.seniorPage .caregiverSetup { background:#101821; border-top-color:var(--mission-line); }
+.seniorPage .caregiverSetup > div strong,.seniorPage .replay h3,.seniorPage .history h2 { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-weight:600; letter-spacing:.045em; text-transform:uppercase; }
+.seniorPage .caregiverSetup > div strong { font-size:18px; }
+.seniorPage .caregiverSetup > div p,.seniorPage .smsNotice,.seniorPage .setupPanel > .note,.seniorPage .camera > .note,.seniorPage .replay p,.seniorPage .history p,.seniorPage .storage span,.seniorPage .history span { color:var(--mission-muted); }
+.seniorPage .caregiverSetup button { color:#f2f6f9; }
+.seniorPage .setupPanel > .note { border-top-color:var(--mission-line); }
+.seniorPage .ruleBar { background:#111b25; border-bottom-color:var(--mission-line); }
+.seniorPage .ruleBar strong { color:#f6f9fb; font-size:16px; font-weight:700; }
+.seniorPage .ruleBar label,.seniorPage .controls span { color:#b8c7d3; }
+.seniorPage input[type="checkbox"] { accent-color:#dbe9f5; }
+.seniorPage .camera { border-right-color:var(--mission-line); }
+.seniorPage .videoStage { background:#03070b; }
+.seniorPage .cameraLabel { background:#050b10db; border-color:#9cb3c666; border-radius:2px; color:#fff; letter-spacing:.04em; text-transform:uppercase; }
+.seniorPage .cameraLabel i,.seniorPage .controls span i.live,.seniorPage .ruleBar > span.live i { background:#b2d6f5; box-shadow:0 0 0 4px #a8c9e82e; }
+.seniorPage .detection { border-color:#c5e0f5; }
+.seniorPage .detection span { background:#c5e0f5; color:#07121b; }
+.seniorPage .stageEmpty { background:linear-gradient(145deg,#07121cf2,#0b1622d9); }
+.seniorPage .stageEmpty.samplePreview { background:linear-gradient(180deg,#06101c80,#030a11d9),url('/vision/samples/fall-lateral-poster.png') center / cover; text-shadow:0 2px 8px #000; }
+.seniorPage .stageEmpty strong { font-family:var(--font-mission-display),Arial,sans-serif; font-size:26px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
+.seniorPage .stageEmpty span { color:#d6e0e8; }
+.seniorPage .controls,.seniorPage .replay,.seniorPage .storage { border-color:var(--mission-line); }
+.seniorPage .controls span { font-weight:600; }
+.seniorPage .camera > .note { border-bottom:1px solid var(--mission-line); }
+.seniorPage .replay h3 { font-size:21px; }
+.seniorPage .replay a,.seniorPage .attribution a { color:#b4d8f5; }
+.seniorPage .log { background:#101821; }
+.seniorPage .log > header,.seniorPage .log article { border-bottom-color:var(--mission-line); }
+.seniorPage .log header small { color:#98adbd; letter-spacing:.16em; }
+.seniorPage .log header strong { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+.seniorPage .log header > span { background:#263847; color:#e3f1fb; }
+.seniorPage .log article > i { background:#b2d6f5; }
+.seniorPage .log article strong { color:#f3f7fa; }
+.seniorPage .log article small,.seniorPage .log .incidentSummary,.seniorPage .actionTrace,.seniorPage .incidentReview p { color:#afbfcc; }
+.seniorPage .log article span,.seniorPage .incidentReview summary { color:#b4d8f5; }
+.seniorPage .incidentReview { border-top-color:var(--mission-line); }
+.seniorPage .incidentReview label { color:#dbe5ec; }
+.seniorPage .empty { color:#8da0b0; }
+.seniorPage .empty strong { color:#f2f6fa; font-size:16px; }
+.seniorPage .empty p { color:#9aabba; }
+.seniorPage .storage { background:#111a23; }
+.seniorPage .history h2 { font-size:31px; }
+.seniorPage .history > div button { background:#111a23; border-color:#3b4a58; }
+.seniorPage .attribution { color:#8799a8; }
+.seniorPage :focus-visible { outline-color:#c8e2f5; }
+@media (max-width:1150px) {
+  .seniorPage .camera { border-bottom-color:var(--mission-line); }
+}
+@media (max-width:780px) {
+  .seniorPage .intro h1 { font-size:clamp(44px,9vw,60px); }
+  .seniorPage .setupPanel { border-bottom-color:var(--mission-line); }
+}
