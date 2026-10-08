@@ -19,6 +19,7 @@ import {
   type FallEvaluationDataset,
   type FallEvaluationResult,
   type FallPoseTrace,
+  type FallObservationTrace,
   type FallEvaluationRunStatus,
 } from "@/lib/fall-evaluation";
 import styles from "./fall-evaluation-runner.module.css";
@@ -120,6 +121,7 @@ async function runCase(
   const windowModelDetectedAtSeconds: number[] = [];
   const windowModelV2DetectedAtSeconds: number[] = [];
   const poseTrace: FallPoseTrace[] = [];
+  const observationTrace: FallObservationTrace[] = [];
   let framesAnalyzed = 0;
   let framesWithPose = 0;
   const multiPersonEvents: { atSeconds: number; trackId: number }[] = [];
@@ -174,6 +176,13 @@ async function runCase(
           .filter((pose): pose is NonNullable<typeof pose> => !!pose);
         const primaryFeatures = poseFeatures(response.primaryLandmarks ?? [], video.videoWidth, video.videoHeight);
         const tracked = multiPerson.update(primaryFeatures, visibleFeatures, seconds);
+        observationTrace.push({
+          seconds: Number(seconds.toFixed(3)),
+          rawPoseCount: (response.poses ?? []).length,
+          usablePoseCount: visibleFeatures.length,
+          primaryPosePresent: !!primaryFeatures,
+          trackIds: tracked.map((person) => person.id).sort((a, b) => a - b),
+        });
         if (tracked.length) framesWithPose += 1;
         maxVisiblePeople = Math.max(maxVisiblePeople, tracked.length);
         for (const person of tracked) {
@@ -212,6 +221,7 @@ async function runCase(
       multiPersonEvents: detectorMode === "multi" ? multiPersonEvents : undefined,
       maxVisiblePeople: detectorMode === "multi" ? maxVisiblePeople : undefined,
       trackIdsSeen: detectorMode === "multi" ? trackIds.size : undefined,
+      observationTrace: detectorMode === "multi" ? observationTrace : undefined,
       postureBaselineDetectedAtSeconds,
       windowModelDetectedAtSeconds,
       windowModelV2DetectedAtSeconds,
