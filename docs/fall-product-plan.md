@@ -1,6 +1,6 @@
 # Fall detection: prototype to supervised pilot
 
-Status: September 29, 2026. The [pilot protocol](fall-pilot-plan.md) has the
+Status: October 8, 2026. The [pilot protocol](fall-pilot-plan.md) has the
 operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
@@ -62,6 +62,14 @@ and panned frames with the live model). On the already examined MPFDD clips,
 neither a larger pose model nor a person-detector-plus-cropped-pose experiment
 improved the 2/22 fall-clip result. Keep the current live detector while
 collecting person-level labels and longer room-specific negative footage.
+
+The [frame observation diagnostic](mpfdd-observation-diagnostic.md) now makes
+that next step more specific. In a clean replay of the same 28 MPFDD clips,
+raw poses reached the filename's nominal people count in 724/2,761 sampled
+frames, while fused tracks reached it in 527/2,761. Eleven clips never reached
+that count at the raw-pose stage. These are not person-level recall measures;
+annotate visible people and duplicate poses on representative frames before
+changing the observation or association pipeline.
 
 ## Delivery sequence
 
