@@ -29,6 +29,15 @@ export type FallPoseTrace = {
   phase: string;
 };
 
+/** Per-sampled-frame observations for diagnosing multi-person coverage and track continuity. */
+export type FallObservationTrace = {
+  seconds: number;
+  rawPoseCount: number;
+  usablePoseCount: number;
+  primaryPosePresent: boolean;
+  trackIds: number[];
+};
+
 export type FallEvaluationResult = FallEvaluationCase & {
   durationSeconds: number;
   framesAnalyzed: number;
@@ -38,6 +47,7 @@ export type FallEvaluationResult = FallEvaluationCase & {
   multiPersonEvents?: { atSeconds: number; trackId: number }[];
   maxVisiblePeople?: number;
   trackIdsSeen?: number;
+  observationTrace?: FallObservationTrace[];
   postureBaselineDetectedAtSeconds?: number[];
   windowModelDetectedAtSeconds?: number[];
   windowModelV2DetectedAtSeconds?: number[];
