@@ -32,7 +32,7 @@ async function demoPage(browser, awsMode = 'unavailable') {
       mockedAnalyses += 1;
       const frames = request.postDataJSON().frames;
       // A caregiver may finish local review before optional AWS enrichment returns.
-      await new Promise((resolve) => setTimeout(resolve, 5000));
+      await new Promise((resolve) => setTimeout(resolve, 12000));
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -104,11 +104,39 @@ async function startSample(page, sample) {
 
 (async () => {
   const browser = await chromium.launch({
-    channel: 'chrome',
+    channel: process.env.ARTAE_TEST_BROWSER === 'chromium' ? undefined : 'chrome',
     headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
   });
   try {
+    const navigation = await demoPage(browser);
+    try {
+      const base = new URL('/', TEST_URL).href;
+      await navigation.page.goto(base);
+      await navigation.page.getByRole('navigation', { name: 'Primary navigation' })
+        .getByRole('link', { name: 'Engineering', exact: true }).click();
+      await navigation.page.getByRole('heading', { name: 'The live pipeline', exact: true }).waitFor();
+      await navigation.page.getByRole('navigation', { name: 'Primary navigation' })
+        .getByRole('link', { name: 'Data & privacy', exact: true }).click();
+      await navigation.page.getByRole('heading', { name: 'Know where your video goes.', exact: true }).waitFor();
+      await navigation.page.setViewportSize({ width: 390, height: 844 });
+      await navigation.page.goto(base);
+      const demoLink = navigation.page.getByRole('link', { name: 'Try the live demo', exact: true });
+      const box = await demoLink.boundingBox();
+      assert.ok(box && box.y >= 0 && box.y + box.height <= 844, 'Mobile sample action must be visible without scrolling');
+      await navigation.page.getByRole('button', { name: 'Open menu', exact: true }).click();
+      await navigation.page.getByRole('navigation', { name: 'Mobile navigation' })
+        .getByRole('link', { name: 'Sign in', exact: true }).click();
+      await navigation.page.getByRole('button', { name: 'Create account', exact: true }).click();
+      assert.equal(await navigation.page.getByLabel('Password', { exact: true }).getAttribute('autocomplete'), 'new-password');
+      for (const route of ['demo', 'app']) {
+        await navigation.page.goto(new URL(route, base).href);
+        await navigation.page.waitForURL('**/live');
+      }
+      console.log('NAVIGATION_OK: engineering, privacy, mobile demo action, signup semantics, and legacy entry points');
+    } finally {
+      await navigation.context.close();
+    }
     const positive = await demoPage(browser);
     try {
       await startSample(positive.page, 'fall-lateral');
@@ -118,6 +146,7 @@ async function startSample(page, sample) {
         return button && !button.disabled;
       }, null, { timeout: 30000 });
       await positive.page.getByRole('button', { name: 'Review footage', exact: true }).click();
+      await positive.page.getByRole('dialog').waitFor();
       await positive.page.waitForFunction(() => {
         const video = document.querySelector('video[controls]');
         return video && video.readyState >= 1 && video.videoWidth > 0;
@@ -126,6 +155,11 @@ async function startSample(page, sample) {
       await positive.page.getByText('Reviewer note and response steps', { exact: true }).click();
       await positive.page.getByLabel('Reviewer note (optional)').fill('Caregiver checked the staged subject; no injury observed.');
       await positive.page.getByLabel('Organization response steps (optional)').fill('Check the person\nRecord the outcome');
+      await positive.page.getByRole('dialog').press('Escape');
+      await positive.page.getByRole('button', { name: 'Review footage', exact: true }).click();
+      await positive.page.getByText('Reviewer note and response steps', { exact: true }).click();
+      assert.equal(await positive.page.getByLabel('Reviewer note (optional)').inputValue(),
+        'Caregiver checked the staged subject; no injury observed.', 'Closing and reopening review must retain the draft');
       await positive.page.getByRole('button', { name: 'Mark reviewed', exact: true }).click();
       await positive.page.getByText('Closed · reviewed', { exact: true }).waitFor();
       await positive.page.getByText('Review saved on this device', { exact: true }).waitFor();
@@ -136,6 +170,7 @@ async function startSample(page, sample) {
       await positive.page.getByRole('button').filter({ hasText: 'Sample: fall-lateral' }).first().click();
       await positive.page.getByText('Closed · reviewed', { exact: true }).waitFor();
       await positive.page.getByRole('button', { name: 'Review footage', exact: true }).waitFor();
+      await positive.page.getByRole('button', { name: 'Review footage', exact: true }).click();
       assert.equal(await positive.page.getByLabel('Reviewer note (optional)').inputValue(),
         'Caregiver checked the staged subject; no injury observed.');
       assert.equal(await positive.page.getByLabel('Organization response steps (optional)').inputValue(),
@@ -149,6 +184,10 @@ async function startSample(page, sample) {
       assert.match(reportHtml, /Check the person/);
       assert.match(reportHtml, /Evidence metadata/);
       assert.doesNotMatch(reportHtml, /<video|blob:/i);
+      await positive.page.getByRole('dialog').press('Escape');
+      assert.equal(await positive.page.getByRole('dialog').isVisible(), false, 'Escape must close incident review');
+      assert.equal(await positive.page.evaluate(() => document.activeElement?.textContent?.trim()), 'Review footage',
+        'Closing review must return keyboard focus to the event trigger');
       console.log('FALL_OK: detection, playable clip, saved review details, and incident report survive reload with API 503');
     } finally {
       await positive.context.close();
@@ -166,13 +205,36 @@ async function startSample(page, sample) {
       await negative.context.close();
     }
 
+    const upload = await demoPage(browser);
+    try {
+      await upload.page.getByLabel('2. Connect video').selectOption('file');
+      await upload.page.getByLabel('Choose a video').setInputFiles(path.resolve(__dirname,
+        '../apps/web/public/vision/samples/fall-lateral.mp4'));
+      assert.equal(await upload.page.getByRole('checkbox', { name: /Allow event frames/ }).isChecked(), false);
+      await upload.page.getByRole('button', { name: 'Start agent', exact: true }).click();
+      await upload.page.getByRole('button', { name: 'Review footage', exact: true }).waitFor({ timeout: 60000 });
+      await upload.page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
+      assert.equal(upload.rejectedPublicDemoStarts(), 0, 'Guest upload must not request cloud analysis without consent');
+      console.log('UPLOAD_PRIVACY_OK: real guest upload detection without a cloud-analysis session');
+    } finally {
+      await upload.context.close();
+    }
+
     const enriched = await demoPage(browser, 'mock-success');
     try {
       await startSample(enriched.page, 'fall-lateral');
+      await enriched.page.waitForFunction(() => {
+        const button = [...document.querySelectorAll('button')].find((item) => item.textContent?.trim() === 'Review footage');
+        return button && !button.disabled;
+      }, null, { timeout: 30000 });
+      await enriched.page.getByRole('button', { name: 'Review footage', exact: true }).click();
       await enriched.page.getByRole('button', { name: 'Mark reviewed', exact: true }).waitFor({ timeout: 30000 });
       await enriched.page.getByRole('button', { name: 'Mark reviewed', exact: true }).click();
       await enriched.page.getByText('Closed · reviewed', { exact: true }).waitFor();
-      await enriched.page.getByText(/Possible fall · person \d+ — please review/).waitFor({ timeout: 30000 });
+      assert.equal(await enriched.page.getByText('AWS coordinator: completed', { exact: true }).count(), 0,
+        'Local review must complete before mocked cloud enrichment returns');
+      await enriched.page.getByRole('button', { name: 'Close incident review' }).click();
+      await enriched.page.getByRole('complementary').getByText(/Possible fall · person \d+ — please review/).waitFor({ timeout: 30000 });
       await enriched.page.getByText('AWS coordinator: completed', { exact: true }).waitFor();
       await enriched.page.getByText('Mock Nova confirmed the staged fall sequence.', { exact: true }).waitFor();
       await enriched.page.getByText('Nova reviewed the whole scene and prepared a caregiver response. Check the person shown in the local alert.', { exact: false }).waitFor();
