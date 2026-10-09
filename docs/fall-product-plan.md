@@ -63,6 +63,12 @@ neither a larger pose model nor a person-detector-plus-cropped-pose experiment
 improved the 2/22 fall-clip result. Keep the current live detector while
 collecting person-level labels and longer room-specific negative footage.
 
+The [MPFDD scorer validation check](mpfdd-scorer-validation.md) now rejects
+partial sampled timelines before counting full clip duration as negative
+exposure, along with invalid coverage and inconsistent track alerts. Both
+archived 28-clip paths passed; per-clip results and the 2/22 fall result are
+unchanged. This improves benchmark integrity, not detector accuracy.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |

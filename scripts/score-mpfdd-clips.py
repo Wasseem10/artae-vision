@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import statistics
 from collections import defaultdict
 from pathlib import Path
@@ -25,12 +26,62 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def finite_number(value: object) -> bool:
+    return type(value) in (int, float) and math.isfinite(value)
+
+
+def validate_sampling(row: dict, schema: int) -> None:
+    """Reject partial replays before counting a clip's duration as exposure."""
+    case_id = row["id"]
+    duration = row.get("durationSeconds")
+    if not finite_number(duration) or duration <= 0.001:
+        raise ValueError(f"Invalid duration: {case_id}")
+    # Match runCase's inclusive 0.1-second loop, including its end clamp.
+    expected_frames = max(1, math.floor(duration / 0.1)) + 1
+    frames = row.get("framesAnalyzed")
+    coverage = row.get("framesWithPose")
+    trace = row.get("poseTrace")
+    if (type(frames) is not int or frames != expected_frames or
+        type(coverage) is not int or not 0 <= coverage <= frames or
+        not isinstance(trace, list) or len(trace) != frames):
+        raise ValueError(f"Incomplete sampling or invalid coverage: {case_id}")
+    for index, frame in enumerate(trace):
+        seconds = frame.get("seconds") if isinstance(frame, dict) else None
+        expected = min(duration - 0.001, index * 0.1)
+        if not finite_number(seconds) or abs(seconds - expected) > 0.00051:
+            raise ValueError(f"Missing, reordered, or changed sample: {case_id}")
+    alerts = row.get("detectedAtSeconds")
+    if (not isinstance(alerts, list) or
+        any(not finite_number(time) or not 0 <= time < duration for time in alerts) or
+        alerts != sorted(alerts)):
+        raise ValueError(f"Invalid alert timeline: {case_id}")
+    sample_times = {frame["seconds"] for frame in trace}
+    if any(time not in sample_times for time in alerts):
+        raise ValueError(f"Alert outside sampled timeline: {case_id}")
+    for metric in ("meanInferenceMs", "p95InferenceMs"):
+        if not finite_number(row.get(metric)) or row[metric] < 0:
+            raise ValueError(f"Invalid inference timing: {case_id}")
+    if schema == 4:
+        events = row.get("multiPersonEvents")
+        track_count = row.get("trackIdsSeen")
+        visible = row.get("maxVisiblePeople")
+        if (type(track_count) is not int or track_count < 0 or
+            type(visible) is not int or not 0 <= visible <= track_count or
+            not isinstance(events, list) or
+            any(not isinstance(event, dict) or type(event.get("trackId")) is not int or
+                not 1 <= event["trackId"] <= track_count or
+                not finite_number(event.get("atSeconds")) for event in events) or
+            [event.get("atSeconds") for event in events] != alerts or
+            len({(event["atSeconds"], event["trackId"]) for event in events}) != len(events)):
+            raise ValueError(f"Inconsistent track alerts: {case_id}")
+
+
 def load_report(path: Path, manifest: dict, schema: int, rule: str) -> dict:
     report = json.loads(path.read_text(encoding="utf-8"))
     cases = {case["id"]: case for case in manifest["cases"]}
     results = report["results"]
     provenance = report["provenance"]
-    if (report["status"] != "complete" or report["schemaVersion"] != schema or
+    if (report["status"] != "complete" or report["scoringUnit"] != "clip" or report["schemaVersion"] != schema or
         report["sampleIntervalSeconds"] != 0.1 or
         report["dataset"]["datasetId"] != DATASET_ID or
         report["dataset"]["sourceRevision"] != manifest["sourceRevision"] or
@@ -47,8 +98,7 @@ def load_report(path: Path, manifest: dict, schema: int, rule: str) -> dict:
             row["category"] != case["category"] or row.get("error") or
             row["framesAnalyzed"] <= 0):
             raise ValueError(f"Changed media, label, or failed case: {row['id']}")
-        if schema == 4 and [event["atSeconds"] for event in row["multiPersonEvents"]] != row["detectedAtSeconds"]:
-            raise ValueError(f"Inconsistent track alerts: {row['id']}")
+        validate_sampling(row, schema)
     return report
 
 
