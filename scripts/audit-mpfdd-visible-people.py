@@ -96,7 +96,10 @@ def main() -> None:
         report["provenance"]["localSourceHashes"]["apps/web/public/vision/mpfdd/manifest.json"] != digest(args.manifest)):
         raise ValueError("Labels or replay refer to different input hashes")
     output = compare(labels, manifest, report)
-    output.update(labelsSha256=digest(args.labels), manifestSha256=digest(args.manifest),
+    # Tracked labels may acquire CRLF on Windows; hash their canonical JSON.
+    label_hash = hashlib.sha256(json.dumps(labels, sort_keys=True, separators=(",", ":"),
+                                          ensure_ascii=False).encode("utf-8")).hexdigest()
+    output.update(labelsCanonicalSha256=label_hash, manifestSha256=digest(args.manifest),
                   browserReportSha256=digest(args.report))
     if bool(args.frames_dir) != bool(args.media_root):
         raise ValueError("Supply both --media-root and --frames-dir for extraction")
@@ -129,7 +132,7 @@ def main() -> None:
             finally:
                 cap.release()
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8")
+    args.output.write_text(json.dumps(output, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(output["summary"], indent=2))
 
 

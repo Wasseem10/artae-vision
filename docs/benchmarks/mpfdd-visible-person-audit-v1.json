@@ -112,7 +112,7 @@
     }
   ],
   "limitation": "AI-assisted counts await human review. Equal counts can conceal misses and duplicates; count gaps cannot identify which person was missed, false poses, or broken track identity.",
-  "labelsSha256": "0d40d439f7c1dca12196aff6baaf1b698179858f8cb1074691e659530db0df16",
+  "labelsCanonicalSha256": "eb3dc7a00715c6ffeafc0a2315f94b70a225ef8d5588865f2cc2c4a2c4da0a44",
   "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
   "browserReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad"
 }
