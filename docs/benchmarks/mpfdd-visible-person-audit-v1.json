@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "scope": "Provisional visual count diagnostic on selected, already examined frames; no person matching or accuracy estimate",
+  "reviewStatus": "provisional-ai-visual-review",
+  "sourceRevision": "ec6cbcd81ed27e745ba5f6918192d7ec302d31c2",
+  "replayCodeRevision": "4da4ab2c4e8b94ea5afffcbf6c977bceed5c7380",
+  "summary": {
+    "annotatedFrames": 9,
+    "framesWithRawCountDeficit": 6,
+    "framesWithRawCountExcess": 1,
+    "framesWithFusedCountDeficit": 8
+  },
+  "results": [
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 2,
+      "visiblePeople": 1,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "rawCountDeficit": 0,
+      "rawCountExcess": 1,
+      "fusedCountDeficit": 0
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 5,
+      "visiblePeople": 2,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "rawCountDeficit": 0,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 1
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 7,
+      "visiblePeople": 2,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "rawCountDeficit": 0,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 1
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 2,
+      "visiblePeople": 2,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "rawCountDeficit": 1,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 1
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 5,
+      "visiblePeople": 2,
+      "rawPoses": 0,
+      "usablePoses": 0,
+      "fusedTracks": 0,
+      "rawCountDeficit": 2,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 2
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 7,
+      "visiblePeople": 2,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "rawCountDeficit": 1,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 1
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 2,
+      "visiblePeople": 4,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 2,
+      "rawCountDeficit": 2,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 2
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5,
+      "visiblePeople": 4,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 2,
+      "rawCountDeficit": 2,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 2
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 7,
+      "visiblePeople": 4,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "rawCountDeficit": 3,
+      "rawCountExcess": 0,
+      "fusedCountDeficit": 3
+    }
+  ],
+  "limitation": "AI-assisted counts await human review. Equal counts can conceal misses and duplicates; count gaps cannot identify which person was missed, false poses, or broken track identity.",
+  "labelsSha256": "0d40d439f7c1dca12196aff6baaf1b698179858f8cb1074691e659530db0df16",
+  "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
+  "browserReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad"
+}
