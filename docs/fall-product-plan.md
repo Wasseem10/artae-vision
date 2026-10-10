@@ -80,6 +80,13 @@ rare, so elapsed time alone does not establish fall sensitivity.
 
 ## Portfolio milestone
 
+The October 10 [visible-person frame audit](mpfdd-visible-person-audit.md)
+adds provisional visual counts on nine selected shared-room/rooftop frames.
+It identifies raw-pose and fused-track count gaps and confirms that filename
+people counts do not describe every frame. These AI-assisted labels need human
+adjudication and pose-to-person matching; no accuracy or detector change follows
+from the count audit alone.
+
 A resume-ready engineering case study does not require claiming an unattended
 product. It should show a working demo, the architecture, a reproducible
 cross-source comparison, a failure analysis, and a clear description of what
