@@ -87,6 +87,13 @@ people counts do not describe every frame. These AI-assisted labels need human
 adjudication and pose-to-person matching; no accuracy or detector change follows
 from the count audit alone.
 
+The October 11 [local pose-overlay follow-up](mpfdd-pose-overlay-audit.md)
+shows overlapping raw poses of one rooftop person while another is missed,
+and a primary-slot person change in a classroom. It also verifies presented
+timestamps and records count differences at two office samples. Validate
+decoded-frame timing in the full evaluator before the next paired benchmark;
+these selected-frame interpretations still need human adjudication.
+
 A resume-ready engineering case study does not require claiming an unattended
 product. It should show a working demo, the architecture, a reproducible
 cross-source comparison, a failure analysis, and a clear description of what

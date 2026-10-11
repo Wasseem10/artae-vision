@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "provisional-ai-overlay-review",
+  "scope": "Selected-frame development diagnosis, no human adjudication, no person accuracy or fall score",
+  "captureCodeRevision": "da94afa09ab35bfff6b93100e6ac0e07d47670df",
+  "captureSha256": "bc1130b2d57abfe5f9ca43351849da1e37c4a7ec121b21ea043da88ada1763bf",
+  "browserVersion": "155.0.8059.39",
+  "referenceReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad",
+  "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
+  "sourceHashes": {
+    "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+    "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+    "apps/web/src/lib/multi-person-fall.ts": "9f63f2d110f209d4f2adbbc781f33092bc4f231ede906ab7885645abe0a0f692",
+    "apps/web/src/lib/fall-window-model.json": "a3f6b1643982269552ab996e0f506bf334296c881349855bf8f1c82303c36804",
+    "runtime/pose-worker.js": "0a8738666bd51729325561648df7cd3b175d999a241573f4d6e878770b364bbb",
+    "runtime/vision.js": "43c65a77825c5d5af7456d4781a64cd15cb3e53f479ff1f923c12b5adecf2b44",
+    "runtime/pose_landmarker_lite.task": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+    "runtime/wasm/vision_wasm_internal.js": "6f6b86509cf9e163ea1cfec7edc8cf53732699c04781e4c21c557c1ba402310e",
+    "runtime/wasm/vision_wasm_internal.wasm": "cb3ec20026a9aecc2a81a93c25630ceb5389297ddb7a5f0bd61dd09cde606b9b",
+    "runtime/wasm/vision_wasm_nosimd_internal.js": "9f8fc960e363f0fb2f42f7937b97ae9cf9a5630490f71031fa90caa9bb121938",
+    "runtime/wasm/vision_wasm_nosimd_internal.wasm": "924274fcd5ac8985f6570a8573e7971b7bd2d580ba1b8f3beb0ba8f95db6347c"
+  },
+  "sampling": {
+    "intervalSeconds": 0.1,
+    "seekOffsetSeconds": 0.001,
+    "warmup": "Every sample from 0 through the last requested timestamp, fresh worker per clip; decoded timestamps verified"
+  },
+  "summary": {
+    "frames": 9,
+    "countsMatchingArchive": 7,
+    "framesWithDifferentCounts": 2
+  },
+  "results": [
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 2,
+      "decodedSeconds": 2,
+      "provisionalVisiblePeople": 1,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 2,
+        "usable": 2,
+        "fused": 1
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "a7c1985b3a0fc7c2cf6a314c7a768caf09936924d69abd7b5e29ab93a3598bf5",
+      "provisionalVisualInterpretation": "Raw slot 0 and primary outline the sole visible person. Raw slot 1 is a distorted skeleton spanning that person and the left chair; no second physical person is visible. It is ambiguous rather than evidence of a separate chair person."
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 5,
+      "decodedSeconds": 5,
+      "provisionalVisiblePeople": 2,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 2,
+        "usable": 2,
+        "fused": 1
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "cbc158176d7befec45be4d4d92558c8ffb83c3d97fb1c9c9959564dd66bb588a",
+      "provisionalVisualInterpretation": "Both raw torso observations overlap the left person; no raw skeleton outlines the visible right person. Fusion retains only the primary left observation. Equal raw and visible counts conceal an observation miss."
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 7,
+      "decodedSeconds": 7,
+      "provisionalVisiblePeople": 2,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 2,
+        "usable": 2,
+        "fused": 1
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "3712c7559644fa99672db5e220c287e1a06f146ff4c3925708f935ab4582eabf",
+      "provisionalVisualInterpretation": "Both raw torso observations overlap the left person; the visible right person again has no raw skeleton. The suppressed raw observation is not a successfully observed second person."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 2,
+      "decodedSeconds": 2,
+      "provisionalVisiblePeople": 2,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 1,
+        "usable": 1,
+        "fused": 1
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "e47d32dfe67204fa3d60e4e85594304d99910eaf753e30fb2dbf48c5ad740a3b",
+      "provisionalVisualInterpretation": "The foreground person has raw and primary skeletons. The bent rear person has none."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 5,
+      "decodedSeconds": 5,
+      "provisionalVisiblePeople": 2,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 0,
+        "usable": 0,
+        "fused": 0
+      },
+      "countsMatchArchive": false,
+      "overlaySha256": "2135461ef925aa21a5164f5fdba22b6ae13e7c1ae2c5a579d92338c85d28ba8e",
+      "provisionalVisualInterpretation": "The foreground person near the floor has raw and primary skeletons. The bent rear person has none. Counts differ from the archived sample."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 7,
+      "decodedSeconds": 7,
+      "provisionalVisiblePeople": 2,
+      "rawPoses": 0,
+      "usablePoses": 0,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 1,
+        "usable": 1,
+        "fused": 1
+      },
+      "countsMatchArchive": false,
+      "overlaySha256": "4076057921090b24dd6d590e6af925620d6b5f4bcf6d5abfb1b1ac3c3cd44125",
+      "provisionalVisualInterpretation": "Neither person has a raw multi-pose skeleton. The separate primary model outlines the foreground person on the floor, preserving one fused observation. Counts differ from the archived sample."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 2,
+      "decodedSeconds": 2,
+      "provisionalVisiblePeople": 4,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 2,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1,
+        2
+      ],
+      "archivedCounts": {
+        "raw": 2,
+        "usable": 2,
+        "fused": 2
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "15076798c9d2e416f53579f13ebe99d2bff9ec1903cdc7c01a3db493ea6eb63d",
+      "provisionalVisualInterpretation": "The foreground left and right people have distinct raw skeletons. The two rear people have none. Primary outlines the right person."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5,
+      "decodedSeconds": 5,
+      "provisionalVisiblePeople": 4,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedTracks": 2,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1,
+        7
+      ],
+      "archivedCounts": {
+        "raw": 2,
+        "usable": 2,
+        "fused": 2
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "685e86e8434c53a2eefd778c37fe6a2d90d51de33d513f2f566e53efd0514cda",
+      "provisionalVisualInterpretation": "Raw slot 0 and primary outline the right dark-clothed person; raw slot 1 outlines the foreground blue-clothed person. The other two visible people have no raw skeleton."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 7,
+      "decodedSeconds": 7,
+      "provisionalVisiblePeople": 4,
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedTracks": 1,
+      "primaryPresent": true,
+      "fusedTrackIds": [
+        1
+      ],
+      "archivedCounts": {
+        "raw": 1,
+        "usable": 1,
+        "fused": 1
+      },
+      "countsMatchArchive": true,
+      "overlaySha256": "b797effeb5eaa14af0519433ed6aa5bb123d4ebd25ad2cc12cbd2a0efc500d70",
+      "provisionalVisualInterpretation": "Raw slot 0 and primary now outline the blue-clothed foreground person. The other three people have no raw skeleton. The primary slot still uses track ID 1 even though the person outlined differs from the 5-second sample."
+    }
+  ],
+  "limitations": "Pose matches are provisional visual interpretations on purposively selected examined frames. No adjacent-frame identity labels or fall windows were annotated. Counts differ at two office samples despite unchanged model/rule source; capture presentation handling and runtime/platform differences require a full controlled replay before scoring or promotion."
+}

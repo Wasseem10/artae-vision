@@ -86,6 +86,11 @@ unchanged, so a web UI visual check does not apply.
 
 ## Next step and limits
 
+The follow-up [local pose-overlay audit](mpfdd-pose-overlay-audit.md) now retains
+raw and primary skeletons at these selected times. It also verifies presented
+video timestamps, which the archived evaluator did not record. Differences
+between those captures must not be attributed to improved detection.
+
 Have a human reviewer adjudicate these provisional counts, then retain raw pose
 overlays locally and match each pose to a labeled person across consecutive
 frames. That will distinguish duplicates, false observations near furniture,
