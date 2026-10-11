@@ -79,6 +79,19 @@ async function main() {
     if (!bytes) { response.writeHead(404).end(); return; }
     response.setHeader('Content-Type', url.endsWith('.wasm') ? 'application/wasm' :
       url.endsWith('.js') ? 'text/javascript' : url.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream');
+    if (url.endsWith('.mp4')) {
+      response.setHeader('Accept-Ranges', 'bytes');
+      if (request.headers.range) {
+        const match = /^bytes=(\d+)-(\d*)$/.exec(request.headers.range);
+        const start = match ? Number(match[1]) : bytes.length;
+        const end = match && match[2] ? Math.min(Number(match[2]), bytes.length - 1) : bytes.length - 1;
+        if (start > end || start >= bytes.length) { response.writeHead(416).end(); return; }
+        response.writeHead(206, { 'Content-Range': `bytes ${start}-${end}/${bytes.length}`,
+          'Content-Length': end - start + 1 });
+        response.end(bytes.subarray(start, end + 1)); return;
+      }
+    }
+    response.setHeader('Content-Length', bytes.length);
     response.end(bytes);
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -108,6 +121,8 @@ async function main() {
           worker.postMessage(data, transfer);
         });
         const video = document.createElement('video');
+        video.muted = true;
+        document.body.append(video);
         const canvas = document.createElement('canvas');
         const captured = [];
         try {
@@ -122,10 +137,17 @@ async function main() {
           const fused = new window.auditRules.FusedMultiPersonFallRule(windowModel);
           for (let index = 0; index <= Math.round(Math.max(...targets) * 10); index++) {
             const seconds = index / 10;
-            await new Promise((resolve, reject) => {
-              video.onseeked = resolve; video.onerror = () => reject(new Error('Video seek failed'));
+            // seeked/currentTime alone can leave a stale decoded frame. Require
+            // a presented frame at the requested timestamp before inference.
+            const decodedSeconds = await new Promise((resolve, reject) => {
+              let callback;
+              const timeout = setTimeout(() => { video.cancelVideoFrameCallback(callback); reject(new Error('Decoded video frame timeout')); }, 10000);
+              callback = video.requestVideoFrameCallback((_, metadata) => {
+                clearTimeout(timeout);
+                if (Math.abs(metadata.mediaTime - seconds) > 0.001) reject(new Error(`Wrong decoded timestamp: ${metadata.mediaTime} vs ${seconds}`));
+                else resolve(metadata.mediaTime);
+              });
               video.currentTime = seconds;
-              if (!video.seeking) queueMicrotask(resolve);
             });
             const bitmap = await createImageBitmap(video);
             const reply = await request('result', { type: 'frame', bitmap, timestamp: seconds * 1000 }, [bitmap]);
@@ -151,12 +173,12 @@ async function main() {
             context.fillStyle = '#111111'; context.fillRect(0, 0, canvas.width, 27);
             context.fillStyle = '#ffffff'; context.font = '16px sans-serif';
             context.fillText(`${id} @ ${seconds}s | raw ${raw.length} | usable ${usable.length} | fused ${tracks.length}`, 8, 19);
-            captured.push({ seconds, width: canvas.width, height: canvas.height, raw,
+            captured.push({ seconds, decodedSeconds, width: canvas.width, height: canvas.height, raw,
               primaryLandmarks: reply.primaryLandmarks, primaryFeatures: primary, tracks,
               png: canvas.toDataURL('image/png').split(',')[1] });
           }
           return captured;
-        } finally { worker.terminate(); video.removeAttribute('src'); video.load(); }
+        } finally { worker.terminate(); video.removeAttribute('src'); video.load(); video.remove(); }
       }, { id: item.id, targets, windowModel });
       for (const frame of frames) {
         const name = `${item.id}-${frame.seconds}.png`;
