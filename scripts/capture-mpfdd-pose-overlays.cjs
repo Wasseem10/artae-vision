@@ -147,7 +147,9 @@ async function main() {
                 if (Math.abs(metadata.mediaTime - seconds) > 0.001) reject(new Error(`Wrong decoded timestamp: ${metadata.mediaTime} vs ${seconds}`));
                 else resolve(metadata.mediaTime);
               });
-              video.currentTime = seconds;
+              // Enter the frame slightly past its boundary to avoid a seek
+              // rounding down to the preceding frame. Verify actual mediaTime.
+              video.currentTime = seconds + 0.001;
             });
             const bitmap = await createImageBitmap(video);
             const reply = await request('result', { type: 'frame', bitmap, timestamp: seconds * 1000 }, [bitmap]);
@@ -196,7 +198,8 @@ async function main() {
     const report = { schemaVersion: 1, scope: 'Local pose-overlay diagnostic on examined frames; no promotion or accuracy score',
       codeRevision, localGitDirty: false, browserVersion: browser.version(), typescriptVersion: ts.version,
       manifestSha256: labels.manifestSha256, referenceReportSha256: labels.browserReportSha256,
-      sampleIntervalSeconds: 0.1, warmup: 'Every sample from 0 through the last requested timestamp, fresh worker per clip',
+      sampleIntervalSeconds: 0.1, seekOffsetSeconds: 0.001,
+      warmup: 'Every sample from 0 through the last requested timestamp, fresh worker per clip; decoded timestamps verified',
       sourceHashes, results };
     await fs.writeFile(path.join(output, 'capture.json'), JSON.stringify(report, null, 2) + '\n');
     console.log(JSON.stringify({ sampledFrames: results.length, countsMatchingArchive: results.filter((row) => row.countsMatchArchive).length }));
