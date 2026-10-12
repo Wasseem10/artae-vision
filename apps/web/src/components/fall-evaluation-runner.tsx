@@ -6,6 +6,7 @@ import { PoseWindowFallRule, type PoseWindowModel } from "@/lib/pose-window-fall
 import { FusedMultiPersonFallRule } from "@/lib/multi-person-fall";
 import windowModel from "@/lib/fall-window-model.json";
 import windowModelV2 from "@/lib/fall-window-model-v2.json";
+import { seekPresentedFrame, type PresentedFrameSample } from "@/lib/evaluation-video-frame";
 import {
   BUILTIN_FALL_DATASET,
   buildFallEvaluationExport,
@@ -82,30 +83,6 @@ function loadVideo(video: HTMLVideoElement, source: string): Promise<void> {
   });
 }
 
-function seek(video: HTMLVideoElement, seconds: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const done = () => {
-      cleanup();
-      resolve();
-    };
-    const fail = () => {
-      cleanup();
-      reject(new Error("Video seek failed"));
-    };
-    const cleanup = () => {
-      video.removeEventListener("seeked", done);
-      video.removeEventListener("error", fail);
-    };
-    video.addEventListener("seeked", done);
-    video.addEventListener("error", fail);
-    video.currentTime = Math.min(
-      Math.max(0, seconds),
-      Math.max(0, video.duration - 0.001),
-    );
-    if (!video.seeking) queueMicrotask(done);
-  });
-}
-
 async function runCase(
   definition: FallEvaluationCase,
   video: HTMLVideoElement,
@@ -120,6 +97,7 @@ async function runCase(
   const windowModelDetectedAtSeconds: number[] = [];
   const windowModelV2DetectedAtSeconds: number[] = [];
   const poseTrace: FallPoseTrace[] = [];
+  const presentedFrameTrace: PresentedFrameSample[] = [];
   let framesAnalyzed = 0;
   let framesWithPose = 0;
   const multiPersonEvents: { atSeconds: number; trackId: number }[] = [];
@@ -151,7 +129,7 @@ async function runCase(
         durationSeconds - 0.001,
         frame * FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS,
       );
-      await seek(video, seconds);
+      const presented = await seekPresentedFrame(video, seconds, cancelled);
       const bitmap = await createImageBitmap(video);
       const response = await waitForWorker(
         worker,
@@ -169,6 +147,7 @@ async function runCase(
         video.videoHeight,
       );
       framesAnalyzed += 1;
+      presentedFrameTrace.push(presented);
       if (multiPerson) {
         const visibleFeatures = (response.poses ?? []).map((pose) => poseFeatures(pose, video.videoWidth, video.videoHeight))
           .filter((pose): pose is NonNullable<typeof pose> => !!pose);
@@ -216,6 +195,7 @@ async function runCase(
       windowModelDetectedAtSeconds,
       windowModelV2DetectedAtSeconds,
       poseTrace,
+      presentedFrameTrace,
       meanInferenceMs:
         inferenceTimes.reduce((total, value) => total + value, 0) /
         Math.max(1, inferenceTimes.length),
@@ -332,6 +312,9 @@ export function FallEvaluationRunner() {
             ),
           detectorMode,
         );
+        if (!isCompleteFallEvaluation([result], [definition])) {
+          throw new Error("Clip presentation trace is incomplete; no benchmark score is available");
+        }
         completed.push(result);
         setResults([...completed]);
       }

@@ -65,6 +65,14 @@ collecting person-level labels and longer room-specific negative footage.
 
 ## Delivery sequence
 
+The October 12 [presented-frame evaluation check](presented-frame-evaluation.md)
+adds decoded timestamp verification to the full browser evaluator. Clean,
+matched-media replays of all 28 examined MPFDD clips retained identical alert
+times and the same 2/22 fall-clip result. All 2,761 samples passed the declared
+timing bounds; this establishes a more auditable sampling procedure, not better
+detection. Migrate strict scorers to the new export schema before the next
+candidate comparison, then address per-person observation and identity continuity.
+
 | Gate | Concrete deliverable | Rough time after the prior gate |
 | --- | --- | --- |
 | 1. Independent detector check | Two earlier candidates received independent checks; the third multi-source experiment was development-only and failed its held-out-source stress test. Use the examined cases for development and find another untouched source with longer negative footage for the next frozen test. | More detector work is required; estimate several engineering days for another candidate, with data acquisition able to extend this. |
