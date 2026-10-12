@@ -23,11 +23,16 @@ const result = (
   expectedEvents,
   eventStartSeconds: expectedEvents ? 5 : undefined,
   durationSeconds,
-  framesAnalyzed: 100,
+  framesAnalyzed: Math.max(1, Math.floor(durationSeconds / 0.1)) + 1,
   framesWithPose: 90,
   detectedAtSeconds: detections,
   meanInferenceMs: 10,
   p95InferenceMs: 15,
+  presentedFrameTrace: Array.from({ length: Math.max(1, Math.floor(durationSeconds / 0.1)) + 1 }, (_, index) => ({
+    requestedSeconds: Math.min(durationSeconds - 0.001, index * 0.1),
+    decodedSeconds: Math.min(durationSeconds - 0.001, index * 0.1),
+    presentedFrames: index + 1,
+  })),
 });
 
 describe("fall evaluation scoring", () => {
@@ -45,6 +50,24 @@ describe("fall evaluation scoring", () => {
     });
     expect(exportData.windowModelSummary).toBeNull();
     expect(exportData.results[0].multiPersonEvents?.[0].trackId).toBe(2);
+    expect(exportData.schemaVersion).toBe(6);
+    expect(exportData.provenance.frameSampling.method).toBe("presented-frame-v1");
+  });
+
+  it("withholds completion and export for missing, stale, or repeated presentation samples", () => {
+    const clips = DEFAULT_FALL_EVALUATION_CASES.map((item) => ({
+      ...result(item.id, item.expectedEvents, []), ...item,
+    }));
+    for (const change of ["missing", "stale", "counter", "truncated"] as const) {
+      const changed = structuredClone(clips);
+      const first = changed[0];
+      if (change === "missing") first.presentedFrameTrace = undefined;
+      else if (change === "stale") first.presentedFrameTrace![50].decodedSeconds = 0;
+      else if (change === "counter") first.presentedFrameTrace![50].presentedFrames = 1;
+      else first.presentedFrameTrace!.pop();
+      expect(isCompleteFallEvaluation(changed)).toBe(false);
+      expect(() => buildFallEvaluationExport("complete", changed)).toThrow();
+    }
   });
 
   it("reports clip-level classification, candidate latency, and false alerts", () => {
@@ -254,7 +277,7 @@ describe("fall evaluation scoring", () => {
       "2026-09-26T00:00:00.000Z",
     );
     expect(exported.status).toBe("complete");
-    expect(exported.schemaVersion).toBe(3);
+    expect(exported.schemaVersion).toBe(5);
     expect(exported.scoringUnit).toBe("clip");
     expect(exported.summary.totalCases).toBe(5);
     expect(exported.provenance.detector.modelSha256).toMatch(/^[a-f0-9]{64}$/);

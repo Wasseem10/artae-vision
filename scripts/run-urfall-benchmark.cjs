@@ -18,7 +18,7 @@ const detectorMode = process.env.ARTAE_BENCHMARK_DETECTOR || 'legacy';
 assert.ok(['legacy', 'multi'].includes(detectorMode), 'Unsupported detector mode');
 const personCrops = process.env.ARTAE_BENCHMARK_PERSON_CROPS === '1';
 if (personCrops) assert.ok(dataset === 'mpfdd' && detectorMode === 'multi' && poseModel === 'lite', 'Person-crop comparison supports MPFDD multi-pose Lite only');
-const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${detectorMode === 'multi' ? '-multiperson' : ''}${poseModel === 'lite' ? '' : `-${poseModel}`}${personCrops ? '-person-crops' : ''}.json`);
+const output = path.resolve(__dirname, `../artifacts/${dataset}/evaluation${detectorMode === 'multi' ? '-multiperson' : ''}${poseModel === 'lite' ? '' : `-${poseModel}`}${personCrops ? '-person-crops' : ''}-presented-v1.json`);
 const root = path.resolve(__dirname, '..');
 const manifestPath = `apps/web/public/vision/${dataset}/manifest.json`;
 const poseModelPath = path.join(root, `apps/web/public/vision/pose_landmarker_${poseModel}.task`);
@@ -99,6 +99,8 @@ async function fileHash(relativePath) {
     assert.equal(result.status, 'complete');
     assert.equal(result.results.length, manifest.cases.length);
     assert.equal(result.dataset.datasetId, manifest.datasetId);
+    assert.equal(result.schemaVersion, detectorMode === 'multi' ? 6 : 5);
+    assert.equal(result.provenance.frameSampling.method, 'presented-frame-v1');
     result.provenance.detector.model = `MediaPipe Pose Landmarker ${poseModel} float16/1`;
     result.provenance.detector.modelSha256 = await fileHash(`apps/web/public/vision/pose_landmarker_${poseModel}.task`);
     result.provenance.detector.modelAsset = `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${poseModel}/float16/1/pose_landmarker_${poseModel}.task`;
@@ -113,6 +115,7 @@ async function fileHash(relativePath) {
       'apps/web/src/lib/browser-pose.ts',
       'apps/web/src/lib/multi-person-fall.ts',
       'apps/web/src/lib/fall-evaluation.ts',
+      'apps/web/src/lib/evaluation-video-frame.ts',
       'apps/web/src/components/fall-evaluation-runner.tsx',
       'apps/web/src/lib/pose-window-fall.ts',
       'apps/web/src/lib/fall-window-model.json',

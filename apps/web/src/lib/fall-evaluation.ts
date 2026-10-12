@@ -1,5 +1,6 @@
 import windowModel from "./fall-window-model.json";
 import windowModelV2 from "./fall-window-model-v2.json";
+import { EVALUATION_FRAME_SAMPLING, validPresentedTime, type PresentedFrameSample } from "./evaluation-video-frame";
 
 export type FallEvaluationCase = {
   id: string;
@@ -42,6 +43,7 @@ export type FallEvaluationResult = FallEvaluationCase & {
   windowModelDetectedAtSeconds?: number[];
   windowModelV2DetectedAtSeconds?: number[];
   poseTrace?: FallPoseTrace[];
+  presentedFrameTrace?: PresentedFrameSample[];
   meanInferenceMs: number;
   p95InferenceMs: number;
   error?: string;
@@ -278,8 +280,24 @@ export function isCompleteFallEvaluation(
       Number.isFinite(result.durationSeconds) && result.durationSeconds > 0 &&
       (definition.frameCount === undefined ||
         Math.abs(result.durationSeconds - definition.frameCount / 30) < 0.05) &&
-      result.framesAnalyzed > 0;
+      Number.isInteger(result.framesAnalyzed) && result.framesAnalyzed > 0 &&
+      hasCompletePresentedTrace(result);
   });
+}
+
+function hasCompletePresentedTrace(result: FallEvaluationResult): boolean {
+  const trace = result.presentedFrameTrace;
+  const count = Math.max(1, Math.floor(result.durationSeconds / FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS)) + 1;
+  return !!trace && trace.length === count && result.framesAnalyzed === count &&
+    trace.every((sample, index) => {
+      const requested = Math.min(result.durationSeconds - 0.001,
+        index * FALL_EVALUATION_SAMPLE_INTERVAL_SECONDS);
+      return Math.abs(sample.requestedSeconds - requested) < 1e-6 &&
+        validPresentedTime(requested, sample.decodedSeconds) &&
+        Number.isInteger(sample.presentedFrames) && sample.presentedFrames > 0 &&
+        (index === 0 || (sample.presentedFrames > trace[index - 1].presentedFrames &&
+          sample.decodedSeconds >= trace[index - 1].decodedSeconds));
+    });
 }
 
 function ratio(numerator: number, denominator: number): number | null {
@@ -375,7 +393,7 @@ export function buildFallEvaluationExport(
   // the browser bundle. Leave it null for builds without a known Git revision.
   const codeRevision = process.env.NEXT_PUBLIC_GIT_COMMIT_SHA?.trim() || null;
   return {
-    schemaVersion: 3,
+    schemaVersion: 5,
     status: "complete" as const,
     scoringUnit: "clip" as const,
     generatedAt,
@@ -391,6 +409,7 @@ export function buildFallEvaluationExport(
       sourceAnnotationSha256: dataset.sourceAnnotationSha256 ?? null,
     },
     provenance: {
+      frameSampling: EVALUATION_FRAME_SAMPLING,
       detector: FALL_EVALUATION_DETECTOR,
       candidate: {
         name: windowModel.name,
@@ -437,7 +456,7 @@ export function buildMultiPersonFallEvaluationExport(
   const base = buildFallEvaluationExport(status, results, generatedAt, dataset);
   return {
     ...base,
-    schemaVersion: 4,
+    schemaVersion: 6,
     provenance: {
       ...base.provenance,
       detector: {
