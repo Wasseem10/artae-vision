@@ -312,6 +312,9 @@ export function FallEvaluationRunner() {
             ),
           detectorMode,
         );
+        if (!isCompleteFallEvaluation([result], [definition])) {
+          throw new Error("Clip presentation trace is incomplete; no benchmark score is available");
+        }
         completed.push(result);
         setResults([...completed]);
       }

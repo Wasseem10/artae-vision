@@ -22,6 +22,12 @@ is supplied as `NEXT_PUBLIC_GIT_COMMIT_SHA` when starting or building the web
 app. Supply that public value only for a clean committed build; a commit SHA
 does not describe uncommitted changes.
 
+Evaluation exports now also retain decoded-frame timestamps and presented-frame
+counters. [Presented-frame verification](presented-frame-evaluation.md) describes
+schema 5/6, the explicit timing bounds, and the full 28-clip before/after check.
+The CLI uses a `-presented-v1.json` suffix to preserve older seek-only reports;
+older strict scorers need a deliberate trace-validation migration.
+
 ## Initial baseline — September 21, 2026
 
 | Clip | Ground truth | Detected events | First event | Pose coverage | Inference p95 | Result |

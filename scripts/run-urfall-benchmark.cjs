@@ -30,6 +30,9 @@ async function fileHash(relativePath) {
 }
 
 (async () => {
+  const revisionAtStart = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+  assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim(), '',
+    'Benchmark requires committed, clean sources. Next dev may rewrite next-env.d.ts; inspect and restore only that generated change after startup.');
   const browser = await chromium.launch({
     channel: 'chrome',
     headless: true,
@@ -130,6 +133,9 @@ async function fileHash(relativePath) {
     result.provenance.localGitDirty = execFileSync('git', ['status', '--porcelain'], {
       cwd: root, encoding: 'utf8',
     }).trim().length > 0;
+    assert.equal(result.provenance.localGitRevision, revisionAtStart, 'Revision changed during replay');
+    assert.equal(result.provenance.localGitDirty, false, 'Sources changed during replay; do not publish this run');
+    result.provenance.browserVersion = browser.version();
     await fs.writeFile(output, JSON.stringify(result, null, 2) + '\n');
     console.log(JSON.stringify({
       output,
