@@ -72,8 +72,8 @@ class SamplingTests(unittest.TestCase):
             with self.subTest(alerts=alerts), self.assertRaises(ValueError):
                 scorer.validate_sampling(row, 3)
 
-    def test_rejects_duplicate_or_unknown_track_events(self):
-        for events in ([{"atSeconds": 0.8, "trackId": 3}],
+    def test_rejects_duplicate_or_invalid_track_events(self):
+        for events in ([{"atSeconds": 0.8, "trackId": 0}],
                        [{"atSeconds": 0.8, "trackId": True}],
                        [{"atSeconds": 0.8, "trackId": 1}] * 2):
             row = replay()
@@ -81,6 +81,16 @@ class SamplingTests(unittest.TestCase):
             row["detectedAtSeconds"] = [event["atSeconds"] for event in events]
             with self.subTest(events=events), self.assertRaises(ValueError):
                 scorer.validate_sampling(row, 4)
+
+    def test_track_count_is_not_the_largest_track_id(self):
+        row = replay()
+        row.update(trackIdsSeen=1, maxVisiblePeople=1)
+        row["multiPersonEvents"] = [{"atSeconds": 0.8, "trackId": 2}]
+        scorer.validate_sampling(row, 4)
+        row["multiPersonEvents"].append({"atSeconds": 0.8, "trackId": 7})
+        row["detectedAtSeconds"] = [0.8, 0.8]
+        with self.assertRaises(ValueError):
+            scorer.validate_sampling(row, 4)
 
     def test_non_integral_duration_matches_browser_loop(self):
         row = replay()

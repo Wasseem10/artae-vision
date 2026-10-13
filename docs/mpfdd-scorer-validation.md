@@ -7,6 +7,12 @@ The same validation rejects invalid coverage, non-finite durations/timings,
 alerts outside the sampled timeline, and duplicated or inconsistent track events.
 Simultaneous alerts from two different people remain valid.
 
+October 13 follow-up: the [presented-frame scorer migration](mpfdd-presented-scorer.md)
+adds explicit schema 5/6 timing validation and preserves schema 3/4 results.
+It also corrects the earlier assumption that a session track ID must be bounded
+by the count of unique IDs. IDs can have gaps; distinct alerted IDs are checked
+against the reported track count instead.
+
 ## Verification
 
 - Eight standard-library unit tests passed: `python -m unittest discover -s tests/benchmarks -v`.
