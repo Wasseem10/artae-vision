@@ -40,7 +40,8 @@ function score(capture, annotations, captureSha256) {
     assert.equal(label.status === 'unobserved', !frame.primaryFeatures, 'Observation status mismatch');
     if (label.status === 'matched') assert.ok(actors.has(label.actor), 'Unknown actor');
     else assert.equal(label.actor, null, 'Uncertain frames must not assign an actor');
-    observations.push({ caseId: frame.caseId, seconds: frame.seconds, decodedSeconds: frame.decodedSeconds,
+    observations.push({ caseId: frame.caseId, videoSha256: frame.videoSha256,
+      seconds: frame.seconds, decodedSeconds: frame.decodedSeconds,
       primaryId: primary[0]?.id ?? null, status: label.status, actor: label.actor,
       rawPoses: frame.raw.length, usablePoses: frame.raw.filter((row) => row.features).length,
       fusedIds: frame.tracks.map((track) => track.id), countsMatchArchive: frame.countsMatchArchive,
@@ -75,7 +76,9 @@ if (require.main === module) {
   try {
     assert.equal(process.argv.length, 5, 'Usage: node score-primary-continuity.cjs capture.json annotations.json output.json');
     const bytes = fs.readFileSync(process.argv[2]);
-    const report = score(JSON.parse(bytes), JSON.parse(fs.readFileSync(process.argv[3], 'utf8')), hash(bytes));
+    const annotationBytes = fs.readFileSync(process.argv[3]);
+    const report = score(JSON.parse(bytes), JSON.parse(annotationBytes), hash(bytes));
+    report.annotationsSha256 = hash(annotationBytes);
     fs.writeFileSync(process.argv[4], JSON.stringify(report, null, 2) + '\n');
     console.log(JSON.stringify(report.summary));
   } catch (error) { console.error(error.message); process.exitCode = 1; }

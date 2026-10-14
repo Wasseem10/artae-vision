@@ -63,6 +63,14 @@ neither a larger pose model nor a person-detector-plus-cropped-pose experiment
 improved the 2/22 fall-clip result. Keep the current live detector while
 collecting person-level labels and longer room-specific negative footage.
 
+The October 14 [adjacent-frame primary continuity diagnosis](mpfdd-primary-continuity-audit.md)
+adds a pinned 21-frame development window: the primary slot follows different
+foreground actors while retaining ID 1, with four overlapping frames left
+ambiguous. These AI visual associations need human adjudication and do not
+change the fall score. The next detector candidate needs an explicit person
+association/reset check, measured alongside fall recall so interrupted history
+does not hide a real descent.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |

@@ -1,0 +1,506 @@
+{
+  "schemaVersion": 1,
+  "reviewStatus": "provisional-ai-overlay-review",
+  "scope": "Selected development window; provisional visual association, no MOT identity score or fall accuracy claim",
+  "captureSha256": "c766a03528b1f166010fa58d0e04e775e9a6c4e1235b6e299168b9c9861722bd",
+  "selectionSha256": "5c4c433ef0f80c344576ec09b8e31c308b6b5be03e76615f99be8f459081b538",
+  "captureCodeRevision": "ac51b8a524d937eac900d266c5e0fb07d029e91f",
+  "browserVersion": "155.0.8059.79",
+  "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
+  "referenceReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad",
+  "sourceHashes": {
+    "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+    "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+    "apps/web/src/lib/multi-person-fall.ts": "9f63f2d110f209d4f2adbbc781f33092bc4f231ede906ab7885645abe0a0f692",
+    "apps/web/src/lib/fall-window-model.json": "a3f6b1643982269552ab996e0f506bf334296c881349855bf8f1c82303c36804",
+    "runtime/pose-worker.js": "0a8738666bd51729325561648df7cd3b175d999a241573f4d6e878770b364bbb",
+    "runtime/vision.js": "43c65a77825c5d5af7456d4781a64cd15cb3e53f479ff1f923c12b5adecf2b44",
+    "runtime/pose_landmarker_lite.task": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+    "runtime/wasm/vision_wasm_internal.js": "6f6b86509cf9e163ea1cfec7edc8cf53732699c04781e4c21c557c1ba402310e",
+    "runtime/wasm/vision_wasm_internal.wasm": "cb3ec20026a9aecc2a81a93c25630ceb5389297ddb7a5f0bd61dd09cde606b9b",
+    "runtime/wasm/vision_wasm_nosimd_internal.js": "9f8fc960e363f0fb2f42f7937b97ae9cf9a5630490f71031fa90caa9bb121938",
+    "runtime/wasm/vision_wasm_nosimd_internal.wasm": "924274fcd5ac8985f6570a8573e7971b7bd2d580ba1b8f3beb0ba8f95db6347c"
+  },
+  "actors": {
+    "dark": "Person in dark clothes standing near the right curtain at 5.0 seconds, behind the crossing foreground person.",
+    "blue": "Foreground person in a blue top and gray trousers walking from center toward the right side during this window."
+  },
+  "summary": {
+    "frames": 21,
+    "adjacentPairs": 20,
+    "matchedFrames": 17,
+    "ambiguousFrames": 4,
+    "unobservedFrames": 0,
+    "comparablePairs": 15,
+    "sameIdDifferentPersonPairs": 0,
+    "countsMatchingArchive": 16
+  },
+  "observations": [
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5,
+      "decodedSeconds": 5,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1,
+        7
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "685e86e8434c53a2eefd778c37fe6a2d90d51de33d513f2f566e53efd0514cda"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.1,
+      "decodedSeconds": 5.1,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1,
+        7
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "35069933eb0de75209569ed0270f418a1e44b088bc6ca7e03df183ffd4e202fd"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.2,
+      "decodedSeconds": 5.2,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 3,
+      "usablePoses": 3,
+      "fusedIds": [
+        1,
+        7,
+        8
+      ],
+      "countsMatchArchive": false,
+      "overlaySha256": "2ecccbc2dbdc7067d81a98eab0d359e213f20d95b6404fb07c2d915473bad3f3"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.3,
+      "decodedSeconds": 5.3,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 3,
+      "usablePoses": 3,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": false,
+      "overlaySha256": "9f93384a3c7236f2b20bfbe90dedba4b5a06db9a0d10f34a279824bc0ced723d"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.4,
+      "decodedSeconds": 5.4,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1,
+        9
+      ],
+      "countsMatchArchive": false,
+      "overlaySha256": "de77451170c2fb433ea04da760abccefdfb219005fbbac2e38fbd9ab40d8c597"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.5,
+      "decodedSeconds": 5.5,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1,
+        9
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "2ef24c1035281566c11a0e56d087831e48890313698fde1000dc6a56b20c385e"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.6,
+      "decodedSeconds": 5.6,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 3,
+      "usablePoses": 3,
+      "fusedIds": [
+        1,
+        9
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "fc85771831cf57d7939274fedfece727119ee5cb00c4f2046b3b6a63a3effd39"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.7,
+      "decodedSeconds": 5.7,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 3,
+      "usablePoses": 3,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": false,
+      "overlaySha256": "c8be420f444bd020d395618c27f329ed05261f72d459d18a534e47375a2962cd"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.8,
+      "decodedSeconds": 5.8,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "8298dea5b95d880ed89094d890a4d88f4da1bfb642f40514003e24944b63f614"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 5.9,
+      "decodedSeconds": 5.9,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 3,
+      "usablePoses": 3,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "9d872d77a8418728a5a28efa6a5dbb5558efb581cb2fb392da1e43c1c616fea8"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6,
+      "decodedSeconds": 6,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": false,
+      "overlaySha256": "d4c9c085667c6e044140839f9a93f31726c5788eb25f2a4f3989bb56f479b780"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.1,
+      "decodedSeconds": 6.1,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "dark",
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "bcb6f3cbdb12ec52e2ad2a98cda27238ba333a9868d580f59ff17dd33c1a1ead"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.2,
+      "decodedSeconds": 6.2,
+      "primaryId": 1,
+      "status": "ambiguous",
+      "actor": null,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "ad62620830de68ea0578b1c70f4172529ecde970eb2cb6f0d6ba789ca909b6ad"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.3,
+      "decodedSeconds": 6.3,
+      "primaryId": 1,
+      "status": "ambiguous",
+      "actor": null,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "92ab4fef6a1d8d4870e28340ee1216bcac35e2cf093739d63e87c117f50b2fcd"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.4,
+      "decodedSeconds": 6.4,
+      "primaryId": 1,
+      "status": "ambiguous",
+      "actor": null,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "ed4a51a2167d32bfc3da326326d909af77477ab6bd4f7a3a79279480a6fa1f3a"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.5,
+      "decodedSeconds": 6.5,
+      "primaryId": 1,
+      "status": "ambiguous",
+      "actor": null,
+      "rawPoses": 2,
+      "usablePoses": 2,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "0df911b82c3601ec3e84653144ab4d6c85030532b0728dedefb4213fa707fc22"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.6,
+      "decodedSeconds": 6.6,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "blue",
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "f4aef82a2c0612b3d261a533443b599d72118f07fd2ee3abef104888157bde04"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.7,
+      "decodedSeconds": 6.7,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "blue",
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "0b150b63fbaef43e5511984d6f14c93ae3492501e249358929f30f26de2cf524"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.8,
+      "decodedSeconds": 6.8,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "blue",
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "0fad99a8ca009c65b8c30d2ec914f3d80eed86d136967bfc15d33026abe93e33"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 6.9,
+      "decodedSeconds": 6.9,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "blue",
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "1ab5d8df7df1950dae016874d292acbf76b15e4e2670ec7701430859bc72ea16"
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "seconds": 7,
+      "decodedSeconds": 7,
+      "primaryId": 1,
+      "status": "matched",
+      "actor": "blue",
+      "rawPoses": 1,
+      "usablePoses": 1,
+      "fusedIds": [
+        1
+      ],
+      "countsMatchArchive": true,
+      "overlaySha256": "b797effeb5eaa14af0519433ed6aa5bb123d4ebd25ad2cc12cbd2a0efc500d70"
+    }
+  ],
+  "transitions": [
+    {
+      "fromSeconds": 5,
+      "toSeconds": 5.1,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.1,
+      "toSeconds": 5.2,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.2,
+      "toSeconds": 5.3,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.3,
+      "toSeconds": 5.4,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.4,
+      "toSeconds": 5.5,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.5,
+      "toSeconds": 5.6,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.6,
+      "toSeconds": 5.7,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.7,
+      "toSeconds": 5.8,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.8,
+      "toSeconds": 5.9,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 5.9,
+      "toSeconds": 6,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6,
+      "toSeconds": 6.1,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.1,
+      "toSeconds": 6.2,
+      "outcome": "unknown",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.2,
+      "toSeconds": 6.3,
+      "outcome": "unknown",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.3,
+      "toSeconds": 6.4,
+      "outcome": "unknown",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.4,
+      "toSeconds": 6.5,
+      "outcome": "unknown",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.5,
+      "toSeconds": 6.6,
+      "outcome": "unknown",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.6,
+      "toSeconds": 6.7,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.7,
+      "toSeconds": 6.8,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.8,
+      "toSeconds": 6.9,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    },
+    {
+      "fromSeconds": 6.9,
+      "toSeconds": 7,
+      "outcome": "same-person",
+      "samePrimaryId": true
+    }
+  ],
+  "annotationsSha256": "e9de6d5ef4a2c1754fd9984fb59ea12974f392cbbcd56e96f7e86242fa2ebbb0"
+}

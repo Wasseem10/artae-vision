@@ -106,8 +106,10 @@ and provisional interpretation are published.
 
 ## Next priority
 
-Human-adjudicate the provisional visible-person labels and pose matches. Add
-presented-frame timestamp checks to the full evaluator and compare its complete
-per-clip results against archived runs before relying on it for another frozen
-candidate. Do not tune alert thresholds based on these selected frames; a new
-held-out source and longer negative exposure remain required for promotion.
+The [October 14 adjacent-frame diagnosis](mpfdd-primary-continuity-audit.md)
+now covers the classroom primary change with 21 retained overlays and explicit
+ambiguous associations. Human-adjudicate those labels and the earlier
+visible-person/pose matches. Presented-frame full-evaluator verification and
+paired replays are recorded separately in PR #20, which is still under review.
+Evaluate person association before changing alert thresholds; a new held-out
+source and longer negative exposure remain required for promotion.
