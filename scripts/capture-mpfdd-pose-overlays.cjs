@@ -6,6 +6,7 @@ const path = require('node:path');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const { validateSelection } = require('./pose-audit-selection.cjs');
 
 const root = path.resolve(__dirname, '..');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -15,7 +16,10 @@ async function main() {
   const args = {};
   for (let i = 2; i < process.argv.length; i += 2) {
     assert.ok(process.argv[i].startsWith('--') && process.argv[i + 1], 'Expected --name value');
-    args[process.argv[i].slice(2)] = path.resolve(process.argv[i + 1]);
+    const name = process.argv[i].slice(2);
+    assert.ok(['media-root', 'vision-root', 'dependencies-root', 'reference-report', 'samples', 'output-dir'].includes(name), `Unknown argument: ${name}`);
+    assert.ok(!args[name], `Duplicate argument: ${name}`);
+    args[name] = path.resolve(process.argv[i + 1]);
   }
   for (const name of ['media-root', 'vision-root', 'dependencies-root', 'reference-report']) {
     assert.ok(args[name], `Missing --${name}`);
@@ -25,7 +29,8 @@ async function main() {
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim(), '',
     'Commit scoped source before replay; inputs and outputs must stay ignored');
   const codeRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
-  const labelsPath = path.join(root, 'docs/benchmarks/mpfdd-visible-person-labels-v1.json');
+  const labelsPath = args['samples'] || path.join(root, 'docs/benchmarks/mpfdd-visible-person-labels-v1.json');
+  const selectionSha256 = hash(await fs.readFile(labelsPath));
   const labels = await readJson(labelsPath);
   const manifestPath = path.join(args['media-root'], 'manifest.json');
   const manifest = await readJson(manifestPath);
@@ -33,6 +38,7 @@ async function main() {
   assert.equal(hash(await fs.readFile(manifestPath)), labels.manifestSha256, 'Changed manifest');
   assert.equal(hash(await fs.readFile(args['reference-report'])), labels.browserReportSha256, 'Changed reference');
   assert.equal(manifest.sourceRevision, labels.sourceRevision);
+  validateSelection(labels, manifest);
   const sourceHashes = {};
   const modules = [];
   for (const name of ['browser-pose', 'pose-window-fall', 'multi-person-fall']) {
@@ -71,6 +77,13 @@ async function main() {
     assert.equal(hash(bytes), item.videoSha256, `Changed media: ${item.id}`);
     assets.set(`/media/${item.id}.mp4`, bytes);
   }
+  const outputBase = args['output-dir'] || path.join(root, 'artifacts/mpfdd-pose-overlays');
+  const relativeOutput = path.relative(path.join(root, 'artifacts'), outputBase);
+  assert.ok(relativeOutput && !relativeOutput.startsWith('..') && !path.isAbsolute(relativeOutput),
+    'Output directory must be inside this checkout artifacts directory');
+  await fs.mkdir(outputBase, { recursive: true });
+  // Keep successful captures intact, including when a later replay fails.
+  const output = await fs.mkdtemp(path.join(outputBase, 'capture-'));
   const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://localhost').pathname;
     if (request.method !== 'GET') { response.writeHead(405).end(); return; }
@@ -97,13 +110,11 @@ async function main() {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   let browser;
   const results = [];
-  const output = path.join(root, 'artifacts/mpfdd-pose-overlays');
   try {
     browser = await chromium.launch({ channel: 'chrome', headless: true });
     const page = await browser.newPage();
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.addScriptTag({ content: bundle });
-    await fs.mkdir(output, { recursive: true });
     for (const item of cases) {
       const targets = labels.frames.filter((frame) => frame.caseId === item.id).map((frame) => frame.seconds);
       const frames = await page.evaluate(async ({ id, targets, windowModel }) => {
@@ -195,14 +206,20 @@ async function main() {
             frame.raw.filter((pose) => pose.features).length === archived.usablePoseCount && frame.tracks.length === archived.trackIds.length });
       }
     }
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(), codeRevision,
+      'Code revision changed during capture');
+    assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim(), '',
+      'Checkout changed during capture');
+    assert.equal(hash(await fs.readFile(labelsPath)), selectionSha256, 'Selection changed during capture');
     const report = { schemaVersion: 1, scope: 'Local pose-overlay diagnostic on examined frames; no promotion or accuracy score',
       codeRevision, localGitDirty: false, browserVersion: browser.version(), typescriptVersion: ts.version,
+      selectionSha256,
       manifestSha256: labels.manifestSha256, referenceReportSha256: labels.browserReportSha256,
       sampleIntervalSeconds: 0.1, seekOffsetSeconds: 0.001,
       warmup: 'Every sample from 0 through the last requested timestamp, fresh worker per clip; decoded timestamps verified',
       sourceHashes, results };
     await fs.writeFile(path.join(output, 'capture.json'), JSON.stringify(report, null, 2) + '\n');
-    console.log(JSON.stringify({ sampledFrames: results.length, countsMatchingArchive: results.filter((row) => row.countsMatchArchive).length }));
+    console.log(JSON.stringify({ output, sampledFrames: results.length, countsMatchingArchive: results.filter((row) => row.countsMatchArchive).length }));
   } finally {
     await browser?.close();
     await new Promise((resolve) => server.close(resolve));

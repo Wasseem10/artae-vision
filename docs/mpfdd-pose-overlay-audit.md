@@ -91,7 +91,13 @@ node scripts/capture-mpfdd-pose-overlays.cjs `
   --reference-report artifacts/mpfdd/evaluation-multiperson.json
 ```
 
-The script writes `artifacts/mpfdd-pose-overlays/capture.json` and nine overlays.
+The script now writes `capture.json` and overlays in a unique
+`artifacts/mpfdd-pose-overlays/capture-*/` directory for each run. The historical
+nine-frame capture remains in the original directory. Optional `--samples`
+selects a pinned JSON frame list; `--output-dir` must be inside this checkout's
+ignored `artifacts` directory. Empty, duplicate, unknown-case, and off-grid
+selections fail before inference. Both capture revision and checkout cleanliness
+are checked again before the report is written.
 These full landmarks and media remain ignored and local because source video
 redistribution rights are unresolved. Review the capture's revision and input
 hashes before interpreting it; a failed run must not be mistaken for an earlier
