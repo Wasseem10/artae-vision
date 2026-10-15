@@ -108,6 +108,12 @@ access to the local overlays for independent adjudication.
 
 ## Next engineering gate
 
+The [October 15 history stress benchmark](primary-history-stress-benchmark.md)
+now reproduces false alerts from mixed-person history in two constructed
+non-fall feature sequences and exports the unchanged rule's recorded phases
+for this window. The real window has no alert; synthetic controls are not
+video accuracy evidence or a deployed association fix.
+
 Human-adjudicate the associations, including the four overlapping frames. Then
 evaluate a primary-person association/reset candidate on labeled crossings,
 occlusion, and actor changes before changing the live rule. Measure both identity

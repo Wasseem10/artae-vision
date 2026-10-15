@@ -71,6 +71,13 @@ change the fall score. The next detector candidate needs an explicit person
 association/reset check, measured alongside fall recall so interrupted history
 does not hide a real descent.
 
+The October 15 [primary-history stress benchmark](primary-history-stress-benchmark.md)
+reproduces automatic alerts in two constructed non-fall sequences that combine
+different actors' observations. An oracle identity-reset control removes those
+two alerts while preserving three synthetic fall controls. This is a regression
+target, not video accuracy or an implemented identity algorithm. The recorded
+21-frame classroom window retains upright/descending state but has no alert.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
