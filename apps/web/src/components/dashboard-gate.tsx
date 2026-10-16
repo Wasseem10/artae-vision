@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Dashboard } from "@/components/dashboard";
-import { VisualWatch } from "@/components/visual-watch";
 import { isLocalDemoHost } from "@/lib/demo-auth";
 import { LOGIN_RETURN_KEY } from "@/lib/login-destination";
 import { getSupabaseBrowserClient, isSupabaseConfigured, syncApiSession } from "@/lib/supabase";
@@ -47,12 +46,7 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
         router.replace(native ? "/login" : "/live");
         return;
       }
-      const destination = sessionStorage.getItem(LOGIN_RETURN_KEY);
       sessionStorage.removeItem(LOGIN_RETURN_KEY);
-      if (destination === "/demo") {
-        router.replace("/demo");
-        return;
-      }
       if (native) setReady(true);
       else router.replace("/live");
     });
@@ -74,5 +68,5 @@ export function DashboardGate({ native = false }: { native?: boolean }) {
     return <main aria-label="Loading workspace" style={{ minHeight: "100vh", background: "#fff", color: "#24272a", display: "grid", placeItems: "center" }}><p role="status">Opening your workspace…</p></main>;
   }
 
-  return native ? <Dashboard /> : <VisualWatch />;
+  return <Dashboard />;
 }
