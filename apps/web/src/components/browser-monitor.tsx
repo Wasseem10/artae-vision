@@ -47,6 +47,7 @@ import styles from "./instant-demo.module.css";
 
 import { buildIncidentReport, renderIncidentReportHtml } from "@/lib/incident-report";
 import { clipForEvent } from "@/lib/event-evidence";
+import { startSegmentedRecording, type RecordingState } from "@/lib/segment-recorder";
 
 const missionBody = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mission-body" });
 const missionDisplay = Barlow_Condensed({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-mission-display" });
@@ -122,6 +123,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     [running, setRunning] = useState(false);
   const [problem, setProblem] = useState<string | null>(null),
     [saveProblem, setSaveProblem] = useState<string | null>(null);
+  const [recording, setRecording] = useState<{ sessionId: string; state: RecordingState; problem?: string } | null>(null);
   const [session, setSession] = useState<BrowserSession | null>(null),
     [history, setHistory] = useState<BrowserSession[]>([]);
   const [replay, setReplay] = useState<{
@@ -158,6 +160,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
 
   const reviewEvent = session?.events.find((event) => event.id === selectedReviewId);
+  const sessionRecording = recording?.sessionId === session?.id ? recording : null;
+  const evidencePending = sessionRecording?.state === "recording" || sessionRecording?.state === "finalizing";
   useEffect(() => {
     const dialog = reviewDialogRef.current;
     if (!dialog) return;
@@ -423,6 +427,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setRunning(true);
     setProblem(null);
     setSaveProblem(null);
+    setRecording(null);
     setReplay(null);
     setPhase("Loading pose model…");
     setVisualStatus("");
@@ -452,11 +457,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     current.current = s;
     persist(s);
     let worker: Worker | null = null,
-      media: MediaStream | null = null,
-      recordingStream: MediaStream | null = null,
-      recorder: MediaRecorder | null = null;
+      media: MediaStream | null = null;
+    let recordingHandle: { stop: () => void } | null = null;
     let animation: ReturnType<typeof setInterval> | undefined,
-      timer: ReturnType<typeof setTimeout> | undefined,
       loadTimer: ReturnType<typeof setTimeout> | undefined,
       endTimer: ReturnType<typeof setTimeout> | undefined;
     let sourceUrl: string | null = null,
@@ -489,12 +492,10 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       active.current = false;
       cancelLoading?.();
       clearInterval(animation);
-      clearTimeout(timer);
       clearTimeout(loadTimer);
       clearTimeout(endTimer);
       worker?.terminate();
-      if (recorder && recorder.state !== "inactive") recorder.stop();
-      recordingStream?.getTracks().forEach((t) => t.stop());
+      recordingHandle?.stop();
       media?.getTracks().forEach((t) => t.stop());
       video.pause();
       video.srcObject = null;
@@ -628,43 +629,29 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       canvas.height = Math.round(video.videoHeight * ratio);
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas is unavailable");
-      const mime = ["video/webm;codecs=vp8", "video/webm", "video/mp4"].find(
-        (t) =>
-          typeof MediaRecorder !== "undefined" &&
-          MediaRecorder.isTypeSupported(t),
-      );
-      if (mime && canvas.captureStream) {
-        recordingStream = canvas.captureStream(20);
-        const recordSegment = () => {
-          if (stopped) return;
-          const startAt = now(),
-            chunks: Blob[] = [];
-          const segmentRecorder = new MediaRecorder(recordingStream!, {
-            mimeType: mime,
-            videoBitsPerSecond: 600000,
-          });
-          recorder = segmentRecorder;
-          segmentRecorder.ondataavailable = (e) => {
-            if (e.data.size) chunks.push(e.data);
-          };
-          segmentRecorder.onerror = () => {
-            if (mounted.current)
-              setSaveProblem(
-                "Recording failed. Detection may continue, but footage is not being saved.",
-              );
-          };
-          segmentRecorder.onstop = () => {
-            const duration = Math.max(0.01, lastAt - startAt),
-              blob = new Blob(chunks, { type: mime });
-            if (blob.size && duration >= 0.2) {
-              const clip: BrowserClip = {
-                id: crypto.randomUUID(),
-                start: startAt,
-                duration,
-                width: canvas.width,
-                height: canvas.height,
-                blob,
-              };
+      const recordingFailure = (message = "Recording stopped. New footage is unavailable. Existing recordings are kept. Start a new session to retry.") => {
+        if (mounted.current && current.current === s && accountScope.current === s.scope)
+          setRecording({ sessionId: s.id, state: "failed", problem: message });
+      };
+      let captureStream: MediaStream | null = null;
+      try {
+        const mime = ["video/webm;codecs=vp8", "video/webm", "video/mp4"].find(
+          (t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t),
+        );
+        if (!mime || typeof canvas.captureStream !== "function") {
+          recordingFailure("Recording is unsupported here. Replay is unavailable. Try current Chrome or Edge.");
+        } else {
+          captureStream = canvas.captureStream(20);
+          recordingHandle = startSegmentedRecording({
+            stream: captureStream, mimeType: mime, now,
+            onState: (state) => {
+              if (mounted.current && current.current === s && accountScope.current === s.scope)
+                setRecording((previous) => ({ ...(previous?.sessionId === s.id ? previous : {}), sessionId: s.id, state }));
+            },
+            onFailure: () => recordingFailure(),
+            onSegment: ({ blob, start, duration }) => {
+              const clip: BrowserClip = { id: crypto.randomUUID(), start, duration,
+                width: canvas.width, height: canvas.height, blob };
               s.clips.push(clip);
               persist(s);
               queueCloud(s, async () => {
@@ -673,19 +660,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 s.cloud = true;
                 persist(s);
               });
-            }
-            if (!stopped) recordSegment();
-          };
-          segmentRecorder.start();
-          timer = setTimeout(() => {
-            if (segmentRecorder.state !== "inactive") segmentRecorder.stop();
-          }, 10000);
-        };
-        recordSegment();
-      } else
-        setSaveProblem(
-          "Recording is unsupported here. Detection works, but replay will be unavailable. Try current Chrome or Edge.",
-        );
+            },
+          });
+        }
+      } catch {
+        captureStream?.getTracks().forEach((track) => track.stop());
+        recordingFailure();
+      }
       worker.onmessage = ({ data }) => {
         bitmapPending = false;
         if (stopped) return;
@@ -1223,7 +1204,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS review is optional; local detection and evidence run in this browser." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>
               <h3>Recorded footage</h3>
-              <p>{session?.clips.length ? "Select a segment to replay, or open an alert to review its evidence." : running ? "Recording the first segment. Evidence becomes playable in about 10 seconds." : "Start a session to capture evidence. Recordings and alerts remain after stopping."}</p>
+              {sessionRecording?.problem && <p role="alert">{sessionRecording.problem}{running ? " Detection continues." : ""}</p>}
+              <p>{session?.clips.length ? "Select a segment to replay, or open an alert to review its evidence." : sessionRecording?.state === "finalizing" ? "Finishing the recording. Available footage will appear here." : evidencePending ? "Recording the first segment. Evidence becomes playable in about 10 seconds." : session ? "No recorded footage is available for this session." : "Start a session to capture evidence. Recordings and alerts remain after stopping."}</p>
               {replay && !reviewEvent && <video
                 aria-label="Recorded footage playback"
                 ref={playbackRef}
@@ -1306,7 +1288,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                       >
                         Review footage
                       </button>
-                      {!clipForEvent(session.clips, event.at) && <small>Recording this event’s evidence…</small>}
+                      {!clipForEvent(session.clips, event.at) && <small>{evidencePending ? sessionRecording?.state === "finalizing" ? "Finishing this event’s recording…" : "Recording this event’s evidence…" : "No recording is available for this event."}</small>}
                       {event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}{event.sms.error ? ` · ${event.sms.error}` : ""}</small>}
                       <small>{reviewing === event.id ? "Saving review…" : event.review?.reviewed_at ? `Review saved ${scope === "guest" || event.reviewOnly ? "on this device" : "to account"}` : event.reviewOnly ? "Unverified motion. Inspect footage before taking action." : event.sms?.status === "accepted" ? "AWS accepted the caregiver text; carrier delivery is not guaranteed." : "Awaiting caregiver review."}</small>
                     </div>

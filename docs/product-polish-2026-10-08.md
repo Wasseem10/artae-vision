@@ -44,6 +44,11 @@ and configuration/video/event layout.
 
 ## Limits and next work
 
+The [October 16 recording-failure follow-up](recording-failure-reliability-2026-10-16.md)
+isolates capture/encoder errors from detection, prevents recording retry loops,
+and distinguishes unavailable footage from pending finalization. Its local
+verification adds ten recorder unit cases and five browser fault/control cases.
+
 No model, fall threshold, or tracking algorithm is promoted in this change.
 The documented MPFDD result remains 2/22 staged fall clips detected and 0/6
 activity clips alerted; the activity footage is only 63 seconds. This remains
