@@ -44,6 +44,10 @@ and configuration/video/event layout.
 
 ## Limits and next work
 
+The [October 17 playback follow-up](evidence-playback-reliability-2026-10-17.md)
+adds explicit errors and manual recovery for corrupt, unavailable, and stalled
+recordings while preserving incident review state.
+
 The [October 16 recording-failure follow-up](recording-failure-reliability-2026-10-16.md)
 isolates capture/encoder errors from detection, prevents recording retry loops,
 and distinguishes unavailable footage from pending finalization. Its local

@@ -111,6 +111,10 @@ API/cloud operations, and its browser contexts do not use the user's session.
 
 ## Limits and next priority
 
+The [October 17 playback follow-up](evidence-playback-reliability-2026-10-17.md)
+now adds native media error/timeout feedback and manual retry in both evidence
+players, with review drafts preserved and keyboard focus returned to playback.
+
 The checks establish these local failure paths and regressions, not unattended
 monitoring reliability. Historical recordings keep their existing storage
 format; the detailed recorder error is current-page state and is not persisted

@@ -48,6 +48,7 @@ import styles from "./instant-demo.module.css";
 import { buildIncidentReport, renderIncidentReportHtml } from "@/lib/incident-report";
 import { clipForEvent } from "@/lib/event-evidence";
 import { startSegmentedRecording, type RecordingState } from "@/lib/segment-recorder";
+import { EvidencePlayback } from "./evidence-playback";
 
 const missionBody = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mission-body" });
 const missionDisplay = Barlow_Condensed({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-mission-display" });
@@ -1206,16 +1207,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <h3>Recorded footage</h3>
               {sessionRecording?.problem && <p role="alert">{sessionRecording.problem}{running ? " Detection continues." : ""}</p>}
               <p>{session?.clips.length ? "Select a segment to replay, or open an alert to review its evidence." : sessionRecording?.state === "finalizing" ? "Finishing the recording. Available footage will appear here." : evidencePending ? "Recording the first segment. Evidence becomes playable in about 10 seconds." : session ? "No recorded footage is available for this session." : "Start a session to capture evidence. Recordings and alerts remain after stopping."}</p>
-              {replay && !reviewEvent && <video
-                aria-label="Recorded footage playback"
-                ref={playbackRef}
-                controls
-                playsInline
-                src={replay?.url}
-                onLoadedMetadata={(e) => {
-                  e.currentTarget.currentTime = replay?.seek ?? 0;
-                }}
-              />}
+              {replay && !reviewEvent && <EvidencePlayback key={replay.url} url={replay.url}
+                seek={replay.seek} videoRef={playbackRef} label="Recorded footage playback" />}
               <div className={styles.clipList}>
                 {session?.clips.map((clip) => (
                   <button key={clip.id} onClick={() => playClip(clip)}>
@@ -1413,7 +1406,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       <dialog ref={reviewDialogRef} className={styles.reviewDialog} aria-labelledby="incident-review-title" onCancel={() => setSelectedReviewId(null)} onClose={() => setSelectedReviewId(null)}>
         {reviewEvent && <><header><div><small>INCIDENT REVIEW · {formatTime(reviewEvent.at)}</small><h2 id="incident-review-title">{reviewEvent.title}</h2></div><button type="button" onClick={() => reviewDialogRef.current?.close()} aria-label="Close incident review">Close</button></header>
           <p>Playback starts up to three seconds before this event. {running ? "Monitoring continues while you review." : "This session has stopped; evidence is kept."}</p>
-          <div className={styles.reviewBody}><div>{replay && <video ref={playbackRef} controls playsInline src={replay.url} aria-label="Incident evidence playback" onLoadedMetadata={(e) => { e.currentTarget.currentTime = replay.seek; }} />}
+          <div className={styles.reviewBody}><div>{replay && <EvidencePlayback key={replay.url} url={replay.url}
+            seek={replay.seek} videoRef={playbackRef} label="Incident evidence playback" />}
             {replay && <a href={replay.url} download="artae-evidence.webm">Download evidence segment</a>}</div>
             <section><h3>Record the outcome</h3><p>Inspect the footage before marking the event reviewed. A model suggestion is not a confirmed fall.</p>
               <IncidentReviewPanel key={reviewEvent.id} event={reviewEvent} busy={reviewing !== null} draft={reviewDrafts[reviewEvent.id]} onDraft={(draft) => setReviewDrafts((drafts) => ({ ...drafts, [reviewEvent.id]: draft }))} onReview={(outcome, note, checklist) => void reviewIncident(reviewEvent, outcome, note, checklist)} onExport={() => downloadIncidentReport(reviewEvent)} />
