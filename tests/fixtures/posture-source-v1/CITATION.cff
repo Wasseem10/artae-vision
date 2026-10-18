@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this dataset, please cite it as below."
+type: dataset
+title: "AI-Driven Posture Analysis Fall Detection System for the Elderly: Dataset"
+authors:
+  - family-names: "Ogbuitepu"
+    given-names: "Patrick O."
+    affiliation: "University of Essex"
+    # orcid: "https://orcid.org/<ADD IF YOU HAVE ONE>"
+date-released: "2026-07-14"
+version: "1.0.1"
+license: "CC-BY-4.0"
+doi: "10.5281/zenodo.21359208"
+repository: "https://doi.org/10.5281/zenodo.21359208"
+keywords:
+  - fall detection
+  - pose estimation
+  - elderly care
+  - human activity recognition
+  - computer vision
+  - MediaPipe
+abstract: >
+  Self-recorded video and static-image dataset of daily activities and fall
+  scenarios, with frame/time-level annotations, used to develop and evaluate
+  a MediaPipe-based posture analysis and fall detection system for elderly
+  care, as described in the dissertation "AI-Driven Posture Analysis Fall
+  Detection System for the Elderly."

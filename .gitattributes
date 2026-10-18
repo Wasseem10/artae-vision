@@ -13,3 +13,5 @@
 *.png binary
 *.jpg binary
 *.jpeg binary
+# Preserve upstream bytes, including CRLF, used by the provenance audit.
+tests/fixtures/posture-source-v1/** -text whitespace=cr-at-eol

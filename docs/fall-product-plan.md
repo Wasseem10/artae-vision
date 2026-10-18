@@ -3,6 +3,12 @@
 Status: September 29, 2026. The [pilot protocol](fall-pilot-plan.md) has the
 operational gates; this page tracks the next engineering decisions and schedule.
 
+October 18 follow-up: a [new-source annotation preflight](posture-source-preflight.md)
+pins seven candidate continuous videos and detects duplicate/ambiguous labels
+before inference. No new detector result is available. Media decoding and timed
+event adjudication remain prerequisites; this single-person source does not
+replace the multi-person validation gate.
+
 ## What works today
 
 `/live` runs pose inference in the browser, creates a possible-fall incident on

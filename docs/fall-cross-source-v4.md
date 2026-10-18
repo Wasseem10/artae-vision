@@ -55,6 +55,13 @@ used for caregiver alerts.
 
 ## Next gate
 
+October 18 source acquisition follow-up: the
+[posture-source preflight](posture-source-preflight.md) records a second permitted
+candidate with individually downloadable videos and pins its source roster.
+It found label ambiguities before any inference; media and timed events remain
+unverified. Its sole participant cannot establish person-separated or
+multi-person performance, and no negative exposure or accuracy is claimed.
+
 1. Obtain an independent, permitted video source with longer continuous
    daily-activity exposure and person/scene separation. The [Ursul dataset](https://figshare.com/articles/dataset/Sensor-Based_Fall_Detection_Dataset_with_2017_Activities_from_29_Subjects/28596332)
    is a candidate: its publisher reports 999 staged falls and 1,017 daily

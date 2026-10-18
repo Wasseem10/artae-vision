@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "source": {
+    "repository": "pat2echo/fall-detection-posture-classification",
+    "revision": "5c075333e557e43cbcb42306fc4475201a625982",
+    "doi": "https://doi.org/10.5281/zenodo.21360087",
+    "license": "CC-BY-4.0",
+    "attribution": "Ogbuitepu, Patrick O. (2026). Fall Detection and Posture Classification Dataset, version 1.0.1. University of Essex.",
+    "retrieved_date": "2026-10-18"
+  },
+  "files": [
+    {
+      "path": "CITATION.cff",
+      "size": 1000,
+      "git_blob_sha1": "d27d85dfed59350cd25e0a5ad11bcbf0178961e9",
+      "sha256": "fdb1ebe60171f00b5321e00cec29a3db57f1bba88e3cb922ee02d8ce38e5a3bd"
+    },
+    {
+      "path": "LICENSE.txt",
+      "size": 1036,
+      "git_blob_sha1": "71672adf38b49e373cfc1eb163b9efb3482cf43a",
+      "sha256": "9b45ca3d42b48d7be17bcc0211e14ba3084813bc3df73513c6cb70782650b4a7"
+    },
+    {
+      "path": "README.md",
+      "size": 7410,
+      "git_blob_sha1": "ec44fb0d782e4cd8d96bc013fb194cdd4ccb6757",
+      "sha256": "e76f753d1f51aae0fe495126bf0eb9dfd1870e7bc5f62dcb1a68bc5e3da4e53e"
+    },
+    {
+      "path": "column_descriptions.md",
+      "size": 10589,
+      "git_blob_sha1": "5f6400695716a3a8665f138b46047c9136a462b3",
+      "sha256": "b046857dcf59d635f5398449dcd36d78e4f7cc0b0ca8e18b6f44382f35cf331c"
+    },
+    {
+      "path": "train/labels/hr_fall_detection_1.csv",
+      "size": 272,
+      "git_blob_sha1": "fba1f748c9f62a59a24cf32f4362dfe6c89b00ed",
+      "sha256": "09b697e93a0f97920db1f88ed74f22d656ceb1d638ae95811bb71f68b3a99748"
+    },
+    {
+      "path": "train/labels/hr_fall_detection_2.csv",
+      "size": 671,
+      "git_blob_sha1": "091a6df04afa686d2a6c4e2ac348af1d21c932ce",
+      "sha256": "87e97817fb728ecb1dba5a8255795c1190655ee3e08d60331680771bd35a8b80"
+    },
+    {
+      "path": "train/labels/hr_fall_detection_3.csv",
+      "size": 1215,
+      "git_blob_sha1": "fb3b73c9c071062916427178d741d70f8f280651",
+      "sha256": "8cf968f37464bcce2cd22dc70c9b65d714c7a1fcb706429e6a381d54be98fa52"
+    },
+    {
+      "path": "valid/labels/fall_detection_10.csv",
+      "size": 1398,
+      "git_blob_sha1": "a920ec9bbe3820639c65b3398c70c2fc2be1285a",
+      "sha256": "b5ff11a42bbf01fbd910c373313ca81089c809fb52f0f58215be66a65083f343"
+    },
+    {
+      "path": "valid/labels/fall_detection_4.csv",
+      "size": 1359,
+      "git_blob_sha1": "bd2733a679f67715e49c688924ce0dc519f1f95e",
+      "sha256": "5cdd37a503748a4e1145a82c80ba5891217c886f936da7066bfb6f27adba96d3"
+    },
+    {
+      "path": "valid/labels/fall_detection_5.csv",
+      "size": 1696,
+      "git_blob_sha1": "a54ecb5ad2bf28806b8014853af125d642e12447",
+      "sha256": "bc5660c559acb2ad22c5954b48b46c06e44bc86f11e4d77799a13d6f909eac2a"
+    },
+    {
+      "path": "valid/labels/fall_detection_6.csv",
+      "size": 1121,
+      "git_blob_sha1": "375d985b794d06969358048f07b014a08688c32e",
+      "sha256": "74581e3553022f73af31ed0802cfc2a2ba43acaf68331e2e549855babe819713"
+    },
+    {
+      "path": "valid/labels/fall_detection_7.csv",
+      "size": 970,
+      "git_blob_sha1": "a29810196e31ae536d152d02b8ad68db83a135d1",
+      "sha256": "daa19c6b7cf02e77f51e19af1588cff98ac31d34932f14c0fcfba5dba1bdeb91"
+    },
+    {
+      "path": "valid/labels/fall_detection_8.csv",
+      "size": 2814,
+      "git_blob_sha1": "d7aa3462e378515aa6265e899d6394f3c4c1041d",
+      "sha256": "ff58925d64523bdf9fd6bb94e2e503996d45065db3a053c2f743a86386d9ae04"
+    },
+    {
+      "path": "valid/labels/fall_detection_9.csv",
+      "size": 678,
+      "git_blob_sha1": "38943f695b691462de8381d748709d73b780950b",
+      "sha256": "e6481a9f158c1443ffbfdef8a48fae009828b9d2b76503b8810dfd485f724ec0"
+    }
+  ],
+  "videos": [
+    {
+      "path": "train/hr_fall_detection_1.mp4",
+      "size": 59047340,
+      "sha256": "db1a13ee47a963221820038f8185def4d8b45994c04133d315c344da380b019f",
+      "source_split": "train",
+      "role": "excluded-source-training"
+    },
+    {
+      "path": "train/hr_fall_detection_2.mp4",
+      "size": 240059138,
+      "sha256": "0a24887dad1b06fa7344b622bddfe78a44d77dd08136f05052ff9790e2605ad1",
+      "source_split": "train",
+      "role": "excluded-source-training"
+    },
+    {
+      "path": "train/hr_fall_detection_3.mp4",
+      "size": 457143060,
+      "sha256": "d80a89d22999ccae6fb792b0828584fc7056b8196d34f3ce856c9ecf61bfa342",
+      "source_split": "train",
+      "role": "excluded-source-training"
+    },
+    {
+      "path": "valid/fall_detection_10.mp4",
+      "size": 271935835,
+      "sha256": "b276e7bc5f286ec033494b892e7a66ffefdcebcec62c647639d8d02443cc9224",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_4.mp4",
+      "size": 443846555,
+      "sha256": "5f65183c5b7f0d4920bd43734a9cb7749328247145630a7476726e55a9e27d85",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_5.mp4",
+      "size": 274829082,
+      "sha256": "61067c1ad1f2539c6e9e1b053a56ffadd7d0ef1a0561773954357bd47e7f7a8e",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_6.mp4",
+      "size": 166096028,
+      "sha256": "c2a421ec8c8f370d58a3a29b5ca0dde113924b0a97431676bda2622b3ea98817",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_7.mp4",
+      "size": 172525171,
+      "sha256": "5358d8ee61f04b27de26e8be6203a7f02d82fa7dcf587dc986bc05397dd0635a",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_8.mp4",
+      "size": 504308941,
+      "sha256": "a374daa344f56379ac7f23fb7d88de7fdcbd1b9c4c6a2f02b9630dd44f32cc39",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    },
+    {
+      "path": "valid/fall_detection_9.mp4",
+      "size": 148256977,
+      "sha256": "d1ad5b82a6f72843e6c0baa24d9bbcc36baf9bd9eddedc04ca110ef5449d4f33",
+      "source_split": "valid",
+      "role": "candidate-evaluation"
+    }
+  ]
+}
