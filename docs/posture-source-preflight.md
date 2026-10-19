@@ -5,6 +5,11 @@ adds a reproducible annotation audit for a candidate source of continuous
 activity/fall footage. It does not establish improved accuracy, usable negative
 exposure, independent-person generalization, or multi-person performance.
 
+October 19 update: [all seven candidate videos are now hash-verified and fully
+decoded](posture-media-preflight.md), with 51,363 frames and explicit PTS/label-clock
+diagnostics. The October 18 snapshot below predates that acquisition. Event
+adjudication and the scoring protocol remain unfinished; no accuracy is claimed.
+
 ## Source and fixed inventory
 
 [Patrick O. Ogbuitepu's Fall Detection and Posture Classification Dataset,
@@ -28,8 +33,9 @@ are the **candidate evaluation roster**, fixed before any Artae inference on
 this source. All three upstream `train/` videos are excluded from that roster;
 their annotations are included only to preserve and audit the source split.
 The candidate video files total 1,981,798,589 bytes. **None was downloaded,
-decoded, visually adjudicated, or scored in this preflight.** Hashes for video
-files are publisher metadata, not verified local media hashes.
+decoded, visually adjudicated, or scored in the original October 18 preflight.**
+Its video hashes were publisher metadata, not verified local media hashes.
+The separate October 19 report records subsequent verified acquisition.
 
 This source is new to the project's recorded benchmarks, but its seven videos
 are not seven independent people: they all feature the same adult. It can
@@ -120,7 +126,11 @@ source material and deliberately cannot issue a detector score.
   or `/live` changes were made;
   browser visual checks are not applicable to this offline-only change.
 
-## Next accuracy work and remaining blockers
+## Accuracy work identified on October 18
+
+The [October 19 follow-up](posture-media-preflight.md) completes acquisition and
+decoding, and documents remaining clock and event-label blockers. The original
+sequence below explains the wider evaluation gate.
 
 1. Retrieve and hash the seven candidate videos, decode them, measure actual
    durations, and reconcile their labels against the footage. Store corrections

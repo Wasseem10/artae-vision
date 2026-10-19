@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "source_lock_sha256": "22dd90b0f82e022d5ca454e4cc03abc4583e4115ef04d99f30c7af60af7ec260",
+  "source": {
+    "repository": "pat2echo/fall-detection-posture-classification",
+    "revision": "5c075333e557e43cbcb42306fc4475201a625982",
+    "doi": "https://doi.org/10.5281/zenodo.21360087",
+    "license": "CC-BY-4.0",
+    "attribution": "Ogbuitepu, Patrick O. (2026). Fall Detection and Posture Classification Dataset, version 1.0.1. University of Essex.",
+    "retrieved_date": "2026-10-18"
+  },
+  "provenance": {
+    "code_revision": "50fa243da6213f4a0633499de9c324822185a9a6",
+    "working_tree_dirty": false,
+    "media_script_sha256": "247181c13065d7923f3aec2f37d4fff79684f5cbc72185b690be161d36eecbbc",
+    "annotation_script_sha256": "b3d7a09ec5af19b4d337e5281a4929675595e0697bd35433d0e551f066740929",
+    "python": "3.12.14",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "pyav": "19.0.1",
+    "ffmpeg_libraries": {
+      "libavutil": [
+        61,
+        1,
+        102
+      ],
+      "libavcodec": [
+        63,
+        1,
+        102
+      ],
+      "libavformat": [
+        63,
+        1,
+        102
+      ],
+      "libavdevice": [
+        63,
+        1,
+        102
+      ],
+      "libavfilter": [
+        12,
+        1,
+        102
+      ],
+      "libswscale": [
+        10,
+        1,
+        102
+      ],
+      "libswresample": [
+        7,
+        1,
+        102
+      ]
+    }
+  },
+  "purpose": "source media and annotation-boundary preflight, no inference",
+  "benchmark_eligible": false,
+  "remaining_blockers": [
+    "Activity/event labels and endpoint semantics need visual adjudication.",
+    "Freeze detector comparison and event-matching protocol before inference.",
+    "One subject; not a multi-person or cross-person validation source."
+  ],
+  "candidate_videos": 7,
+  "source_training_videos_excluded": 3,
+  "media_bytes": 1981798589,
+  "decoded_frames": 51363,
+  "clips": [
+    {
+      "path": "valid/fall_detection_10.mp4",
+      "size": 271935835,
+      "sha256": "b276e7bc5f286ec033494b892e7a66ffefdcebcec62c647639d8d02443cc9224",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "234197333/1000000",
+        "decoded_frames": 7025,
+        "declared_frames": 7025,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "71/1250",
+        "last_pts_seconds_exact": "10537199/45000",
+        "last_frame_end_seconds_exact": "2341933/10000",
+        "decoded_span_seconds_exact": "468273/2000",
+        "decoded_span_seconds": 234.1365,
+        "stream_start_seconds_exact": "71/1250",
+        "stream_duration_seconds_exact": "468273/2000",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "7142a84401c3b2917ce6ffd7feb84c6b444a5d2217faaf798799978c45f8f976",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [
+          69
+        ],
+        "last_label_timestamp": 234,
+        "video_end_minus_last_label_timestamp_seconds_exact": "273/2000",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_4.mp4",
+      "size": 443846555,
+      "sha256": "5f65183c5b7f0d4920bd43734a9cb7749328247145630a7476726e55a9e27d85",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "193644211/500000",
+        "decoded_frames": 11619,
+        "declared_frames": 11619,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "139/5000",
+        "last_pts_seconds_exact": "3872551/10000",
+        "last_frame_end_seconds_exact": "17427979/45000",
+        "decoded_span_seconds_exact": "2178341/5625",
+        "decoded_span_seconds": 387.2606222222222,
+        "stream_start_seconds_exact": "139/5000",
+        "stream_duration_seconds_exact": "2178341/5625",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "3ca1f211728c6d21b0219843c1bf88e3784fe179fd1be61ca0d41e5640130162",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [
+          66
+        ],
+        "last_label_timestamp": 387,
+        "video_end_minus_last_label_timestamp_seconds_exact": "1466/5625",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_5.mp4",
+      "size": 274829082,
+      "sha256": "61067c1ad1f2539c6e9e1b053a56ffadd7d0ef1a0561773954357bd47e7f7a8e",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "236804889/1000000",
+        "decoded_frames": 7105,
+        "declared_frames": 7105,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "131/10000",
+        "last_pts_seconds_exact": "7103147/30000",
+        "last_frame_end_seconds_exact": "532811/2250",
+        "decoded_span_seconds_exact": "21311261/90000",
+        "decoded_span_seconds": 236.7917888888889,
+        "stream_start_seconds_exact": "131/10000",
+        "stream_duration_seconds_exact": "21311261/90000",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "f889096bce374c8b83b5f1aacfbed1df4f830d36fdddee324c1669ca4144fb1b",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [
+          84
+        ],
+        "last_label_timestamp": 236,
+        "video_end_minus_last_label_timestamp_seconds_exact": "71261/90000",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_6.mp4",
+      "size": 166096028,
+      "sha256": "c2a421ec8c8f370d58a3a29b5ca0dde113924b0a97431676bda2622b3ea98817",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "3576/25",
+        "decoded_frames": 4290,
+        "declared_frames": 4290,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "361/10000",
+        "last_pts_seconds_exact": "4290083/30000",
+        "last_frame_end_seconds_exact": "1430361/10000",
+        "decoded_span_seconds_exact": "143/1",
+        "decoded_span_seconds": 143.0,
+        "stream_start_seconds_exact": "361/10000",
+        "stream_duration_seconds_exact": "143/1",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "654811b22fe3655ebf5fa98edcad34d2267ada20c32d069858fff92a562325c2",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [],
+        "last_label_timestamp": 142,
+        "video_end_minus_last_label_timestamp_seconds_exact": "1/1",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_7.mp4",
+      "size": 172525171,
+      "sha256": "5358d8ee61f04b27de26e8be6203a7f02d82fa7dcf587dc986bc05397dd0635a",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "148437333/1000000",
+        "decoded_frames": 4453,
+        "declared_frames": 4453,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "21/1000",
+        "last_pts_seconds_exact": "834763/5625",
+        "last_frame_end_seconds_exact": "1669901/11250",
+        "decoded_span_seconds_exact": "6678659/45000",
+        "decoded_span_seconds": 148.41464444444443,
+        "stream_start_seconds_exact": "21/1000",
+        "stream_duration_seconds_exact": "6678659/45000",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "83ea13eeb054e71144f50e99ce1275519bb22d56500d65f8cf754b80bd14866a",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [
+          49
+        ],
+        "last_label_timestamp": 148,
+        "video_end_minus_last_label_timestamp_seconds_exact": "18659/45000",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_8.mp4",
+      "size": 504308941,
+      "sha256": "a374daa344f56379ac7f23fb7d88de7fdcbd1b9c4c6a2f02b9630dd44f32cc39",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "435225967/1000000",
+        "decoded_frames": 13050,
+        "declared_frames": 13050,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "297/5000",
+        "last_pts_seconds_exact": "13055779/30000",
+        "last_frame_end_seconds_exact": "13056779/30000",
+        "decoded_span_seconds_exact": "13054997/30000",
+        "decoded_span_seconds": 435.16656666666665,
+        "stream_start_seconds_exact": "297/5000",
+        "stream_duration_seconds_exact": "13054997/30000",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "64586aa895828987758051e4b811a06ff2b978b84908ada5d62c7d1ce97ff4b8",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [],
+        "last_label_timestamp": 434,
+        "video_end_minus_last_label_timestamp_seconds_exact": "34997/30000",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    },
+    {
+      "path": "valid/fall_detection_9.mp4",
+      "size": 148256977,
+      "sha256": "d1ad5b82a6f72843e6c0baa24d9bbcc36baf9bd9eddedc04ca110ef5449d4f33",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "media_status": "hash-verified-fully-decoded",
+      "decode": {
+        "codec": "h264",
+        "container_start_seconds_exact": "0/1",
+        "container_duration_seconds_exact": "127422367/1000000",
+        "decoded_frames": 3821,
+        "declared_frames": 3821,
+        "width": 1280,
+        "height": 720,
+        "first_pts_seconds_exact": "557/10000",
+        "last_pts_seconds_exact": "3821671/30000",
+        "last_frame_end_seconds_exact": "3822671/30000",
+        "decoded_span_seconds_exact": "3821/30",
+        "decoded_span_seconds": 127.36666666666666,
+        "stream_start_seconds_exact": "557/10000",
+        "stream_duration_seconds_exact": "3821/30",
+        "first_pts_matches_stream_start": true,
+        "decoded_span_matches_stream_duration": true,
+        "missing_frame_durations": 0,
+        "frame_interval_gaps": 0,
+        "frame_interval_overlaps": 0,
+        "presentation_trace_sha256": "2d521d045f91c47f2f9bbbfe577ba9467ecd147067cede6a25f8ea520c67cb38",
+        "presentation_trace_format": "UTF-8 LF per decoded frame: pts,time_base_fraction,duration,width,height"
+      },
+      "annotation_bounds": {
+        "decoded_timeline_consistent": true,
+        "label_clock_verified": false,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+        "rows_starting_at_or_after_video_end": [],
+        "rows_ending_at_or_after_video_end": [],
+        "inclusive_bin_end_exceeds_video_rows": [
+          35
+        ],
+        "last_label_timestamp": 127,
+        "video_end_minus_last_label_timestamp_seconds_exact": "11/30",
+        "note": "Bounds diagnostics only. Inclusive second bins are not adjudicated activity intervals or negative exposure."
+      }
+    }
+  ]
+}

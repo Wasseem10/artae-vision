@@ -3,11 +3,12 @@
 Status: September 29, 2026. The [pilot protocol](fall-pilot-plan.md) has the
 operational gates; this page tracks the next engineering decisions and schedule.
 
-October 18 follow-up: a [new-source annotation preflight](posture-source-preflight.md)
-pins seven candidate continuous videos and detects duplicate/ambiguous labels
-before inference. No new detector result is available. Media decoding and timed
-event adjudication remain prerequisites; this single-person source does not
-replace the multi-person validation gate.
+October 19 follow-up: the [new-source preflight](posture-media-preflight.md)
+now verifies and fully decodes all seven candidate videos (51,363 frames).
+It exposes nonzero video-clock origins and partial final label bins; timed
+event/clock adjudication remains necessary before detector scoring. No new
+accuracy result is available, and this single-person source does not replace
+the multi-person validation gate.
 
 ## What works today
 
