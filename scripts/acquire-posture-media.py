@@ -136,11 +136,16 @@ def reconcile(rows, decoded):
                and decoded["missing_frame_durations"] == 0
                and decoded["frame_interval_gaps"] == 0
                and decoded["frame_interval_overlaps"] == 0)
+    assumptions = {
+        "decoded_timeline_consistent": aligned,
+        "label_clock_verified": False,
+        "label_clock_assumption": "Diagnostic only: label zero is the first decoded video frame. Actual label/player clock alignment is unadjudicated.",
+    }
     if not aligned or duration is None:
-        return {"timeline_aligned": False, "reason": "PTS origin/duration/intervals need review; label bounds not inferred"}
+        return {**assumptions, "reason": "PTS origin/duration/intervals need review; label bounds not inferred"}
     end = Fraction(duration)
     return {
-        "timeline_aligned": True,
+        **assumptions,
         "rows_starting_at_or_after_video_end": [r["line"] for r in rows if r["start"] >= end],
         "rows_ending_at_or_after_video_end": [r["line"] for r in rows if r["end"] >= end],
         "inclusive_bin_end_exceeds_video_rows": [r["line"] for r in rows if r["end"] + 1 > end],
@@ -159,7 +164,12 @@ def decode_video(path, av):
         start = stream.start_time * base if stream.start_time is not None else None
         duration = stream.duration * base if stream.duration is not None else None
         result = summarize_frames(container.decode(stream), stream.frames, start, duration)
-        return {"codec": stream.codec_context.name, **result}
+        return {
+            "codec": stream.codec_context.name,
+            "container_start_seconds_exact": rational(Fraction(container.start_time, av.time_base)) if container.start_time is not None else None,
+            "container_duration_seconds_exact": rational(Fraction(container.duration, av.time_base)) if container.duration is not None else None,
+            **result,
+        }
 
 
 def git_provenance():

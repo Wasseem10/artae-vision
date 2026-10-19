@@ -124,7 +124,7 @@ class TimestampTests(unittest.TestCase):
         result = summarize([frame(0), frame(1, 0)])
         self.assertEqual(result["missing_frame_durations"], 1)
         self.assertIsNone(result["decoded_span_seconds_exact"])
-        self.assertFalse(MEDIA.reconcile([{"start": 0, "end": 0, "line": 2}], result)["timeline_aligned"])
+        self.assertFalse(MEDIA.reconcile([{"start": 0, "end": 0, "line": 2}], result)["decoded_timeline_consistent"])
 
     def test_gap_overlap_or_unknown_origin_disables_bounds_inference(self):
         cases = [summarize([frame(0), frame(2)]),
@@ -133,7 +133,14 @@ class TimestampTests(unittest.TestCase):
                  summarize([frame(0), frame(1)], duration=Fraction(3, 10))]
         for result in cases:
             with self.subTest(result=result):
-                self.assertFalse(MEDIA.reconcile([{"start": 0, "end": 0, "line": 2}], result)["timeline_aligned"])
+                self.assertFalse(MEDIA.reconcile([{"start": 0, "end": 0, "line": 2}], result)["decoded_timeline_consistent"])
+
+    def test_consistent_nonzero_pts_does_not_verify_label_clock_alignment(self):
+        result = summarize([frame(1), frame(2)], start=Fraction(1, 10))
+        bounds = MEDIA.reconcile([{"start": 0, "end": 0, "line": 2}], result)
+        self.assertTrue(bounds["decoded_timeline_consistent"])
+        self.assertFalse(bounds["label_clock_verified"])
+        self.assertIn("unadjudicated", bounds["label_clock_assumption"])
 
     def test_bounds_do_not_silently_clip_labels_or_convert_them_into_exposure(self):
         result = summarize([frame(0, 10), frame(10, 10)], duration=Fraction(2))
