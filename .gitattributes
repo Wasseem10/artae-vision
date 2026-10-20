@@ -15,3 +15,7 @@
 *.jpeg binary
 # Preserve upstream bytes, including CRLF, used by the provenance audit.
 tests/fixtures/posture-source-v1/** -text whitespace=cr-at-eol
+# Stable script fingerprints for the source clock experiment.
+scripts/posture-clock.cjs text eol=lf
+scripts/check-posture-video-clock.cjs text eol=lf
+tests/benchmarks/posture-clock.test.cjs text eol=lf
