@@ -1,0 +1,1012 @@
+{
+  "schema_version": 1,
+  "source_lock_sha256": "22dd90b0f82e022d5ca454e4cc03abc4583e4115ef04d99f30c7af60af7ec260",
+  "source": {
+    "repository": "pat2echo/fall-detection-posture-classification",
+    "revision": "5c075333e557e43cbcb42306fc4475201a625982",
+    "doi": "https://doi.org/10.5281/zenodo.21360087",
+    "license": "CC-BY-4.0",
+    "attribution": "Ogbuitepu, Patrick O. (2026). Fall Detection and Posture Classification Dataset, version 1.0.1. University of Essex.",
+    "retrieved_date": "2026-10-18"
+  },
+  "purpose": "source annotation quality audit, not a detector benchmark",
+  "bin_convention": "Diagnostic only: integers start..end inclusive. Endpoint semantics need adjudication; bins are not measured seconds of exposure.",
+  "benchmark_eligible": false,
+  "blockers": [
+    "Verify and decode the seven candidate videos; reconcile annotation endpoints with actual video duration.",
+    "Adjudicate duplicates, conflicting boundaries, gaps, and unassigned activity against footage; preserve upstream labels.",
+    "Freeze timed fall-event definitions and post-fall exclusion/recovery windows before scoring; fall rows and positive runs are not verified events.",
+    "Freeze baseline/candidate, runtime, sampling, one-to-one event matching, latency tolerance, and negative exposure protocol before inference.",
+    "One subject only: this source cannot validate cross-person or multi-person tracking performance."
+  ],
+  "candidate_summary": {
+    "videos": 7,
+    "source_training_videos_excluded": 3,
+    "media_bytes": 1981798589,
+    "hash_verified_videos": 0,
+    "diagnostic_bin_counts_not_exposure_seconds": {
+      "conflict": 6,
+      "fall_label": 91,
+      "gap": 2,
+      "nonfall_label": 1267,
+      "unassigned": 349
+    },
+    "duplicate_row_groups": 4,
+    "single_timestamp_rows": 233
+  },
+  "clips": [
+    {
+      "path": "train/hr_fall_detection_1.mp4",
+      "size": 59047340,
+      "sha256": "db1a13ee47a963221820038f8185def4d8b45994c04133d315c344da380b019f",
+      "source_split": "train",
+      "role": "excluded-source-training",
+      "labels": "train/labels/hr_fall_detection_1.csv",
+      "annotation_audit": {
+        "rows": 13,
+        "fall_rows": 1,
+        "single_timestamp_rows": 3,
+        "last_label_timestamp": 48,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 2,
+          "nonfall_label": 18,
+          "unassigned": 29,
+          "conflict": 0,
+          "gap": 0
+        },
+        "conflicting_bins": [],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          12,
+          13,
+          14,
+          15,
+          16,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          41,
+          42,
+          43,
+          44
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            45,
+            46
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "train/hr_fall_detection_2.mp4",
+      "size": 240059138,
+      "sha256": "0a24887dad1b06fa7344b622bddfe78a44d77dd08136f05052ff9790e2605ad1",
+      "source_split": "train",
+      "role": "excluded-source-training",
+      "labels": "train/labels/hr_fall_detection_2.csv",
+      "annotation_audit": {
+        "rows": 33,
+        "fall_rows": 6,
+        "single_timestamp_rows": 14,
+        "last_label_timestamp": 206,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 6,
+          "nonfall_label": 185,
+          "unassigned": 16,
+          "conflict": 0,
+          "gap": 0
+        },
+        "conflicting_bins": [],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          155,
+          156,
+          157,
+          158,
+          159,
+          205,
+          206
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            28,
+            29
+          ],
+          [
+            136,
+            136
+          ],
+          [
+            163,
+            165
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "train/hr_fall_detection_3.mp4",
+      "size": 457143060,
+      "sha256": "d80a89d22999ccae6fb792b0828584fc7056b8196d34f3ce856c9ecf61bfa342",
+      "source_split": "train",
+      "role": "excluded-source-training",
+      "labels": "train/labels/hr_fall_detection_3.csv",
+      "annotation_audit": {
+        "rows": 59,
+        "fall_rows": 6,
+        "single_timestamp_rows": 26,
+        "last_label_timestamp": 390,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 12,
+          "nonfall_label": 306,
+          "unassigned": 72,
+          "conflict": 1,
+          "gap": 0
+        },
+        "conflicting_bins": [
+          {
+            "bin": 22,
+            "rows": [
+              6,
+              7
+            ]
+          }
+        ],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          13,
+          14,
+          15,
+          16,
+          17,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          191,
+          192,
+          193,
+          194,
+          298,
+          299,
+          300,
+          301,
+          302,
+          303,
+          304,
+          305,
+          306,
+          307,
+          308,
+          309,
+          310,
+          311,
+          312,
+          313,
+          314,
+          324,
+          325,
+          326,
+          327,
+          328,
+          329,
+          330,
+          331,
+          332,
+          333,
+          334,
+          335,
+          336,
+          337,
+          338,
+          339,
+          340,
+          341,
+          342,
+          343,
+          344,
+          345,
+          389,
+          390
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            204,
+            211
+          ],
+          [
+            219,
+            220
+          ],
+          [
+            383,
+            384
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_10.mp4",
+      "size": 271935835,
+      "sha256": "b276e7bc5f286ec033494b892e7a66ffefdcebcec62c647639d8d02443cc9224",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_10.csv",
+      "annotation_audit": {
+        "rows": 68,
+        "fall_rows": 13,
+        "single_timestamp_rows": 40,
+        "last_label_timestamp": 234,
+        "duplicate_row_groups": [
+          [
+            4,
+            5
+          ]
+        ],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 18,
+          "nonfall_label": 203,
+          "unassigned": 13,
+          "conflict": 0,
+          "gap": 1
+        },
+        "conflicting_bins": [],
+        "gap_bins": [
+          128
+        ],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          230,
+          231,
+          232,
+          233,
+          234
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            88,
+            90
+          ],
+          [
+            97,
+            99
+          ],
+          [
+            105,
+            106
+          ],
+          [
+            127,
+            127
+          ],
+          [
+            129,
+            129
+          ],
+          [
+            139,
+            141
+          ],
+          [
+            167,
+            171
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_4.mp4",
+      "size": 443846555,
+      "sha256": "5f65183c5b7f0d4920bd43734a9cb7749328247145630a7476726e55a9e27d85",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_4.csv",
+      "annotation_audit": {
+        "rows": 65,
+        "fall_rows": 6,
+        "single_timestamp_rows": 27,
+        "last_label_timestamp": 387,
+        "duplicate_row_groups": [
+          [
+            15,
+            16
+          ]
+        ],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 14,
+          "nonfall_label": 302,
+          "unassigned": 72,
+          "conflict": 0,
+          "gap": 0
+        },
+        "conflicting_bins": [],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          25,
+          26,
+          27,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          265,
+          266,
+          267,
+          268,
+          269,
+          270,
+          271,
+          272,
+          273,
+          274,
+          275,
+          276,
+          277,
+          278,
+          279,
+          280,
+          281,
+          282,
+          283,
+          284,
+          285,
+          286,
+          287,
+          288,
+          289,
+          290,
+          291,
+          292,
+          304,
+          305,
+          306,
+          307,
+          308,
+          309,
+          310,
+          318,
+          319,
+          320,
+          321,
+          379,
+          380,
+          381,
+          382,
+          383,
+          384,
+          385,
+          386,
+          387
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            94,
+            98
+          ],
+          [
+            151,
+            154
+          ],
+          [
+            160,
+            164
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_5.mp4",
+      "size": 274829082,
+      "sha256": "61067c1ad1f2539c6e9e1b053a56ffadd7d0ef1a0561773954357bd47e7f7a8e",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_5.csv",
+      "annotation_audit": {
+        "rows": 83,
+        "fall_rows": 8,
+        "single_timestamp_rows": 42,
+        "last_label_timestamp": 236,
+        "duplicate_row_groups": [
+          [
+            16,
+            17
+          ]
+        ],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 18,
+          "nonfall_label": 164,
+          "unassigned": 54,
+          "conflict": 1,
+          "gap": 0
+        },
+        "conflicting_bins": [
+          {
+            "bin": 10,
+            "rows": [
+              5,
+              6
+            ]
+          }
+        ],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          37,
+          38,
+          39,
+          40,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          124,
+          125,
+          126,
+          127,
+          140,
+          141,
+          142,
+          151,
+          152,
+          153,
+          154,
+          163,
+          164,
+          165,
+          166,
+          174,
+          175,
+          176,
+          177,
+          231,
+          232,
+          233,
+          234,
+          235,
+          236
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            143,
+            146
+          ],
+          [
+            155,
+            159
+          ],
+          [
+            167,
+            170
+          ],
+          [
+            178,
+            182
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_6.mp4",
+      "size": 166096028,
+      "sha256": "c2a421ec8c8f370d58a3a29b5ca0dde113924b0a97431676bda2622b3ea98817",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_6.csv",
+      "annotation_audit": {
+        "rows": 56,
+        "fall_rows": 5,
+        "single_timestamp_rows": 27,
+        "last_label_timestamp": 142,
+        "duplicate_row_groups": [
+          [
+            55,
+            56
+          ]
+        ],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 7,
+          "nonfall_label": 108,
+          "unassigned": 25,
+          "conflict": 2,
+          "gap": 1
+        },
+        "conflicting_bins": [
+          {
+            "bin": 34,
+            "rows": [
+              12,
+              13
+            ]
+          },
+          {
+            "bin": 115,
+            "rows": [
+              49,
+              50
+            ]
+          }
+        ],
+        "gap_bins": [
+          98
+        ],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          12,
+          13,
+          14,
+          15,
+          94,
+          95,
+          99,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          136,
+          137,
+          138,
+          139,
+          140,
+          141,
+          142
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            72,
+            74
+          ],
+          [
+            83,
+            86
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_7.mp4",
+      "size": 172525171,
+      "sha256": "5358d8ee61f04b27de26e8be6203a7f02d82fa7dcf587dc986bc05397dd0635a",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_7.csv",
+      "annotation_audit": {
+        "rows": 48,
+        "fall_rows": 2,
+        "single_timestamp_rows": 18,
+        "last_label_timestamp": 148,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 3,
+          "nonfall_label": 97,
+          "unassigned": 48,
+          "conflict": 1,
+          "gap": 0
+        },
+        "conflicting_bins": [
+          {
+            "bin": 63,
+            "rows": [
+              21,
+              22
+            ]
+          }
+        ],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          129,
+          130,
+          131,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            134,
+            136
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_8.mp4",
+      "size": 504308941,
+      "sha256": "a374daa344f56379ac7f23fb7d88de7fdcbd1b9c4c6a2f02b9630dd44f32cc39",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_8.csv",
+      "annotation_audit": {
+        "rows": 134,
+        "fall_rows": 12,
+        "single_timestamp_rows": 65,
+        "last_label_timestamp": 434,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 23,
+          "nonfall_label": 290,
+          "unassigned": 121,
+          "conflict": 1,
+          "gap": 0
+        },
+        "conflicting_bins": [
+          {
+            "bin": 56,
+            "rows": [
+              7,
+              8
+            ]
+          }
+        ],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          121,
+          181,
+          194,
+          195,
+          196,
+          197,
+          198,
+          207,
+          208,
+          209,
+          210,
+          211,
+          212,
+          213,
+          224,
+          225,
+          226,
+          227,
+          228,
+          229,
+          244,
+          245,
+          246,
+          247,
+          248,
+          249,
+          266,
+          267,
+          268,
+          269,
+          270,
+          273,
+          274,
+          275,
+          276,
+          277,
+          278,
+          279,
+          280,
+          281,
+          282,
+          283,
+          284,
+          329,
+          330,
+          331,
+          332,
+          333,
+          387,
+          388,
+          389,
+          390,
+          401,
+          402,
+          403,
+          404,
+          405,
+          416,
+          417,
+          418,
+          419,
+          420,
+          421,
+          431,
+          432,
+          433,
+          434
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            199,
+            201
+          ],
+          [
+            215,
+            219
+          ],
+          [
+            231,
+            232
+          ],
+          [
+            392,
+            395
+          ],
+          [
+            407,
+            411
+          ],
+          [
+            423,
+            426
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    },
+    {
+      "path": "valid/fall_detection_9.mp4",
+      "size": 148256977,
+      "sha256": "d1ad5b82a6f72843e6c0baa24d9bbcc36baf9bd9eddedc04ca110ef5449d4f33",
+      "source_split": "valid",
+      "role": "candidate-evaluation",
+      "labels": "valid/labels/fall_detection_9.csv",
+      "annotation_audit": {
+        "rows": 34,
+        "fall_rows": 4,
+        "single_timestamp_rows": 14,
+        "last_label_timestamp": 127,
+        "duplicate_row_groups": [],
+        "out_of_order_rows": [],
+        "diagnostic_bin_counts": {
+          "fall_label": 8,
+          "nonfall_label": 103,
+          "unassigned": 16,
+          "conflict": 1,
+          "gap": 0
+        },
+        "conflicting_bins": [
+          {
+            "bin": 32,
+            "rows": [
+              8,
+              9
+            ]
+          }
+        ],
+        "gap_bins": [],
+        "unassigned_bins": [
+          0,
+          1,
+          2,
+          3,
+          33,
+          34,
+          35,
+          36,
+          109,
+          110,
+          111,
+          112,
+          113,
+          125,
+          126,
+          127
+        ],
+        "positive_label_runs_not_adjudicated_events": [
+          [
+            60,
+            63
+          ],
+          [
+            73,
+            76
+          ]
+        ]
+      },
+      "media_status": "not-verified"
+    }
+  ]
+}

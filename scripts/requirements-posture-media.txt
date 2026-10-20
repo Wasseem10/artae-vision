@@ -1,0 +1,2 @@
+# Optional local decoding tool; not an application dependency.
+av==19.0.1

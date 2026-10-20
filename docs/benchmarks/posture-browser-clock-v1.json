@@ -1,0 +1,449 @@
+{
+  "schema_version": 1,
+  "purpose": "first/last browser video clock check, no detector inference",
+  "benchmark_eligible": false,
+  "label_clock_verified": false,
+  "source_media_evidence_sha256": "e229f63654cf880cc95bbf7d50174a701ef744d4ef41e3927379ff1d8f937dd6",
+  "source_lock_sha256": "22dd90b0f82e022d5ca454e4cc03abc4583e4115ef04d99f30c7af60af7ec260",
+  "code_revision": "481c999b901959b4f8e237f89caf0aa140ed4bc7",
+  "working_tree_dirty": false,
+  "script_sha256": "0f1946bf6f8b8920b941e1649bfe2f093ee40112cae15deec22d70d7ad7dbdcc",
+  "contract_sha256": "717d292a27153c2cc810ce2a006f3ff5a7f261ef581b6dad462959f4c3897c4c",
+  "sampler_revision": "f670e4bf1a0202514ab6ad3a5d5d07fbb136806b",
+  "sampler_path": "apps/web/src/lib/evaluation-video-frame.ts",
+  "sampler_sha256": "d281cf4041d74eb9241a443fe461f3bba9e87323d2a00084bb171a6c3402bac6",
+  "browser": "155.0.8059.85",
+  "browser_launch_args": [
+    "--use-gl=angle",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader"
+  ],
+  "playwright": "1.63.0",
+  "typescript": "5.9.3",
+  "node": "v24.21.0",
+  "tolerance_seconds": 0.000002,
+  "blocked_requests": 0,
+  "browser_server_errors": [],
+  "clips": [
+    {
+      "path": "valid/fall_detection_10.mp4",
+      "media_sha256": "b276e7bc5f286ec033494b892e7a66ffefdcebcec62c647639d8d02443cc9224",
+      "raw_first_pts_seconds_exact": "71/1250",
+      "raw_last_pts_seconds_exact": "10537199/45000",
+      "observed": {
+        "duration": 234.197333,
+        "first": {
+          "mediaTime": 0.0568,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 234.159978,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 234.159978,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0568 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0568,
+            "verifiedFirstPTS": 0.0568
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0568,
+            "decodedSeconds": 0.0568,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0568,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": 2.222222121872619e-7,
+        "normalizedDeltaSeconds": 0.05680022222222192,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_4.mp4",
+      "media_sha256": "5f65183c5b7f0d4920bd43734a9cb7749328247145630a7476726e55a9e27d85",
+      "raw_first_pts_seconds_exact": "139/5000",
+      "raw_last_pts_seconds_exact": "3872551/10000",
+      "observed": {
+        "duration": 387.288422,
+        "first": {
+          "mediaTime": 0.0278,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 387.2551,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 387.2551,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0278 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0278,
+            "verifiedFirstPTS": 0.0278
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0278,
+            "decodedSeconds": 0.0278,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0278,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.02780000000001337,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_5.mp4",
+      "media_sha256": "61067c1ad1f2539c6e9e1b053a56ffadd7d0ef1a0561773954357bd47e7f7a8e",
+      "raw_first_pts_seconds_exact": "131/10000",
+      "raw_last_pts_seconds_exact": "7103147/30000",
+      "observed": {
+        "duration": 236.804889,
+        "first": {
+          "mediaTime": 0.0131,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 236.771567,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 236.771567,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0131 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0131,
+            "verifiedFirstPTS": 0.0131
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0131,
+            "decodedSeconds": 0.0131,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0131,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": 3.3333333249174757e-7,
+        "normalizedDeltaSeconds": 0.013100333333341041,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_6.mp4",
+      "media_sha256": "c2a421ec8c8f370d58a3a29b5ca0dde113924b0a97431676bda2622b3ea98817",
+      "raw_first_pts_seconds_exact": "361/10000",
+      "raw_last_pts_seconds_exact": "4290083/30000",
+      "observed": {
+        "duration": 143.04,
+        "first": {
+          "mediaTime": 0.0361,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 143.002767,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 143.002767,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0361 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0361,
+            "verifiedFirstPTS": 0.0361
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0361,
+            "decodedSeconds": 0.0361,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0361,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": 3.3333333249174757e-7,
+        "normalizedDeltaSeconds": 0.036100333333337176,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_7.mp4",
+      "media_sha256": "5358d8ee61f04b27de26e8be6203a7f02d82fa7dcf587dc986bc05397dd0635a",
+      "raw_first_pts_seconds_exact": "21/1000",
+      "raw_last_pts_seconds_exact": "834763/5625",
+      "observed": {
+        "duration": 148.437333,
+        "first": {
+          "mediaTime": 0.021,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 148.402311,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 148.402311,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.021 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.021,
+            "verifiedFirstPTS": 0.021
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.021,
+            "decodedSeconds": 0.021,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.021,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": -1.1111112030448567e-7,
+        "normalizedDeltaSeconds": 0.02099988888886628,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_8.mp4",
+      "media_sha256": "a374daa344f56379ac7f23fb7d88de7fdcbd1b9c4c6a2f02b9630dd44f32cc39",
+      "raw_first_pts_seconds_exact": "297/5000",
+      "raw_last_pts_seconds_exact": "13055779/30000",
+      "observed": {
+        "duration": 435.225967,
+        "first": {
+          "mediaTime": 0.0594,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 435.192633,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 435.192633,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0594 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0594,
+            "verifiedFirstPTS": 0.0594
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0594,
+            "decodedSeconds": 0.0594,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0594,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": -3.3333333249174757e-7,
+        "normalizedDeltaSeconds": 0.059399666666649864,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    },
+    {
+      "path": "valid/fall_detection_9.mp4",
+      "media_sha256": "d1ad5b82a6f72843e6c0baa24d9bbcc36baf9bd9eddedc04ca110ef5449d4f33",
+      "raw_first_pts_seconds_exact": "557/10000",
+      "raw_last_pts_seconds_exact": "3821671/30000",
+      "observed": {
+        "duration": 127.422367,
+        "first": {
+          "mediaTime": 0.0557,
+          "presentedFrames": 1,
+          "width": 1280,
+          "height": 720
+        },
+        "last": {
+          "mediaTime": 127.389033,
+          "presentedFrames": 2,
+          "width": 1280,
+          "height": 720
+        },
+        "lastSeekCallbacks": [
+          {
+            "mediaTime": 127.389033,
+            "presentedFrames": 2,
+            "width": 1280,
+            "height": 720
+          }
+        ],
+        "zeroTickSampler": {
+          "accepted": false,
+          "error": "Unexpected presented video frame: 0.0557 for 0"
+        },
+        "sourcePlannedSampler": {
+          "plan": {
+            "scheduledSeconds": 0,
+            "requestedSeconds": 0.0557,
+            "verifiedFirstPTS": 0.0557
+          },
+          "accepted": true,
+          "value": {
+            "requestedSeconds": 0.0557,
+            "decodedSeconds": 0.0557,
+            "presentedFrames": 1
+          }
+        }
+      },
+      "firstClock": {
+        "rawDeltaSeconds": 0,
+        "normalizedDeltaSeconds": 0.0557,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      },
+      "lastClock": {
+        "rawDeltaSeconds": -3.3333333249174757e-7,
+        "normalizedDeltaSeconds": 0.055699666666669145,
+        "rawMatch": true,
+        "normalizedMatch": false,
+        "classification": "raw-presentation"
+      }
+    }
+  ]
+}
