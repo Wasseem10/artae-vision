@@ -136,14 +136,34 @@ async function main() {
           const sampler = await startSample;
           if (!observations.length) throw new Error('No first frame presented');
           const first = observations[0];
+          const lastSeekCallbacks = [];
           const last = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => { video.cancelVideoFrameCallback(handle); reject(new Error('Last frame timed out')); }, 8000);
-            const handle = nativeCallback((_, metadata) => {
-              clearTimeout(timer);
-              resolve({ mediaTime: metadata.mediaTime, presentedFrames: metadata.presentedFrames,
-                width: metadata.width, height: metadata.height });
-            });
-            video.currentTime = video.duration - 0.0001;
+            const requested = video.duration - 0.0001;
+            let handle, candidate, seekCompleted = false;
+            const cleanup = () => {
+              clearTimeout(timer); video.removeEventListener('seeked', seeked);
+              if (handle !== undefined) video.cancelVideoFrameCallback(handle);
+            };
+            const finish = () => {
+              if (seekCompleted && candidate) { cleanup(); resolve(candidate); }
+            };
+            const seeked = () => { seekCompleted = true; finish(); };
+            const timer = setTimeout(() => { cleanup(); reject(new Error('Last frame timed out')); }, 8000);
+            const receive = (_, metadata) => {
+              const sample = { mediaTime: metadata.mediaTime, presentedFrames: metadata.presentedFrames,
+                width: metadata.width, height: metadata.height };
+              lastSeekCallbacks.push(sample);
+              // A queued presentation from the initial seek can arrive here.
+              // Retain it as evidence, and require both a completed tail seek
+              // and a newly presented frame near the requested tail. Clock
+              // hypotheses are compared afterwards, not used as a filter.
+              if (Math.abs(sample.mediaTime - requested) < 0.1) candidate = sample;
+              handle = nativeCallback(receive);
+              finish();
+            };
+            video.addEventListener('seeked', seeked);
+            handle = nativeCallback(receive);
+            video.currentTime = requested;
           });
           // Retry the initial sample on a fresh player with the same strict
           // committed sampler, requesting the verified first PTS rather than 0.
@@ -166,7 +186,7 @@ async function main() {
             plannedVideo.src = url; plannedVideo.load();
             await plannedReady; planned = await plannedSample;
           } finally { plannedVideo.pause(); plannedVideo.removeAttribute('src'); plannedVideo.load(); plannedVideo.remove(); }
-          return { duration: video.duration, first, last, zeroTickSampler: sampler,
+          return { duration: video.duration, first, last, lastSeekCallbacks, zeroTickSampler: sampler,
             sourcePlannedSampler: { plan, ...planned } };
         } finally { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); }
       }, { url: `${origin}/media/${index}.mp4`, plan });
