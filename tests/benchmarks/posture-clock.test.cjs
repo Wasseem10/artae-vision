@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { exactSeconds, classifyClock, resolveRange } = require('../../scripts/posture-clock.cjs');
+const { exactSeconds, classifyClock, planSample, resolveRange } = require('../../scripts/posture-clock.cjs');
 
 test('raw PTS and first-frame normalization are distinct for an offset source', () => {
   assert.equal(classifyClock(0.0568, 0.0568, 0.0568).classification, 'raw-presentation');
@@ -39,4 +39,13 @@ test('invalid, empty, multipart and unsafe ranges are rejected', () => {
   for (const range of ['bytes=100-', 'bytes=40-20', 'bytes=-0', 'bytes=-', 'bytes=1-2,4-5', 'items=0-1', 'bytes=9007199254740992-']) {
     assert.equal(resolveRange(range, 100), null, range);
   }
+});
+test('a source-aware startup preserves the logical zero tick and requests verified first PTS', () => {
+  assert.deepEqual(planSample(0, 0.0568, 10), { scheduledSeconds: 0, requestedSeconds: 0.0568, verifiedFirstPTS: 0.0568 });
+  assert.equal(planSample(0.05, 0.0568, 10).requestedSeconds, 0.0568);
+  assert.equal(planSample(0.1, 0.0568, 10).requestedSeconds, 0.1);
+  assert.equal(planSample(0, 0, 10).requestedSeconds, 0);
+});
+test('planning rejects missing, negative, and out-of-source bounds', () => {
+  for (const args of [[0, NaN, 10], [-1, 0, 10], [0, -1, 10], [0, 10, 10], [10, 0, 10]]) assert.throws(() => planSample(...args));
 });

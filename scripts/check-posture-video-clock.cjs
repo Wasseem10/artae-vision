@@ -7,7 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
-const { exactSeconds, classifyClock, resolveRange } = require('./posture-clock.cjs');
+const { exactSeconds, classifyClock, planSample, resolveRange } = require('./posture-clock.cjs');
 const root = path.resolve(__dirname, '..');
 const hash = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -105,7 +105,10 @@ async function main() {
     const clips = [];
     for (let index = 0; index < sources.length; index++) {
       const source = sources[index];
-      const observed = await page.evaluate(async ({ url }) => {
+      const firstPTS = exactSeconds(source.clip.decode.first_pts_seconds_exact);
+      const lastPTS = exactSeconds(source.clip.decode.last_pts_seconds_exact);
+      const plan = planSample(0, firstPTS, exactSeconds(source.clip.decode.last_frame_end_seconds_exact));
+      const observed = await page.evaluate(async ({ url, plan }) => {
         const video = document.createElement('video');
         video.muted = true; video.playsInline = true; video.preload = 'auto';
         video.style.width = '800px'; document.body.replaceChildren(video);
@@ -142,11 +145,31 @@ async function main() {
             });
             video.currentTime = video.duration - 0.0001;
           });
-          return { duration: video.duration, first, last, zeroTickSampler: sampler };
+          // Retry the initial sample on a fresh player with the same strict
+          // committed sampler, requesting the verified first PTS rather than 0.
+          const plannedVideo = document.createElement('video');
+          plannedVideo.muted = true; plannedVideo.playsInline = true; plannedVideo.preload = 'auto';
+          plannedVideo.style.width = '800px'; document.body.append(plannedVideo);
+          let plannedSample;
+          const plannedReady = new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Planned source metadata timed out')), 10000);
+            plannedVideo.addEventListener('loadedmetadata', () => {
+              clearTimeout(timer);
+              plannedSample = window.clockSampler.seekPresentedFrame(plannedVideo, plan.requestedSeconds, () => false, 8000)
+                .then((value) => ({ accepted: true, value }), (error) => ({ accepted: false, error: error.message }));
+              resolve();
+            }, { once: true });
+            plannedVideo.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Planned source decode failed')); }, { once: true });
+          });
+          let planned;
+          try {
+            plannedVideo.src = url; plannedVideo.load();
+            await plannedReady; planned = await plannedSample;
+          } finally { plannedVideo.pause(); plannedVideo.removeAttribute('src'); plannedVideo.load(); plannedVideo.remove(); }
+          return { duration: video.duration, first, last, zeroTickSampler: sampler,
+            sourcePlannedSampler: { plan, ...planned } };
         } finally { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); }
-      }, { url: `${origin}/media/${index}.mp4` });
-      const firstPTS = exactSeconds(source.clip.decode.first_pts_seconds_exact);
-      const lastPTS = exactSeconds(source.clip.decode.last_pts_seconds_exact);
+      }, { url: `${origin}/media/${index}.mp4`, plan });
       assert.equal(observed.first.presentedFrames, 1, 'First observation must be the first presented frame');
       assert.ok(observed.last.presentedFrames > observed.first.presentedFrames);
       for (const sample of [observed.first, observed.last]) {
@@ -157,9 +180,15 @@ async function main() {
         raw_last_pts_seconds_exact: source.clip.decode.last_pts_seconds_exact,
         observed, firstClock: classifyClock(observed.first.mediaTime, firstPTS, firstPTS),
         lastClock: classifyClock(observed.last.mediaTime, lastPTS, firstPTS) };
+      assert.equal(clip.firstClock.classification, 'raw-presentation', 'Source plan requires the observed raw-PTS clock');
+      assert.equal(clip.lastClock.classification, 'raw-presentation', 'Clock mapping changed across source endpoints');
+      assert.equal(observed.sourcePlannedSampler.accepted, true, 'Verified source start was rejected');
+      assert.equal(observed.sourcePlannedSampler.value.presentedFrames, 1, 'Planned startup must present the first frame');
+      assert.ok(Math.abs(observed.sourcePlannedSampler.value.decodedSeconds - firstPTS) <= 0.000002);
       clips.push(clip);
       console.log(JSON.stringify({ path: clip.path, first: clip.firstClock.classification,
-        last: clip.lastClock.classification, zeroTickAccepted: observed.zeroTickSampler.accepted }));
+        last: clip.lastClock.classification, zeroTickAccepted: observed.zeroTickSampler.accepted,
+        sourcePlannedAccepted: observed.sourcePlannedSampler.accepted }));
     }
     assert.deepEqual(errors, [], 'Browser/server errors prevent publishing evidence');
     assert.equal(blockedRequests, 0, 'Unexpected nonlocal page request');

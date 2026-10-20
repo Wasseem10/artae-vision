@@ -21,6 +21,16 @@ function classifyClock(mediaTime, rawPTS, firstPTS, tolerance = 0.000002) {
     classification: rawMatch && normalizedMatch ? 'ambiguous' : rawMatch ? 'raw-presentation' : normalizedMatch ? 'first-frame-zero' : 'neither' };
 }
 
+// Caller-side planning only. Preserve the scheduled tick separately; request a
+// real source frame instead of weakening the sampler's future-frame rejection.
+function planSample(scheduledSeconds, verifiedFirstPTS, duration) {
+  assert.ok([scheduledSeconds, verifiedFirstPTS, duration].every(Number.isFinite));
+  assert.ok(scheduledSeconds >= 0 && verifiedFirstPTS >= 0 && duration > verifiedFirstPTS);
+  const requestedSeconds = Math.max(scheduledSeconds, verifiedFirstPTS);
+  assert.ok(requestedSeconds < duration, 'Sample is outside source duration');
+  return { scheduledSeconds, requestedSeconds, verifiedFirstPTS };
+}
+
 function resolveRange(header, size) {
   assert.ok(Number.isSafeInteger(size) && size > 0);
   if (header === undefined) return { status: 200, start: 0, end: size - 1 };
@@ -40,4 +50,4 @@ function resolveRange(header, size) {
   return { status: 206, start, end };
 }
 
-module.exports = { exactSeconds, classifyClock, resolveRange };
+module.exports = { exactSeconds, classifyClock, planSample, resolveRange };
