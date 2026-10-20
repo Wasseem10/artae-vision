@@ -13,3 +13,5 @@
 *.png binary
 *.jpg binary
 *.jpeg binary
+scripts/experiments/*motion*.cjs text eol=lf
+tests/benchmarks/motion-association.test.cjs text eol=lf
