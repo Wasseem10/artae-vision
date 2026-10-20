@@ -41,6 +41,9 @@ experiments are in PR #19; their results do not automatically change this demo.
 - Session diagnostics show actual CPU/WebAssembly model identity and a bounded
   30-result latency/throughput window. Missing measurements are explicit.
   These are device measurements, not accuracy or person-identity confidence.
+- The fall monitor counts pose tracks, not verified people: two model outputs
+  can refer to the same person. The actual walkthrough exhibits that known
+  limitation briefly; overlays have not been edited to conceal it.
 - Opening a saved session clears current-run diagnostics rather than showing
   another session's measurements.
 

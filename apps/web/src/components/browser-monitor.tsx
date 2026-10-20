@@ -1219,7 +1219,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             </div>
             <div className={styles.controls}>
               <span>
-                {metrics.frames} frames analyzed · {metrics.people} {metrics.people === 1 ? "person" : "people"} ·{" "}
+                {metrics.frames} frames analyzed · {metrics.people} {job === "fall" ? metrics.people === 1 ? "pose track" : "pose tracks" : metrics.people === 1 ? "person" : "people"} ·{" "}
                 {formatTime(metrics.seconds)}
               </span>
               <span>{metrics.state}</span>
@@ -1234,7 +1234,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 {" · 95th percentile: "}{inferenceHealth.p95Ms === null ? "not measured" : `${inferenceHealth.p95Ms.toFixed(1)} ms`}
                 {" · Processed: "}{inferenceHealth.processedFps === null ? "not measured" : `${inferenceHealth.processedFps.toFixed(1)} frames/s`}
               </p>
-              <p>Measured over up to 30 recent results. Processing speed is not detection accuracy. Person numbers are temporary tracking labels; they do not verify identity.</p>
+              <p>Measured over up to 30 recent results. Processing speed is not detection accuracy. Pose tracks may miss or duplicate a person. Person numbers are temporary tracking labels; they do not verify identity.</p>
             </details>
             {running && job === "fall" && poseCoverage !== null && <p className={styles.note} role="status">
               Body pose visible in {poseCoverage}% of recent frames. {poseCoverage < 70
