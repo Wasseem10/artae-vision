@@ -10,6 +10,10 @@ decoded](posture-media-preflight.md), with 51,363 frames and explicit PTS/label-
 diagnostics. The October 18 snapshot below predates that acquisition. Event
 adjudication and the scoring protocol remain unfinished; no accuracy is claimed.
 
+The [October 20 browser check](posture-browser-clock.md) now tests endpoint clock
+correspondence and verified-start sampling. The raw annotation ambiguities below
+are still unresolved; no detector inference has been run on this source.
+
 ## Source and fixed inventory
 
 [Patrick O. Ogbuitepu's Fall Detection and Posture Classification Dataset,

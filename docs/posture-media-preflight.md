@@ -5,6 +5,11 @@ with actual local video verification. **No detector inference, threshold change,
 accuracy measurement, or model promotion occurred.** The landing page and `/live`
 are unchanged.
 
+October 20 update: the [browser clock experiment](posture-browser-clock.md)
+confirms raw-PTS correspondence at the seven videos' endpoints and tests a
+verified-start caller plan. This does not verify the annotation clock; the
+first-frame-zero bounds convention below remains diagnostic only.
+
 ## What is now verified
 
 All seven candidate validation recordings in the

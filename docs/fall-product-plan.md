@@ -3,12 +3,13 @@
 Status: September 29, 2026. The [pilot protocol](fall-pilot-plan.md) has the
 operational gates; this page tracks the next engineering decisions and schedule.
 
-October 19 follow-up: the [new-source preflight](posture-media-preflight.md)
-now verifies and fully decodes all seven candidate videos (51,363 frames).
-It exposes nonzero video-clock origins and partial final label bins; timed
-event/clock adjudication remains necessary before detector scoring. No new
-accuracy result is available, and this single-person source does not replace
-the multi-person validation gate.
+October 20 follow-up: the [new-source browser clock check](posture-browser-clock.md)
+matches the raw PTS clock at all seven videos' endpoints. Direct zero-time
+startup fails on all seven; an offline caller plan starting at verified first
+PTS succeeds on all seven with the strict sampler unchanged. The source media
+are fully verified (51,363 frames), but the annotator's clock and timed events
+still need review before full evaluation. No detector accuracy gain is claimed;
+this source does not replace the multi-person validation gate.
 
 ## What works today
 
