@@ -5,6 +5,13 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 20 association follow-up: an independently implemented
+[motion-association candidate](motion-association-comparison.md) was compared
+with the current rules on identical fresh observations across 28 MPFDD clips
+and five demo controls. It lost both MPFDD positives and all three demo
+positives, so it remains offline and is not promoted. Duplicate pose
+observations and ambiguous identity remain the next detector priority.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule

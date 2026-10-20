@@ -73,6 +73,8 @@ function loadRules(dependenciesRoot) {
   const modelBytes = fs.readFileSync(path.join(root, modelFile));
   sourceHashes[modelFile] = hash(modelBytes);
   return { FusedRule: requireRule('./multi-person-fall').FusedMultiPersonFallRule,
+    BrowserRule: requireRule('./browser-pose').BrowserPoseRule,
+    WindowRule: requireRule('./pose-window-fall').PoseWindowFallRule,
     model: JSON.parse(modelBytes), sourceHashes, typescriptVersion: ts.version };
 }
 

@@ -47,3 +47,23 @@ test('invalid features and invalid clocks cannot enter a rule', () => {
   assert.deepEqual(t.update(pose(NaN), [], 0), []);
   assert.deepEqual(t.update(pose(.2), [], NaN), []);
 });
+test('motion-only matching still fails the two observationally ambiguous actor handoffs', () => {
+  const fs = require('node:fs'), path = require('node:path');
+  const { loadRules, expandCases } = require('../../scripts/experiments/primary-history-stress.cjs');
+  const { BrowserRule, WindowRule, model } = loadRules(process.env.ARTAE_STRESS_DEPENDENCIES_ROOT || path.resolve(__dirname, '../../apps/web'));
+  const cases = expandCases(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../scripts/experiments/primary-history-cases-v1.json'))));
+  const alerts = [];
+  for (const c of cases) {
+    const rule = new MotionAssociation(() => new BrowserRule('fall'), () => new WindowRule(model));
+    let alerted = false;
+    for (const f of c.frames) {
+      const observations = [f.primary, c.bystander].filter(Boolean);
+      const hit = rule.update(f.primary, observations, f.seconds).some(t => t.temporalHit);
+      alerted = alerted || hit;
+    }
+    if (alerted) alerts.push(c.id);
+  }
+  // Retain failures explicitly; actor labels are never passed to the candidate.
+  assert.deepEqual(alerts, ['same-person-fall', 'different-person-already-down',
+    'short-occlusion-different-person', 'same-person-fall-with-bystander', 'new-person-arms-before-real-fall']);
+});
