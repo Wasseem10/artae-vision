@@ -10,6 +10,7 @@ import {
 } from "@/lib/browser-pose";
 import { type PoseWindowModel } from "@/lib/pose-window-fall";
 import { FusedMultiPersonFallRule } from "@/lib/multi-person-fall";
+import { InferenceHealth, type InferenceSummary } from "@/lib/inference-health";
 import windowModel from "@/lib/fall-window-model.json";
 import {
   createCloudSession,
@@ -142,6 +143,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     [sound, setSound] = useState(true);
   const [fallSample, setFallSample] = useState("fall-lateral");
   const [inferenceMs, setInferenceMs] = useState(0);
+  const [inferenceHealth, setInferenceHealth] = useState<InferenceSummary>(() => new InferenceHealth().summary());
   const [poseCoverage, setPoseCoverage] = useState<number | null>(null);
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured());
   const [loadedScope, setLoadedScope] = useState<string | null>(null);
@@ -431,6 +433,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setRecording(null);
     setReplay(null);
     setPhase("Loading pose model…");
+    setInferenceHealth(new InferenceHealth().summary());
+    setInferenceMs(0);
     setVisualStatus("");
     setVisualFrames(0);
     setPoseCoverage(null);
@@ -463,6 +467,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     let animation: ReturnType<typeof setInterval> | undefined,
       loadTimer: ReturnType<typeof setTimeout> | undefined,
       endTimer: ReturnType<typeof setTimeout> | undefined;
+    let inferenceTimer: ReturnType<typeof setTimeout> | undefined;
+    let pendingTimestamp: number | null = null;
+    const health = new InferenceHealth();
     let sourceUrl: string | null = null,
       stopped = false,
       bitmapPending = false,
@@ -495,6 +502,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       clearInterval(animation);
       clearTimeout(loadTimer);
       clearTimeout(endTimer);
+      clearTimeout(inferenceTimer);
       worker?.terminate();
       recordingHandle?.stop();
       media?.getTracks().forEach((t) => t.stop());
@@ -507,6 +515,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       }
       if (mounted.current) {
         setRunning(false);
+        setMetrics((previous) => ({ ...previous, people: 0, state: "Monitoring stopped" }));
         setPhase("Stopped · history kept");
         persist(s);
       }
@@ -669,7 +678,6 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         recordingFailure();
       }
       worker.onmessage = ({ data }) => {
-        bitmapPending = false;
         if (stopped) return;
         if (data.type === "error") {
           setProblem(`Detection stopped: ${data.message}`);
@@ -677,6 +685,15 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           return;
         }
         if (data.type !== "result") return;
+        if (pendingTimestamp === null || data.timestamp !== pendingTimestamp) {
+          setProblem("Detection stopped because a video result could not be verified. Your existing results are kept. Start a new session to retry.");
+          stop();
+          return;
+        }
+        clearTimeout(inferenceTimer);
+        bitmapPending = false;
+        pendingTimestamp = null;
+        setInferenceHealth(health.add(performance.now(), data.inferenceMs));
         setInferenceMs(Math.round(data.inferenceMs ?? 0));
         frames++;
         const poses: Landmark[][] = data.poses ?? [data.landmarks ?? []];
@@ -922,6 +939,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           video.readyState >= 2
         ) {
           bitmapPending = true;
+          // Covers both bitmap creation and a worker that silently stops replying.
+          // Wall-clock deadline: a frozen video clock must not hide a stalled model.
+          inferenceTimer = setTimeout(() => {
+            if (stopped) return;
+            setProblem("Detection stopped because the model did not respond for 15 seconds. Your existing results are kept. Start a new session to retry.");
+            stop();
+          }, 15000);
           lastSent = lastAt;
           lastVideo = video.currentTime;
           void createImageBitmap(video)
@@ -930,8 +954,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                 bitmap.close();
                 return;
               }
+              pendingTimestamp = performance.now();
               worker!.postMessage(
-                { type: "frame", bitmap, timestamp: performance.now() },
+                { type: "frame", bitmap, timestamp: pendingTimestamp },
                 [bitmap],
               );
             })
@@ -1015,6 +1040,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       }
     current.current = loaded;
     setSession(loaded);
+    setInferenceHealth(new InferenceHealth().summary());
+    setInferenceMs(0);
+    setMetrics({ frames: 0, people: 0, seconds: 0, state: "Saved session · monitoring stopped" });
     setReplay(null);
     setPhase(cloudOnly ? "Account copy · streamed from cloud storage" : "Saved session");
     if (loaded.clips[0]) playClip(loaded.clips[0]);
@@ -1197,6 +1225,17 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               <span>{metrics.state}</span>
             </div>
             <p className={styles.note}>Model processing: {inferenceMs} ms/frame. Keep this tab visible while monitoring.</p>
+            <details className={styles.note}>
+              <summary>Session diagnostics</summary>
+              <p>MediaPipe Pose Landmarker Lite · CPU / WebAssembly · on this device</p>
+              <p>
+                {inferenceHealth.samples ? `${inferenceHealth.samples} recent results` : "Waiting for measured results"}
+                {" · Median inference: "}{inferenceHealth.medianMs === null ? "not measured" : `${inferenceHealth.medianMs.toFixed(1)} ms`}
+                {" · 95th percentile: "}{inferenceHealth.p95Ms === null ? "not measured" : `${inferenceHealth.p95Ms.toFixed(1)} ms`}
+                {" · Processed: "}{inferenceHealth.processedFps === null ? "not measured" : `${inferenceHealth.processedFps.toFixed(1)} frames/s`}
+              </p>
+              <p>Measured over up to 30 recent results. Processing speed is not detection accuracy. Person numbers are temporary tracking labels; they do not verify identity.</p>
+            </details>
             {running && job === "fall" && poseCoverage !== null && <p className={styles.note} role="status">
               Body pose visible in {poseCoverage}% of recent frames. {poseCoverage < 70
                 ? "Detection may miss a fall. Reposition the camera so each person's full body is visible."
