@@ -90,8 +90,9 @@ async function main() {
   const origin = `http://127.0.0.1:${server.address().port}`;
   let browser;
   try {
+    const launchArgs = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
     browser = await chromium.launch({ channel: 'chrome', headless: true,
-      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+      args: launchArgs });
     const context = await browser.newContext({ viewport: { width: 960, height: 640 } });
     let blockedRequests = 0;
     await context.route('**/*', (route) => {
@@ -121,14 +122,15 @@ async function main() {
         });
         let startSample;
         const ready = new Promise((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('Video metadata timed out')), 10000);
           video.addEventListener('loadedmetadata', () => {
+            clearTimeout(timer);
             // Exercise the actual committed sampler on the initial zero tick.
             startSample = window.clockSampler.seekPresentedFrame(video, 0, () => false, 8000)
               .then((value) => ({ accepted: true, value }), (error) => ({ accepted: false, error: error.message }));
             resolve();
           }, { once: true });
-          video.addEventListener('error', () => reject(new Error('Video metadata failed')), { once: true });
-          setTimeout(() => reject(new Error('Video metadata timed out')), 10000);
+          video.addEventListener('error', () => { clearTimeout(timer); reject(new Error('Video metadata failed')); }, { once: true });
         });
         video.src = url; video.load();
         try {
@@ -220,7 +222,8 @@ async function main() {
       script_sha256: hash(await fsp.readFile(__filename)),
       contract_sha256: hash(await fsp.readFile(path.join(__dirname, 'posture-clock.cjs'))),
       sampler_revision: samplerRevision, sampler_path: samplerPath, sampler_sha256: hash(samplerSource),
-      browser: browser.version(), playwright: require(require.resolve('playwright/package.json', { paths: [dependencyRoot] })).version,
+      browser: browser.version(), browser_launch_args: launchArgs,
+      playwright: require(require.resolve('playwright/package.json', { paths: [dependencyRoot] })).version,
       typescript: ts.version, node: process.version, tolerance_seconds: 0.000002, blocked_requests: blockedRequests,
       browser_server_errors: errors, clips };
     await fsp.mkdir(path.dirname(output), { recursive: true });
