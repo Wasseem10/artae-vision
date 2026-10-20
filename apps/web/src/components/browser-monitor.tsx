@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Inter } from "next/font/google";
 import { useEffect, useRef, useState } from "react";
 import {
   BrowserPoseRule,
@@ -51,8 +51,7 @@ import { clipForEvent } from "@/lib/event-evidence";
 import { startSegmentedRecording, type RecordingState } from "@/lib/segment-recorder";
 import { EvidencePlayback } from "./evidence-playback";
 
-const missionBody = Barlow({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-mission-body" });
-const missionDisplay = Barlow_Condensed({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-mission-display" });
+const monitorFont = Inter({ subsets: ["latin"], display: "swap", variable: "--font-monitor" });
 
 function IncidentReviewPanel({
   event,
@@ -1048,7 +1047,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     if (loaded.clips[0]) playClip(loaded.clips[0]);
   }
   return (
-    <main className={`${styles.page} ${seniorSafety ? `${styles.seniorPage} ${missionBody.variable} ${missionDisplay.variable}` : ""}`}>
+    <main className={`${styles.page} ${seniorSafety ? `${styles.seniorPage} ${monitorFont.variable}` : ""}`}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/">
           artae.

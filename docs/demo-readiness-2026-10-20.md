@@ -16,6 +16,21 @@ The landing page and single `/live` entry point stay intact.
 7. Expand **Session diagnostics** to explain the model, execution backend,
    measured inference latency, and processing throughput.
 
+### Light workspace refresh
+
+The monitor and incident dialog now use Inter, a warm off-white canvas,
+white panels, softer borders, and blue primary actions. The visual references
+were [Billow](https://thebillow.ai/) and [Promptwatch](https://promptwatch.com/);
+their content and brand assets were not copied. The landing page, monitor
+layout, detector, and review behavior are unchanged.
+
+Verified in the in-app browser at desktop and 390px width: no horizontal
+overflow in the monitor or review dialog, a real staged lateral-fall alert,
+playable recorded evidence, and a saved review note after reload. Local
+captures are in ignored `artifacts/light-workspace/`. TypeScript, changed-file
+ESLint, all 88 unit tests, and the production build pass. This visual pass
+used guest history; account saving and SMS were not revalidated.
+
 Suggested explanation:
 
 > Artae runs a pretrained pose model in a browser worker and applies temporal
