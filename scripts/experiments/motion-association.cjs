@@ -33,21 +33,38 @@ class MotionAssociation {
   constructor(makeTemporal, makeWindow) {
     this.makeTemporal = makeTemporal; this.makeWindow = makeWindow;
     this.tracks = []; this.nextId = 1; this.lastTime = -Infinity;
+    this.lastDiagnostics = null;
   }
   update(primary, multi, time) {
+    // Research telemetry only: no actor labels, matching decisions or rule
+    // outputs depend on these snapshots. IDs identify histories, not people.
+    const diagnostics = this.lastDiagnostics = { seconds: Number.isFinite(time) ? time : null,
+      invalidClock: !Number.isFinite(time), invalidObservations: 0,
+      fusionSuppressed: 0, capacitySuppressed: 0, ambiguousObservations: [],
+      matchedIds: [], createdIds: [], retainedMissingIds: [], droppedHistories: [] };
+    const dropped = (track, reason) => diagnostics.droppedHistories.push({
+      id: track.id, reason, status: track.temporal.status, lastObservedSeconds: track.time });
     if (!Number.isFinite(time)) return [];
-    if (time <= this.lastTime) this.tracks = [];
+    if (time <= this.lastTime) {
+      this.tracks.forEach(t => dropped(t, 'clock-reset'));
+      this.tracks = [];
+    }
     this.lastTime = time;
     const observations = [];
     if (valid(primary)) observations.push({ features: primary, source: 'primary', index: -1 });
+    else if (primary != null) diagnostics.invalidObservations++;
     multi.forEach((features, index) => {
-      if (!valid(features)) return;
+      if (!valid(features)) { diagnostics.invalidObservations++; return; }
       // Use the existing fusion duplicate gate to isolate association changes.
       if (primary && distance(features, primary) <= 0.12 &&
-          Math.abs(features.verticality - primary.verticality) <= 0.3) return;
+          Math.abs(features.verticality - primary.verticality) <= 0.3) {
+        diagnostics.fusionSuppressed++; return;
+      }
       observations.push({ features, source: 'additional', index });
     });
+    diagnostics.capacitySuppressed = Math.max(0, observations.length - OPTIONS.maxPeople);
     observations.splice(OPTIONS.maxPeople);
+    this.tracks.filter(t => time - t.time > OPTIONS.maxGap).forEach(t => dropped(t, 'expired'));
     const previous = this.tracks.filter(t => time - t.time <= OPTIONS.maxGap);
     const costs = observations.map(o => previous.map(t => {
       const dt = Math.min(time - t.time, OPTIONS.predictionSeconds);
@@ -62,6 +79,8 @@ class MotionAssociation {
         .filter(p => Number.isFinite(p.value)).sort((a, b) => a.value - b.value);
       if (near.length > 1 && near[1].value - near[0].value < OPTIONS.ambiguity) {
         rejectedRows.add(i);
+        diagnostics.ambiguousObservations.push({ source: observations[i].source,
+          index: observations[i].index, competingIds: near.map(p => previous[p.j].id) });
         near.forEach(p => rejectedTracks.add(p.j));
       }
     });
@@ -74,6 +93,7 @@ class MotionAssociation {
       const j = matches[i];
       let track = j < 0 ? null : previous[j];
       if (track) {
+        diagnostics.matchedIds.push(track.id);
         used.add(j);
         const dt = time - track.time;
         if (dt > 0) {
@@ -85,6 +105,7 @@ class MotionAssociation {
       } else {
         track = { id: this.nextId++, vx: 0, vy: 0,
           temporal: this.makeTemporal(), window: this.makeWindow() };
+        diagnostics.createdIds.push(track.id);
       }
       track.features = { ...o.features }; track.time = time; next.push(track);
       output.push({ ...o, id: track.id,
@@ -92,8 +113,11 @@ class MotionAssociation {
         windowHit: track.window.update(o.features, time), status: track.temporal.status });
     });
     previous.forEach((track, j) => {
-      if (used.has(j) || rejectedTracks.has(j) || next.length >= OPTIONS.maxPeople) return;
+      if (used.has(j)) return;
+      if (rejectedTracks.has(j)) { dropped(track, 'ambiguous'); return; }
+      if (next.length >= OPTIONS.maxPeople) { dropped(track, 'capacity'); return; }
       track.temporal.update(null, time); track.window.update(null, time);
+      diagnostics.retainedMissingIds.push(track.id);
       next.push(track);
     });
     this.tracks = next;

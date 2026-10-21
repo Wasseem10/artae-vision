@@ -5,6 +5,13 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 21 diagnostic follow-up: [archived association replay](motion-association-comparison.md#october-21-why-histories-disappear)
+exactly reproduces all 3,356 candidate outputs and identifies armed-history
+losses from ambiguous association before the baseline alert in all five
+regressing clips. This narrows the development annotation work; it does not
+improve or change the live detector. Reviewed person/duplicate labels and an
+untouched multi-person source remain prerequisites for a promotion claim.
+
 October 20 association follow-up: an independently implemented
 [motion-association candidate](motion-association-comparison.md) was compared
 with the current rules on identical fresh observations across 28 MPFDD clips

@@ -107,6 +107,65 @@ separate demo-readiness work is in PR #17.
 
 ## Next decision
 
+### October 21: why histories disappear
+
+Added observation-only diagnostics to the offline candidate and an archive
+replay tool. Every candidate output (IDs, source slots, features, rule states,
+and both hit flags) exactly matches the original capture across **3,356 samples
+in 33 clips**. This is a replay of existing development evidence, not new
+inference, an independent test, or a detector improvement.
+
+| Existing source | Samples with ambiguous association | Histories discarded for ambiguity | Histories discarded after a gap | Discarded while upright / descending |
+| --- | --- | --- | --- | --- |
+| MPFDD, 28 clips | 94 / 2,751 | 203 | 13 | 43 (including 5 descending) |
+| Demo controls, 5 clips | 8 / 605 | 16 | 0 | 5 (all descending) |
+
+The last column counts histories in either `upright` or `descending` state,
+not unique people or falls. A frame can discard multiple histories. No
+capacity or source-clock reset drops occurred in this capture.
+
+All five baseline-positive / candidate-negative clips lose an armed history
+to ambiguity in the three seconds leading up to the first baseline alert:
+
+| Clip | Relevant history drop(s), seconds | State at drop | First baseline alert |
+| --- | --- | --- | --- |
+| MPFDD s1-p2-f1-fall-1 | 5.0 | descending | 6.3 |
+| MPFDD s3-p4-f1-fall-4 | 3.4, 3.9, 4.6 | upright | 4.9 |
+| Lateral demo | 5.7 | descending | 6.7 |
+| Forward demo | 7.1 | descending | 7.9 |
+| Backward demo | 7.2 | descending | 7.9 |
+
+The three-second window is a diagnostic slice relative to the **baseline
+output**, not ground-truth event timing. These results identify a repeated
+failure mechanism but do not prove that retaining those histories would be
+safe or restore correct detections. Positions alone cannot tell a duplicated
+pose from a second person in an overlap. No reset was relaxed.
+
+[Per-clip diagnostics](benchmarks/motion-association-diagnostics-v1.json)
+include every discarded history's reason, prior state, and timestamp. They
+pin the input report digest, rule/model digests, and instrumentation source.
+The replay rejects altered archive bytes, changed rule/model code, incomplete
+traces, or any divergence from the original candidate output; output files
+are created exclusively so previous evidence cannot be overwritten.
+
+```powershell
+node scripts/experiments/diagnose-motion-association.cjs `
+  artifacts/motion-association-v1.json artifacts/new-history-diagnostics.json `
+  <web-dependencies-root>
+node --test tests/benchmarks/motion-association-diagnostics.test.cjs
+```
+
+Six focused tests cover ambiguity, missing observations, expiry, rewound and
+invalid clocks, capacity, archive integrity, and changed/incomplete replays.
+The full candidate/history/evidence suite passes 24 tests. No UI files change,
+so visual testing is not applicable to this offline diagnostic addition.
+
+The immediate blocker to a trustworthy association change is still reviewed
+person/duplicate-pose labels and an untouched multi-person test source. Use
+the five windows above as development annotation priorities, retain the
+known synthetic actor-handoff false alerts, and measure fall recall alongside
+identity continuity for the next candidate.
+
 Do not tune away this regression and call the same clips independent validation.
 First establish reviewed person observations and duplicate-pose labels around
 the failed windows. Then compare a person detector plus a licensed tracking
