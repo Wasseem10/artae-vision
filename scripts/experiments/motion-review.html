@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Artae · Association review</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f7f9;color:#172033;font:16px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:24px}h1{font-size:30px;margin:0}h2{font-size:18px;overflow-wrap:anywhere}p{max-width:85ch}button,input,select,textarea{font:inherit;border:1px solid #8894a8;border-radius:5px;padding:8px;background:white;color:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #345de8;outline-offset:2px}.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:20px 0}.frame{background:white;border:1px solid #d3d8e2;padding:20px;margin:22px 0;border-radius:10px}.visual{position:relative}.visual img{width:100%;display:block}.marker{position:absolute;transform:translate(-50%,-50%);background:#101522;color:white;border:2px solid white;padding:0 4px;font:bold 12px system-ui;pointer-events:none}.fields{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0}label{display:flex;flex-direction:column;gap:4px}textarea{width:100%;min-height:70px}.warning{border-left:4px solid #a66409;padding:10px 16px;background:#fff6e4}.muted{color:#536078;font-size:14px}#status{min-height:24px}details{margin:10px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}#import{max-width:100%}
+</style></head><body><main>
+<h1>Association review</h1>
+<p>Review the moments immediately before, during, and after seven interrupted histories in five development clips. These are selected failures, not a representative benchmark.</p>
+<div class="warning"><strong>Markers are torso centers, not skeletons.</strong> P is the archived primary observation; M0–M3 are raw multi-pose slots. Their numbers do not identify people. Overlapping markers alone cannot prove duplicate poses. Use <em>uncertain</em> whenever the image is insufficient.</div>
+<details open><summary>How to label</summary><p>Count all visibly recognizable people, including partly occluded people. Assign person-1, person-2, etc. consistently within each clip, starting left to right in its first shown frame. Multiple observations assigned to the same actor indicate a suspected duplicate. Describe clothing and position in notes so another reviewer can check your identity assignments. Mark non-person only with visible supporting evidence; explain uncertain and non-person labels. Counts start blank, not zero. No labels are saved automatically: export a draft before closing.</p><p>Single-review exports record one reviewer’s judgments. They do not establish ground truth, independent adjudication, fall recall, or permission to promote a detector. Research media stays local; do not publish this packet.</p></details>
+<div class="toolbar"><label>Reviewer name<input id="reviewer" autocomplete="off"></label><button id="draft">Export draft</button><button id="complete">Export single review</button><label>Resume a JSON review<input id="import" type="file" accept=".json,application/json"></label></div>
+<p id="status" role="status" aria-live="polite"></p><div id="frames"></div>
+</main><script>/*REVIEW_VALIDATOR*/</script><script>
+'use strict';
+const packet = /*REVIEW_PACKET*/ null;
+let review = motionReview.blankReview(packet);
+const el = (tag, text) => { const node = document.createElement(tag); if(text !== undefined) node.textContent = text; return node; };
+function render() {
+  document.querySelector('#reviewer').value = review.reviewer;
+  const host = document.querySelector('#frames'); host.replaceChildren();
+  packet.frames.forEach((frame, i) => {
+    const row = review.frames[i], article = el('section'); article.className = 'frame';
+    article.append(el('h2', `${i + 1}. ${frame.clipId} · ${frame.requestedSeconds.toFixed(1)} s`));
+    article.append(el('p', frame.drops.length ? 'History interrupted at this sample' : 'Adjacent context frame'));
+    const visual = el('div'); visual.className = 'visual';
+    const image = el('img'); image.src = frame.image; image.alt = `Source video at ${frame.imagePresentationSeconds} seconds`; visual.append(image);
+    frame.observations.forEach(o => {
+      const marker = el('span', o.slot === 'primary' ? 'P' : o.slot.replace('multi-', 'M'));
+      marker.className = 'marker'; marker.style.left = `${o.features.x * 100}%`; marker.style.top = `${o.features.y * 100}%`;
+      visual.append(marker);
+    });
+    article.append(visual);
+    article.append(el('p', `Archived frame: ${frame.decodedSeconds.toFixed(6)} s · extracted frame: ${frame.imagePresentationSeconds.toFixed(6)} s`));
+    const fields = el('div'); fields.className = 'fields';
+    const countLabel = el('label', 'Visible people'), count = el('input'); count.type = 'number'; count.min = '0'; count.step = '1'; count.value = row.visiblePeople ?? ''; count.placeholder = 'Unreviewed';
+    count.addEventListener('input', () => { row.visiblePeople = count.value === '' ? null : Number(count.value); }); countLabel.append(count); fields.append(countLabel);
+    row.assignments.forEach(a => {
+      const label = el('label', a.slot === 'primary' ? 'P · primary' : a.slot.replace('multi-', 'M') + ' · raw pose');
+      const input = el('input'); input.value = a.actor; input.setAttribute('list', 'actors'); input.setAttribute('aria-label', `${frame.key} ${a.slot} actor`);
+      input.addEventListener('input', () => { a.actor = input.value.trim(); }); label.append(input); fields.append(label);
+    });
+    article.append(fields);
+    const notesLabel = el('label', 'Appearance, identity continuity, and uncertainty notes'), notes = el('textarea'); notes.value = row.notes;
+    notes.addEventListener('input', () => { row.notes = notes.value; }); notesLabel.append(notes); article.append(notesLabel);
+    const details = el('details'), pre = el('pre', JSON.stringify(frame.observations, null, 2)); details.append(el('summary', 'Archived observation values'), pre); article.append(details);
+    host.append(article);
+  });
+}
+const list = el('datalist'); list.id = 'actors';
+['unreviewed', 'uncertain', 'non-person', 'person-1', 'person-2', 'person-3', 'person-4'].forEach(v => { const option = el('option'); option.value = v; list.append(option); }); document.body.append(list);
+document.querySelector('#reviewer').addEventListener('input', e => { review.reviewer = e.target.value; });
+function exportReview(complete) {
+  try {
+    const output = { ...review, status: complete ? 'single-review' : 'draft' };
+    motionReview.validateReview(output, packet, complete);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(output, null, 2) + '\n'], {type:'application/json'}));
+    const a = el('a'); a.href = url; a.download = `association-${output.status}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    document.querySelector('#status').textContent = `Exported ${output.status}. This is development annotation, not a detector score.`;
+  } catch (error) { document.querySelector('#status').textContent = error.message; }
+}
+document.querySelector('#draft').onclick = () => exportReview(false);
+document.querySelector('#complete').onclick = () => exportReview(true);
+document.querySelector('#import').onchange = async e => {
+  try { const incoming = JSON.parse(await e.target.files[0].text()); motionReview.validateReview(incoming, packet); review = incoming; render(); document.querySelector('#status').textContent = 'Review restored. Export again after making changes.'; }
+  catch(error) { document.querySelector('#status').textContent = `Import rejected: ${error.message}`; }
+};
+render();
+</script></body></html>

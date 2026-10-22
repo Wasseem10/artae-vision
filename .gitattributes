@@ -15,3 +15,5 @@
 *.jpeg binary
 scripts/experiments/*motion*.cjs text eol=lf
 tests/benchmarks/motion-association.test.cjs text eol=lf
+tests/benchmarks/motion-review.test.cjs text eol=lf
+scripts/experiments/motion-review.html text eol=lf
