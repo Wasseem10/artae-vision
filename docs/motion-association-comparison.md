@@ -107,6 +107,11 @@ separate demo-readiness work is in PR #17.
 
 ## Next decision
 
+October 22 follow-up: the [local annotation packet](motion-association-review.md)
+provides 21 verified source frames and 52 archived observations around the
+interruptions below. It includes draft export/resume and strict review validation;
+zero human labels or new accuracy results are claimed.
+
 ### October 21: why histories disappear
 
 Added observation-only diagnostics to the offline candidate and an archive

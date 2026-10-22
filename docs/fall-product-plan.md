@@ -5,6 +5,13 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 22 annotation follow-up: a [local frame review packet](motion-association-review.md)
+now pairs 21 timestamp-verified images with 52 archived observations around
+the five tracking regressions. It supports resumable person/duplicate review
+with explicit uncertainty and rejects incomplete or mismatched labels. No human
+labels are complete, and the detector remains unchanged; independent review
+and untouched multi-person validation are still required.
+
 October 21 diagnostic follow-up: [archived association replay](motion-association-comparison.md#october-21-why-histories-disappear)
 exactly reproduces all 3,356 candidate outputs and identifies armed-history
 losses from ambiguous association before the baseline alert in all five

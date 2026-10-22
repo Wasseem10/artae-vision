@@ -1,5 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
 const { selectFrames } = require('../../scripts/experiments/build-motion-review.cjs');
 const { blankReview, validateReview } = require('../../scripts/experiments/motion-review-labels.cjs');
 const packet = { packetId: 'frozen-packet', frames: [{ key: 'clip@1',
@@ -73,4 +76,26 @@ test('window selection includes raw suppressed slots and adjacent samples, dedup
   assert.equal(frames.length, 3); assert.equal(frames[1].drops.length, 2);
   assert.deepEqual(frames[1].observations.map(o => o.slot), ['primary', 'multi-0', 'multi-1']);
   clip.frames.pop(); assert.throws(() => selectFrames(report, diagnostics), /Missing surrounding sample/);
+});
+
+test('published packet pins extraction, observations, and review code without completed labels', () => {
+  const root = path.resolve(__dirname, '../..');
+  const published = JSON.parse(fs.readFileSync(path.join(root, 'docs/benchmarks/motion-review-packet-v1.json')));
+  const sha = value => crypto.createHash('sha256').update(value).digest('hex');
+  const { packetId, ...content } = published;
+  assert.equal(packetId, sha(JSON.stringify(content)));
+  assert.equal(published.frames.length, 21);
+  assert.equal(new Set(published.frames.map(f => f.key)).size, 21);
+  assert.equal(new Set(published.frames.map(f => f.clipId)).size, 5);
+  assert.equal(published.frames.reduce((n, f) => n + f.observations.length, 0), 52);
+  assert.ok(published.frames.every(f => f.imagePresentationSeconds === f.decodedSeconds));
+  for (const [key, file] of [['builderSha256', 'scripts/experiments/build-motion-review.cjs'],
+    ['validatorSha256', 'scripts/experiments/motion-review-labels.cjs'],
+    ['templateSha256', 'scripts/experiments/motion-review.html'],
+    ['diagnosticsSha256', 'docs/benchmarks/motion-association-diagnostics-v1.json']]) {
+    assert.equal(published[key], sha(fs.readFileSync(path.join(root, file))), `Changed ${file}`);
+  }
+  const draft = blankReview(published);
+  assert.ok(draft.frames.every(f => f.visiblePeople === null));
+  validateReview(draft, published);
 });
