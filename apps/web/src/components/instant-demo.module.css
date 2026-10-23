@@ -265,97 +265,140 @@
   .seniorPage .controls { flex-wrap:wrap; padding-block:12px; }
 }
 
-/* Mission-control treatment for the fall monitor. The monitor grid and controls
-   keep their existing positions; this layer changes only its visual language. */
+/* Light monitor treatment inspired by Billow and Promptwatch.
+   Keep the monitor grid and operational states in their existing positions. */
 .seniorPage {
-  --mission-line:#2a3542;
-  --mission-muted:#9baab9;
-  --mission-blue:#a8c9e8;
-  background:radial-gradient(ellipse 90% 45% at 50% 0%,#192839 0%,#0b121a 60%,#05090d 100%);
-  color:#f5f7fa;
-  color-scheme:dark;
-  font-family:var(--font-mission-body),Arial,sans-serif;
+  --monitor-line:#e2e4e8;
+  --monitor-muted:#606671;
+  --monitor-accent:#3159d9;
+  background:#f7f7f4;
+  color:#20242c;
+  color-scheme:light;
+  font-family:var(--font-monitor),Arial,sans-serif;
 }
 .seniorPage button,.seniorPage input,.seniorPage select,.seniorPage textarea { font-family:inherit; }
-.seniorPage .header { background:#030608; border-bottom:1px solid var(--mission-line); }
-.seniorPage .brand { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:28px !important; font-weight:700; letter-spacing:.045em; text-transform:uppercase; }
-.seniorPage .header a { color:#cbd3dc; font-weight:600; text-transform:uppercase; letter-spacing:.07em; }
-.seniorPage .header a:hover { color:#fff; }
-.seniorPage .header button { background:transparent; border:1px solid #55616d; border-radius:3px; color:#f3f6f8; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
-.seniorPage .header button:hover { border-color:#fff; }
-.seniorPage .intro { padding-top:43px; padding-bottom:31px; }
-.seniorPage .intro > small { color:var(--mission-blue); font-size:11px; font-weight:700; letter-spacing:.22em; }
-.seniorPage .intro h1 { color:#fff; font-family:var(--font-mission-display),"Arial Narrow",sans-serif; font-size:clamp(46px,4.2vw,68px); font-weight:600; letter-spacing:.015em; line-height:.92; text-transform:uppercase; }
-.seniorPage .intro > p { color:#afbdc9; font-size:15px; line-height:1.55; }
-.seniorPage .workspace { background:#0c1219; border-color:#3a4855; border-radius:5px; box-shadow:0 28px 75px #0009,0 0 0 1px #ffffff08; }
-.seniorPage .setupPanel { background:#101821; border-right-color:var(--mission-line); }
-.seniorPage .monitorPanel { background:#0c1219; }
-.seniorPage .savedJobSetup label,.seniorPage .setup label { color:#b8c8d5; font-size:10px; font-weight:700; letter-spacing:.16em; }
+.seniorPage .header { background:#fff; border-bottom:1px solid var(--monitor-line); }
+.seniorPage .brand { color:#20242c; font-size:27px !important; font-weight:650; letter-spacing:-.055em; }
+.seniorPage .header a { color:#515762; font-weight:500; }
+.seniorPage .header a:hover { color:#3159d9; }
+.seniorPage .header button { background:transparent; border:1px solid #d4d7dd; border-radius:9px; color:#343c4a; font-size:13px; font-weight:500; text-transform:none; letter-spacing:0; }
+.seniorPage .header button:hover { border-color:#b6bdc9; background:#f5f6f8; }
+.seniorPage .intro { padding-top:38px; padding-bottom:30px; gap:14px 48px; }
+.seniorPage .intro > small { color:#59616e; font-size:10px; font-weight:600; letter-spacing:.12em; }
+.seniorPage .intro h1 { color:#20242c; font-size:clamp(32px,3.1vw,48px); font-weight:500; letter-spacing:-.05em; line-height:1.12; }
+.seniorPage .intro > p { color:#606671; font-size:14px; line-height:1.7; }
+.seniorPage .workspace { background:#fff; border-color:#e2e4e8; border-radius:16px; box-shadow:0 4px 6px #20242c02,0 14px 40px #20242c06; }
+.seniorPage .setupPanel { background:#fcfcfb; border-right-color:var(--monitor-line); }
+.seniorPage .monitorPanel { background:#fff; }
+.seniorPage .savedJobSetup label,.seniorPage .setup label { color:#454b55; font-size:12px; font-weight:500; letter-spacing:0; text-transform:none; }
 .seniorPage .savedJobSetup input,.seniorPage .setup select,.seniorPage .setup input,.seniorPage .phoneField input,.seniorPage .incidentReview textarea,.seniorPage .customJob textarea {
-  background:#080e15; border:1px solid #415061; border-radius:3px; color:#f5f8fa; box-shadow:none;
+  background:#fff; border:1px solid #d4d7dd; border-radius:9px; color:#20242c; box-shadow:0 1px 2px #20242c04; font-weight:400;
 }
-.seniorPage input::placeholder,.seniorPage textarea::placeholder { color:#8998a8; }
-.seniorPage select option { background:#101821; color:#f5f8fa; }
+.seniorPage input::placeholder,.seniorPage textarea::placeholder { color:#777d88; }
+.seniorPage select option { background:#fcfcfb; color:#20242c; }
 .seniorPage .savedJobSetup button,.seniorPage .caregiverSetup button,.seniorPage .clipList button,.seniorPage .log article button,.seniorPage .storage button,.seniorPage .history button,.seniorPage .controls button {
-  background:#17222d; border:1px solid #506070; border-radius:3px; color:#edf3f8; font-weight:600;
+  background:#fff; border:1px solid #d4d7dd; border-radius:9px; color:#343c4a; font-weight:600;
 }
-.seniorPage .savedJobSetup button:hover:not(:disabled),.seniorPage .caregiverSetup button:hover:not(:disabled),.seniorPage .clipList button:hover:not(:disabled),.seniorPage .log article button:hover:not(:disabled),.seniorPage .storage button:hover:not(:disabled),.seniorPage .history button:hover:not(:disabled),.seniorPage .controls button:hover:not(:disabled) { background:#243341; border-color:#a8bdcf; }
-.seniorPage .fixedJob { background:#152330; border:1px solid #4a6275; border-left:3px solid #c8deed; border-radius:3px; }
-.seniorPage .fixedJob small { color:var(--mission-blue); letter-spacing:.17em; }
-.seniorPage .fixedJob strong { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:600; letter-spacing:.01em; text-transform:uppercase; }
-.seniorPage .fixedJob span { color:#b3c1cc; }
-.seniorPage .start { background:#f3f5f7; border-color:#f3f5f7; border-radius:3px; box-shadow:none; color:#091019; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; }
-.seniorPage .start:hover:not(:disabled) { background:#bcd1e0; border-color:#bcd1e0; }
-.seniorPage .caregiverSetup { background:#101821; border-top-color:var(--mission-line); }
-.seniorPage .caregiverSetup > div strong,.seniorPage .replay h3,.seniorPage .history h2 { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-weight:600; letter-spacing:.045em; text-transform:uppercase; }
-.seniorPage .caregiverSetup > div strong { font-size:18px; }
-.seniorPage .caregiverSetup > div p,.seniorPage .smsNotice,.seniorPage .setupPanel > .note,.seniorPage .camera > .note,.seniorPage .replay p,.seniorPage .history p,.seniorPage .storage span,.seniorPage .history span { color:var(--mission-muted); }
-.seniorPage .caregiverSetup button { color:#f2f6f9; }
-.seniorPage .setupPanel > .note { border-top-color:var(--mission-line); }
-.seniorPage .ruleBar { background:#111b25; border-bottom-color:var(--mission-line); }
-.seniorPage .ruleBar strong { color:#f6f9fb; font-size:16px; font-weight:700; }
-.seniorPage .ruleBar label,.seniorPage .controls span { color:#b8c7d3; }
-.seniorPage input[type="checkbox"] { accent-color:#dbe9f5; }
-.seniorPage .camera { border-right-color:var(--mission-line); }
+.seniorPage .savedJobSetup button:hover:not(:disabled),.seniorPage .caregiverSetup button:hover:not(:disabled),.seniorPage .clipList button:hover:not(:disabled),.seniorPage .log article button:hover:not(:disabled),.seniorPage .storage button:hover:not(:disabled),.seniorPage .history button:hover:not(:disabled),.seniorPage .controls button:hover:not(:disabled) { background:#f2f5fc; border-color:#a9b8e7; }
+.seniorPage .fixedJob { background:#f0f4ff; border:1px solid #d6dff8; border-left:3px solid #a9b8e7; border-radius:9px; }
+.seniorPage .fixedJob small { color:var(--monitor-accent); letter-spacing:.17em; }
+.seniorPage .fixedJob strong { color:#20242c; font-size:15px; font-weight:600; }
+.seniorPage .fixedJob span { color:#606671; }
+.seniorPage .start { background:#3159d9; border-color:#3159d9; border-radius:9px; box-shadow:0 2px 4px #3159d920,inset 0 1px #ffffff25; color:#fff; font-size:14px; font-weight:600; letter-spacing:0; }
+.seniorPage .start:hover:not(:disabled) { background:#2447bb; border-color:#2447bb; }
+.seniorPage .caregiverSetup { background:#fcfcfb; border-top-color:var(--monitor-line); }
+.seniorPage .caregiverSetup > div strong,.seniorPage .replay h3,.seniorPage .history h2 { color:#20242c; font-weight:600; letter-spacing:-.025em; }
+.seniorPage .caregiverSetup > div strong { font-size:13px; }
+.seniorPage .caregiverSetup > div p,.seniorPage .smsNotice,.seniorPage .setupPanel > .note,.seniorPage .camera > .note,.seniorPage .replay p,.seniorPage .history p,.seniorPage .storage span,.seniorPage .history span { color:var(--monitor-muted); }
+.seniorPage .caregiverSetup button { color:#343c4a; }
+.seniorPage .setupPanel > .note { border-top-color:var(--monitor-line); }
+.seniorPage .ruleBar { background:#fff; border-bottom-color:var(--monitor-line); }
+.seniorPage .ruleBar strong { color:#20242c; font-size:14px; font-weight:600; }
+.seniorPage .ruleBar label,.seniorPage .controls span { color:#535c69; }
+.seniorPage input[type="checkbox"] { accent-color:#3159d9; }
+.seniorPage .camera { border-right-color:var(--monitor-line); }
 .seniorPage .videoStage { background:#03070b; }
-.seniorPage .cameraLabel { background:#050b10db; border-color:#9cb3c666; border-radius:2px; color:#fff; letter-spacing:.04em; text-transform:uppercase; }
-.seniorPage .cameraLabel i,.seniorPage .controls span i.live,.seniorPage .ruleBar > span.live i { background:#b2d6f5; box-shadow:0 0 0 4px #a8c9e82e; }
+.seniorPage .cameraLabel { background:#ffffffed; border-color:#ffffff80; border-radius:6px; color:#303744; letter-spacing:0; font-weight:500; box-shadow:0 2px 8px #00000010; }
+.seniorPage .cameraLabel i,.seniorPage .controls span i.live,.seniorPage .ruleBar > span.live i { background:#3159d9; box-shadow:0 0 0 4px #a8c9e82e; }
 .seniorPage .detection { border-color:#c5e0f5; }
 .seniorPage .detection span { background:#c5e0f5; color:#07121b; }
 .seniorPage .stageEmpty { background:linear-gradient(145deg,#07121cf2,#0b1622d9); }
-.seniorPage .stageEmpty.samplePreview { background:linear-gradient(180deg,#06101c80,#030a11d9),url('/vision/samples/fall-lateral-poster.png') center / cover; text-shadow:0 2px 8px #000; }
-.seniorPage .stageEmpty strong { font-family:var(--font-mission-display),Arial,sans-serif; font-size:26px; font-weight:600; letter-spacing:.035em; text-transform:uppercase; }
+.seniorPage .stageEmpty.samplePreview { background:linear-gradient(180deg,#18223418,#101724b8),url('/vision/samples/fall-lateral-poster.png') center / cover; text-shadow:0 2px 8px #000; }
+.seniorPage .stageEmpty strong { font-size:21px; font-weight:500; letter-spacing:-.025em; }
 .seniorPage .stageEmpty span { color:#d6e0e8; }
-.seniorPage .controls,.seniorPage .replay,.seniorPage .storage { border-color:var(--mission-line); }
-.seniorPage .controls span { font-weight:600; }
-.seniorPage .camera > .note { border-bottom:1px solid var(--mission-line); }
-.seniorPage .replay h3 { font-size:21px; }
-.seniorPage .replay a,.seniorPage .attribution a { color:#b4d8f5; }
-.seniorPage .log { background:#101821; }
-.seniorPage .log > header,.seniorPage .log article { border-bottom-color:var(--mission-line); }
-.seniorPage .log header small { color:#98adbd; letter-spacing:.16em; }
-.seniorPage .log header strong { color:#fff; font-family:var(--font-mission-display),Arial,sans-serif; font-size:19px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
-.seniorPage .log header > span { background:#263847; color:#e3f1fb; }
-.seniorPage .log article > i { background:#b2d6f5; }
-.seniorPage .log article.reviewSuggestion > i { background:#8794a0; }
-.seniorPage .log article.reviewSuggestion span { color:#aebbc5; }
-.seniorPage .log article strong { color:#f3f7fa; }
-.seniorPage .log article small,.seniorPage .log .incidentSummary,.seniorPage .actionTrace,.seniorPage .incidentReview p { color:#afbfcc; }
-.seniorPage .log article span,.seniorPage .incidentReview summary { color:#b4d8f5; }
-.seniorPage .incidentReview { border-top-color:var(--mission-line); }
-.seniorPage .incidentReview label { color:#dbe5ec; }
-.seniorPage .empty { color:#8da0b0; }
-.seniorPage .empty strong { color:#f2f6fa; font-size:16px; }
-.seniorPage .empty p { color:#9aabba; }
-.seniorPage .storage { background:#111a23; }
-.seniorPage .history h2 { font-size:31px; }
-.seniorPage .history > div button { background:#111a23; border-color:#3b4a58; }
-.seniorPage .attribution { color:#8799a8; }
-.seniorPage :focus-visible { outline-color:#c8e2f5; }
+.seniorPage .controls,.seniorPage .replay,.seniorPage .storage { border-color:var(--monitor-line); }
+.seniorPage .controls span { font-weight:500; font-variant-numeric:tabular-nums; }
+.seniorPage .camera > .note { border-bottom:1px solid var(--monitor-line); }
+.seniorPage .replay h3 { font-size:16px; }
+.seniorPage .replay a,.seniorPage .attribution a { color:#3153bd; }
+.seniorPage .log { background:#fff; }
+.seniorPage .log > header,.seniorPage .log article { border-bottom-color:var(--monitor-line); }
+.seniorPage .log header small { color:#69717e; letter-spacing:.08em; font-size:9px; font-weight:500; }
+.seniorPage .log header strong { color:#20242c; font-size:14px; font-weight:600; letter-spacing:-.02em; }
+.seniorPage .log header > span { background:#f0f3fa; color:#3153bd; }
+.seniorPage .log article > i { background:#3159d9; }
+.seniorPage .log article.reviewSuggestion > i { background:#818895; }
+.seniorPage .log article.reviewSuggestion span { color:#606671; }
+.seniorPage .log article strong { color:#20242c; }
+.seniorPage .log article small,.seniorPage .log .incidentSummary,.seniorPage .actionTrace,.seniorPage .incidentReview p { color:#606671; }
+.seniorPage .log article span,.seniorPage .incidentReview summary { color:#3153bd; }
+.seniorPage .incidentReview { border-top-color:var(--monitor-line); }
+.seniorPage .incidentReview label { color:#454b55; }
+.seniorPage .empty { color:#69717e; }
+.seniorPage .empty strong { color:#343c4a; font-size:14px; font-weight:500; }
+.seniorPage .empty p { color:#606671; }
+.seniorPage .storage { background:#fafbfd; }
+.seniorPage .history h2 { font-size:25px; font-weight:500; }
+.seniorPage .history > div button { background:#fafbfd; border-color:#e2e4e8; }
+.seniorPage .attribution { color:#606671; }
+.seniorPage :focus-visible { outline-color:#3159d9; }
 @media (max-width:1150px) {
-  .seniorPage .camera { border-bottom-color:var(--mission-line); }
+  .seniorPage .camera { border-bottom-color:var(--monitor-line); }
 }
 @media (max-width:780px) {
-  .seniorPage .intro h1 { font-size:clamp(44px,9vw,60px); }
-  .seniorPage .setupPanel { border-bottom-color:var(--mission-line); }
+  .seniorPage .intro h1 { font-size:34px; }
+  .seniorPage .setupPanel { border-bottom-color:var(--monitor-line); }
 }
+
+/* Evidence review and readable operational states. Native dialog supplies focus
+   containment, Escape handling, and focus return to the event trigger. */
+.reviewDialog { background:#fff; border:1px solid #d4d7dd; border-radius:18px; color:#20242c; box-shadow:0 24px 80px #20242c26; width:min(1120px,calc(100% - 32px)); max-height:calc(100dvh - 40px); padding:26px; font-family:var(--font-monitor),Arial,sans-serif; }
+.reviewDialog::backdrop { background:#20242c66; backdrop-filter:blur(5px); }
+.reviewDialog header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.reviewDialog header small { color:#606671; font-size:12px; letter-spacing:.12em; }
+.reviewDialog h2 { font-size:28px; line-height:1.2; margin:12px 0; font-weight:500; letter-spacing:-.035em; }
+.reviewDialog h3 { margin:0 0 10px; font-size:20px; }
+.reviewDialog p,.reviewDialog .incidentReview p { color:#606671; font-size:14px; line-height:1.6; }
+.reviewDialog button { background:#fff; border:1px solid #d4d7dd; border-radius:9px; color:#343c4a; min-height:44px; padding:10px 14px; cursor:pointer; font:inherit; }
+.reviewDialog button:hover:not(:disabled) { border-color:#a9b8e7; background:#f2f5fc; }
+.reviewDialog button:disabled { opacity:.5; cursor:wait; }
+.reviewDialog :focus-visible { outline:3px solid #3159d9; outline-offset:3px; }
+.reviewBody { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr); gap:26px; margin-top:24px; }
+.reviewBody video { display:block; width:100%; aspect-ratio:16/9; background:#000; }
+.reviewBody a { display:inline-block; color:#3153bd; margin-top:16px; font-size:14px; }
+.reviewDialog .incidentReview summary { font-size:15px; color:#3153bd; padding:8px 0; }
+.reviewDialog .incidentReview label { font-size:14px; }
+.reviewDialog .incidentReview textarea { font-size:14px; }
+.reviewDialog .incidentReview small { display:block; font-size:12px; color:#606671; margin-top:12px; }
+.reviewDialog .reviewActions { gap:8px; margin-top:18px; }
+.reviewDialog .reviewActions button:nth-last-child(2) { background:#3159d9; color:#fff; }
+.monitorLimits,.cloudPreference { padding:16px 22px; border-top:1px solid var(--monitor-line); color:var(--monitor-muted); font-size:13px; line-height:1.65; }
+.monitorLimits p,.cloudPreference p { margin:0; }
+.monitorLimits details { margin-top:12px; }
+.monitorLimits summary { cursor:pointer; color:#454b55; }
+.monitorLimits details p { margin-top:12px; }
+.cloudPreference label { display:flex; gap:9px; align-items:flex-start; text-transform:none; }
+.cloudPreference input { margin-top:5px; flex-shrink:0; }
+.seniorPage .caregiverSetup > div p,.seniorPage .smsNotice { font-size:13px; line-height:1.6; }
+.seniorPage .smsNotice a { color:#3153bd; }
+.seniorPage .log article small,.seniorPage .log article span { font-size:12px; line-height:1.6; }
+.seniorPage .log article strong { font-size:15px; }
+.seniorPage .log article button { min-height:44px; font-size:13px; }
+.seniorPage .camera > .note,.seniorPage .replay p,.seniorPage .empty p,.seniorPage .storage span { font-size:13px; line-height:1.65; }
+.seniorPage .attribution { font-size:12px; }
+@media(max-width:780px) { .reviewBody { grid-template-columns:1fr; }.reviewDialog { padding:20px; }.reviewDialog h2 { font-size:24px; }.seniorPage .header { height:auto; min-height:68px; padding:16px 18px; gap:16px; flex-wrap:wrap; }.seniorPage .header > div { gap:16px; flex-wrap:wrap; }.seniorPage .header > div > a { min-height:32px; }.seniorPage .intro h1 { font-size:34px; } }
+@media(prefers-reduced-motion:reduce) { .page * { scroll-behavior:auto!important; } }
+.seniorPage .setup select:focus,.seniorPage .setup input:focus,.seniorPage .savedJobSetup input:focus { border-color:#3159d9; }
+.seniorPage .smsToggle,.seniorPage .phoneField { color:#454b55; }
+:global(body):has(.reviewDialog[open]) { overflow:hidden; }
+.reviewDialog { overscroll-behavior:contain; }
