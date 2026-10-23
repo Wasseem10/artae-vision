@@ -11,6 +11,7 @@ import {
 import { type PoseWindowModel } from "@/lib/pose-window-fall";
 import { FusedMultiPersonFallRule } from "@/lib/multi-person-fall";
 import { InferenceHealth, type InferenceSummary } from "@/lib/inference-health";
+import { VideoSourceHealth } from "@/lib/video-source-health";
 import windowModel from "@/lib/fall-window-model.json";
 import {
   createCloudSession,
@@ -627,6 +628,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       if (!video.videoWidth)
         throw new Error("No decoded frames received. Try another video file.");
       startTime = performance.now();
+      const sourceHealth = new VideoSourceHealth(startTime);
       s.createdAt = new Date().toISOString();
       queueCloud(s, async () => {
         await createCloudSession(s);
@@ -843,6 +845,18 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       setMetrics({ frames: 0, people: 0, seconds: 0, state: "Looking for a body pose" });
       const draw = () => {
         if (stopped) return;
+        if (media?.getVideoTracks().some((track) => track.readyState === "ended")) {
+          setProblem("Monitoring stopped because the camera disconnected. Your existing results are kept. Reconnect it and start a new session.");
+          stop();
+          return;
+        }
+        // A frozen input may leave no worker request pending, so the model's
+        // response watchdog cannot detect it. Normal EOF keeps its final-frame grace period.
+        if (!video.ended && sourceHealth.stalled(video.currentTime, video.readyState, performance.now())) {
+          setProblem("Monitoring stopped because the video source stopped advancing for 15 seconds. Your existing results are kept. Check the video source and start a new session.");
+          stop();
+          return;
+        }
         lastAt = now();
         if (lastAt >= (scope === "guest" ? 120 : sessionMinutes * 60)) {
           stop();

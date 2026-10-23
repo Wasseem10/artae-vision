@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 23 reliability follow-up: the [video-source guard](video-source-reliability-2026-10-23.md)
+stops a frozen input after 15 seconds without media-clock progress and handles
+ended camera tracks explicitly. Local browser checks preserve existing evidence
+and recover through a fresh session. This does not improve detector accuracy;
+reviewed person labels and independent multi-person validation remain required.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule
