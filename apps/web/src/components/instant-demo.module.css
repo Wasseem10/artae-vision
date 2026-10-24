@@ -387,8 +387,10 @@
 .monitorLimits details { margin-top:12px; }
 .monitorLimits summary { cursor:pointer; color:#454b55; }
 .monitorLimits details p { margin-top:12px; }
-.cloudPreference label { display:flex; gap:9px; align-items:flex-start; text-transform:none; }
-.cloudPreference input { margin-top:5px; flex-shrink:0; }
+.cloudPreference label { display:flex; gap:9px; align-items:flex-start; color:inherit; font-size:13px; font-weight:400; letter-spacing:normal; text-transform:none; cursor:pointer; }
+.cloudPreference label > span { flex:1; min-width:0; }
+.cloudPreference input[type="checkbox"] { flex:0 0 18px; width:18px; height:18px; min-height:18px; padding:0; margin:2px 0 0; }
+.cloudPreference input[type="checkbox"]:focus-visible { outline:2px solid var(--monitor-accent, #3159d9); outline-offset:3px; }
 .seniorPage .caregiverSetup > div p,.seniorPage .smsNotice { font-size:13px; line-height:1.6; }
 .seniorPage .smsNotice a { color:#3153bd; }
 .seniorPage .log article small,.seniorPage .log article span { font-size:12px; line-height:1.6; }

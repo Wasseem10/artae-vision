@@ -1182,7 +1182,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         </div>}
         {job === "fall" && scope === "guest" && <div className={styles.cloudPreference}>
           {source === "sample" ? <p>The staged sample may send event frames to AWS for optional context. Local detection works if AWS is unavailable.</p> :
-            <label><input type="checkbox" checked={allowFallCloud} disabled={running} onChange={(e) => setAllowFallCloud(e.target.checked)} /> Allow event frames from my video to be sent to AWS for optional review.</label>}
+            <label><input type="checkbox" checked={allowFallCloud} disabled={running} onChange={(e) => setAllowFallCloud(e.target.checked)} /><span>Allow event frames from my video to be sent to AWS for optional review.</span></label>}
         </div>}
         <div className={styles.monitorLimits}>
           <p>Experimental. Keep this tab visible. Use a recorded sample; do not fall to test.</p>

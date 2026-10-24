@@ -1,5 +1,8 @@
 # Video source interruption handling
 
+Follow-up: the webcam consent layout issue noted below was
+[fixed and checked on October 24](cloud-consent-layout-2026-10-24.md).
+
 October 23, 2026. This bounded change improves the existing `/live` monitor in
 PR #17. Current `origin/main` (`174346215`) and open PRs #16–21 were checked;
 the clean PR #17 worktree was reused, preserving the original dirty checkout.
