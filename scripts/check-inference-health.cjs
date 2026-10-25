@@ -9,7 +9,7 @@ const origin = new URL(url).origin;
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname), 'Local QA only');
 
 async function main() {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true,
+  const browser = await chromium.launch({ channel: process.env.ARTAE_TEST_BROWSER || 'chrome', headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const dir = path.resolve(__dirname, '../artifacts/inference-health');
   await fs.mkdir(dir, { recursive: true });

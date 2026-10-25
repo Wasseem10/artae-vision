@@ -1,10 +1,10 @@
 name: Web quality
 on:
   pull_request:
-    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", ".github/workflows/web-quality.yml"]
+    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", ".github/workflows/web-quality.yml"]
   push:
     branches: [main]
-    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", ".github/workflows/web-quality.yml"]
+    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", ".github/workflows/web-quality.yml"]
 permissions:
   contents: read
 jobs:
@@ -31,16 +31,33 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Verify guest detection, evidence, and review during API failure
+      - name: Verify guest workflow and recovery from model and video failures
+        timeout-minutes: 8
         env:
           ARTAE_TEST_URL: http://127.0.0.1:3100/live
           ARTAE_TEST_BROWSER: chromium
         run: |
-          pnpm start --port 3100 > /tmp/artae-web.log 2>&1 &
+          node node_modules/next/dist/bin/next start --port 3100 > /tmp/artae-web.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" || true' EXIT
+          READY=0
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:3100/live > /dev/null; then break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then break; fi
+            if curl --fail --silent --max-time 2 http://127.0.0.1:3100/live > /dev/null; then READY=1; break; fi
             sleep 1
           done
+          if [ "$READY" -ne 1 ]; then cat /tmp/artae-web.log; exit 1; fi
           pnpm test:live || { cat /tmp/artae-web.log; exit 1; }
+          node ../../scripts/check-inference-health.cjs || { cat /tmp/artae-web.log; exit 1; }
+          node ../../scripts/check-video-source-health.cjs || { cat /tmp/artae-web.log; exit 1; }
+      - name: Keep browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-failure-diagnostics
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            /tmp/artae-web.log
+            artifacts/inference-health/
+            artifacts/video-source-health/

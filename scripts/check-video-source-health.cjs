@@ -9,7 +9,7 @@ const origin = new URL(url).origin;
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(new URL(url).hostname), 'Local QA only');
 
 async function main() {
-  const browser = await chromium.launch({ channel: 'chrome', headless: true,
+  const browser = await chromium.launch({ channel: process.env.ARTAE_TEST_BROWSER || 'chrome', headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader',
       '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] });
   const output = path.resolve(__dirname, '../artifacts/video-source-health');
