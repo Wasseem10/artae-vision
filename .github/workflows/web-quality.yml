@@ -1,10 +1,10 @@
 name: Web quality
 on:
   pull_request:
-    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", ".github/workflows/web-quality.yml"]
+    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", "scripts/check-storage-failure-replay.cjs", ".github/workflows/web-quality.yml"]
   push:
     branches: [main]
-    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", ".github/workflows/web-quality.yml"]
+    paths: ["apps/web/**", "scripts/check-live-fall-demo.cjs", "scripts/check-inference-health.cjs", "scripts/check-video-source-health.cjs", "scripts/check-storage-failure-replay.cjs", ".github/workflows/web-quality.yml"]
 permissions:
   contents: read
 jobs:
@@ -50,6 +50,7 @@ jobs:
           pnpm test:live || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-inference-health.cjs || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-video-source-health.cjs || { cat /tmp/artae-web.log; exit 1; }
+          node ../../scripts/check-storage-failure-replay.cjs || { cat /tmp/artae-web.log; exit 1; }
       - name: Keep browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -61,3 +62,4 @@ jobs:
             /tmp/artae-web.log
             artifacts/inference-health/
             artifacts/video-source-health/
+            artifacts/storage-failure-replay/

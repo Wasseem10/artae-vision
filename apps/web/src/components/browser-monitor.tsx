@@ -1033,9 +1033,13 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   }
   async function openSession(s: BrowserSession, cloudOnly = false) {
     if (running || saving || reviewing) return;
-    setSaveProblem(null);
-    let loaded = s;
-    if (!cloudOnly) {
+    // History rows intentionally omit blobs. Keep the current session's full
+    // in-memory copy: it may be the only recording after a device save fails.
+    const memory = current.current;
+    const reuseMemory = !cloudOnly && memory?.id === s.id && memory.scope === s.scope;
+    if (!reuseMemory) setSaveProblem(null);
+    let loaded = reuseMemory ? memory : s;
+    if (!cloudOnly && !reuseMemory) {
       try { loaded = await loadLocalSession(s); }
       catch { setSaveProblem("Local footage could not load. Trying the account copy if available."); }
     }
@@ -1055,9 +1059,9 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setSession(loaded);
     setInferenceHealth(new InferenceHealth().summary());
     setInferenceMs(0);
-    setMetrics({ frames: 0, people: 0, seconds: 0, state: "Saved session · monitoring stopped" });
+    setMetrics({ frames: 0, people: 0, seconds: 0, state: "Session history · monitoring stopped" });
     setReplay(null);
-    setPhase(cloudOnly ? "Account copy · streamed from cloud storage" : "Saved session");
+    setPhase(cloudOnly ? "Account copy · streamed from cloud storage" : "Session history");
     if (loaded.clips[0]) playClip(loaded.clips[0]);
   }
   return (
@@ -1359,7 +1363,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         <div className={styles.storage}>
           <strong>
             {scope === "guest"
-              ? "Guest session · saved on this device only"
+              ? "Guest session · this browser only"
               : saving
                 ? `Saving to account… ${saving} pending`
                 : session?.cloud
