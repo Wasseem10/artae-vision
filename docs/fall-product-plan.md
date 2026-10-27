@@ -5,6 +5,34 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 27 visual follow-up: a [provisional AI review](motion-review-provisional-audit.md)
+now records person-count and torso-center association hypotheses for all 21
+review frames. It highlights clustered centers on one actor alongside missing
+background-person observations; four body/stool overlaps remain uncertain.
+The editable draft is explicitly not human-adjudicated. No detector change or
+accuracy improvement is claimed; independent review remains the next gate.
+
+October 22 annotation follow-up: a [local frame review packet](motion-association-review.md)
+now pairs 21 timestamp-verified images with 52 archived observations around
+the five tracking regressions. It supports resumable person/duplicate review
+with explicit uncertainty and rejects incomplete or mismatched labels. No human
+labels are complete, and the detector remains unchanged; independent review
+and untouched multi-person validation are still required.
+
+October 21 diagnostic follow-up: [archived association replay](motion-association-comparison.md#october-21-why-histories-disappear)
+exactly reproduces all 3,356 candidate outputs and identifies armed-history
+losses from ambiguous association before the baseline alert in all five
+regressing clips. This narrows the development annotation work; it does not
+improve or change the live detector. Reviewed person/duplicate labels and an
+untouched multi-person source remain prerequisites for a promotion claim.
+
+October 20 association follow-up: an independently implemented
+[motion-association candidate](motion-association-comparison.md) was compared
+with the current rules on identical fresh observations across 28 MPFDD clips
+and five demo controls. It lost both MPFDD positives and all three demo
+positives, so it remains offline and is not promoted. Duplicate pose
+observations and ambiguous identity remain the next detector priority.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule
@@ -63,6 +91,21 @@ neither a larger pose model nor a person-detector-plus-cropped-pose experiment
 improved the 2/22 fall-clip result. Keep the current live detector while
 collecting person-level labels and longer room-specific negative footage.
 
+The October 14 [adjacent-frame primary continuity diagnosis](mpfdd-primary-continuity-audit.md)
+adds a pinned 21-frame development window: the primary slot follows different
+foreground actors while retaining ID 1, with four overlapping frames left
+ambiguous. These AI visual associations need human adjudication and do not
+change the fall score. The next detector candidate needs an explicit person
+association/reset check, measured alongside fall recall so interrupted history
+does not hide a real descent.
+
+The October 15 [primary-history stress benchmark](primary-history-stress-benchmark.md)
+reproduces automatic alerts in two constructed non-fall sequences that combine
+different actors' observations. An oracle identity-reset control removes those
+two alerts while preserving three synthetic fall controls. This is a regression
+target, not video accuracy or an implemented identity algorithm. The recorded
+21-frame classroom window retains upright/descending state but has no alert.
+
 ## Delivery sequence
 
 | Gate | Concrete deliverable | Rough time after the prior gate |
@@ -79,6 +122,20 @@ or adding consented cameras changes that schedule. Real accidental falls are
 rare, so elapsed time alone does not establish fall sensitivity.
 
 ## Portfolio milestone
+
+The October 10 [visible-person frame audit](mpfdd-visible-person-audit.md)
+adds provisional visual counts on nine selected shared-room/rooftop frames.
+It identifies raw-pose and fused-track count gaps and confirms that filename
+people counts do not describe every frame. These AI-assisted labels need human
+adjudication and pose-to-person matching; no accuracy or detector change follows
+from the count audit alone.
+
+The October 11 [local pose-overlay follow-up](mpfdd-pose-overlay-audit.md)
+shows overlapping raw poses of one rooftop person while another is missed,
+and a primary-slot person change in a classroom. It also verifies presented
+timestamps and records count differences at two office samples. Validate
+decoded-frame timing in the full evaluator before the next paired benchmark;
+these selected-frame interpretations still need human adjudication.
 
 A resume-ready engineering case study does not require claiming an unattended
 product. It should show a working demo, the architecture, a reproducible

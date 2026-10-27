@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "ec6cbcd81ed27e745ba5f6918192d7ec302d31c2",
+  "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
+  "browserReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad",
+  "selection": "Fixed before capture: 21 adjacent samples from 5.0 through 7.0 seconds in the already examined classroom clip, where earlier sparse overlays suggested a primary-slot person change. Development diagnosis only; no identity labels yet.",
+  "frames": [
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.1
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.2
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.3
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.4
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.5
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.6
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.7
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.8
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5.9
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.1
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.2
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.3
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.4
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.5
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.6
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.7
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.8
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 6.9
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 7
+    }
+  ]
+}
