@@ -10,7 +10,10 @@ The current candidate still fails all five clips that the baseline alerts on.
 The builder extracts the immediately preceding, current, and following 10 Hz
 samples around seven armed-history interruptions: **21 video frames, 52 raw
 observations, five clips**. These are selected failures from already examined
-development footage, not held-out examples. Zero person labels are completed.
+development footage, not held-out examples. Zero human-adjudicated person
+labels are completed. The October 27 [provisional AI draft](motion-review-provisional-audit.md)
+covers all 52 observations, with four uncertain assignments; it remains a
+draft for review, not independent identity ground truth.
 
 | Clip | History interruption(s), seconds | Review frames | Raw observations |
 | --- | --- | --- | --- |

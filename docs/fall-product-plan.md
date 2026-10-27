@@ -5,6 +5,13 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 27 visual follow-up: a [provisional AI review](motion-review-provisional-audit.md)
+now records person-count and torso-center association hypotheses for all 21
+review frames. It highlights clustered centers on one actor alongside missing
+background-person observations; four body/stool overlaps remain uncertain.
+The editable draft is explicitly not human-adjudicated. No detector change or
+accuracy improvement is claimed; independent review remains the next gate.
+
 October 22 annotation follow-up: a [local frame review packet](motion-association-review.md)
 now pairs 21 timestamp-verified images with 52 archived observations around
 the five tracking regressions. It supports resumable person/duplicate review
