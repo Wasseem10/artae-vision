@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 28 reliability follow-up: the [hidden-tab guard](hidden-tab-recovery-2026-10-28.md)
+ends startup or monitoring when the document becomes hidden, retains available
+evidence, and requires an explicit fresh start. Three controlled browser cases
+cover loading, a staged sample, and a synthetic camera. This is a lifecycle fix,
+not improved detector accuracy or a guarantee of background monitoring.
+
 October 23 reliability follow-up: the [video-source guard](video-source-reliability-2026-10-23.md)
 stops a frozen input after 15 seconds without media-clock progress and handles
 ended camera tracks explicitly. Local browser checks preserve existing evidence

@@ -411,6 +411,10 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   }
   async function start() {
     if (active.current || saving || !authReady || loadedScope !== scope) return;
+    if (document.visibilityState === "hidden") {
+      setProblem("Keep this tab visible before starting monitoring.");
+      return;
+    }
     const video = videoRef.current,
       canvas = canvasRef.current;
     if (!video || !canvas) return;
@@ -497,6 +501,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     const stop = () => {
       if (stopped) return;
       stopped = true;
+      document.removeEventListener("visibilitychange", stopWhenHidden);
       active.current = false;
       cancelLoading?.();
       clearInterval(animation);
@@ -520,7 +525,15 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         persist(s);
       }
     };
+    // Background tabs can throttle capture and inference independently. End the
+    // session rather than silently carrying a fall history across that gap.
+    const stopWhenHidden = () => {
+      if (stopped || document.visibilityState !== "hidden") return;
+      setProblem("Monitoring stopped because this tab was hidden. Existing results and available footage are kept. Keep the tab visible and start a new session to continue.");
+      stop();
+    };
     stopRef.current = stop;
+    document.addEventListener("visibilitychange", stopWhenHidden);
     // A recorded clip can end while its final frame is still in the pose
     // worker. Let the last sampled frame finish before closing the session.
     endRef.current = () => {
@@ -531,6 +544,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         audio.current ??= new AudioContext();
         await audio.current.resume();
       }
+      if (stopped) return;
       if (scope === "guest" && job === "fall" && (source === "sample" || allowFallCloud)) {
         setVisualStatus("Checking optional AWS review. On-device detection can run without it.");
         publicFallSessionPromise = createPublicDemo(
@@ -548,6 +562,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         publicCustomSessionPromise = createPublicDemo(prompt.trim());
         await publicCustomSessionPromise;
       }
+      if (stopped) return;
       worker = new Worker("/vision/pose-worker.js");
       await new Promise<void>((resolve, reject) => {
         cancelLoading = () => reject(new Error("Start cancelled"));
@@ -1189,12 +1204,12 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
             <label><input type="checkbox" checked={allowFallCloud} disabled={running} onChange={(e) => setAllowFallCloud(e.target.checked)} /><span>Allow event frames from my video to be sent to AWS for optional review.</span></label>}
         </div>}
         <div className={styles.monitorLimits}>
-          <p>Experimental. Keep this tab visible. Use a recorded sample; do not fall to test.</p>
+          <p>Experimental. Monitoring stops when this tab is hidden. Use a recorded sample; do not fall to test.</p>
           <details><summary>Setup & monitoring limits</summary><p>
           {job === "custom" ? "Describe one observable condition. Clear lighting and an unobstructed view improve results. An AI match still needs your review." : job === "fall"
             ? "Keep each person’s full body visible. Up to four people are tracked in this browser session; a possible fall requires upright posture, descent, then a sustained horizontal posture. Use a recorded clip; do not fall to test this. This is experimental, not an emergency monitoring system."
             : "A visible body pose sustained for one second creates an alert. One person is tracked at a time; small or obscured people may not be detected."}{" "}
-          This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, or when you press Stop. No audio is recorded. The browser must stay open; closing your laptop stops monitoring.
+          This run stops after {scope === "guest" ? 2 : sessionMinutes} minutes, 20 alerts, when you press Stop, or when this tab is hidden. No audio is recorded. Keep the tab visible; return and start a new session after switching tabs or minimizing the browser.
         </p></details></div>
         </div>
         <div className={styles.monitorPanel}>
