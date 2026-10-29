@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 29 reliability follow-up: the [evidence playback readiness guard](playback-frame-readiness-2026-10-29.md)
+keeps loading bounded until a frame is available and the initial incident seek
+has finished. Metadata alone no longer dismisses loading. Controlled failure
+and retry checks preserve review notes; detector accuracy remains unchanged.
+
 October 28 reliability follow-up: the [hidden-tab guard](hidden-tab-recovery-2026-10-28.md)
 ends startup or monitoring when the document becomes hidden, retains available
 evidence, and requires an explicit fresh start. Three controlled browser cases

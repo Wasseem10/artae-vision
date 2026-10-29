@@ -1,5 +1,9 @@
 # Evidence playback failures and manual retry
 
+October 29 follow-up: [initial frame readiness](playback-frame-readiness-2026-10-29.md)
+now extends the original metadata deadline through decoding and the initial
+incident seek. The report below records the earlier implementation and checks.
+
 October 17, 2026. This continues PR #17 from its clean worktree after checking
 current `origin/main`, open PRs, the product plan, and PR #19's latest tracking
 evidence. Detector promotion still lacks adjudicated identities/timed events,

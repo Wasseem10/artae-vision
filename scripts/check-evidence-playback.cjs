@@ -12,7 +12,7 @@ async function main() {
   const fixture = await fs.readFile(path.resolve(__dirname, '../apps/web/public/vision/samples/fall-lateral.mp4'));
   const output = path.resolve(__dirname, '../artifacts/evidence-playback');
   await fs.mkdir(output, { recursive: true });
-  const browser = await chromium.launch({ channel: 'chrome', headless: true,
+  const browser = await chromium.launch({ channel: process.env.ARTAE_TEST_BROWSER || 'chrome', headless: true,
     args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   let releaseSlow;
   const slowGate = new Promise((resolve) => { releaseSlow = resolve; });
@@ -50,6 +50,17 @@ async function main() {
       } else await route.continue();
     });
     await context.addInitScript(() => {
+      // Expose a controlled metadata-only/unfinished-seek state on one player.
+      // Native media still decodes underneath; this is not a network bandwidth test.
+      window.__holdEvidenceFrame = false;
+      document.addEventListener('loadedmetadata', event => {
+        const video = event.target;
+        if (!window.__holdEvidenceFrame || video.getAttribute?.('aria-label') !== 'Incident evidence playback') return;
+        window.__holdEvidenceFrame = false;
+        window.__heldEvidence = video;
+        Object.defineProperty(video, 'readyState', { configurable: true, get: () => 1 });
+        Object.defineProperty(video, 'seeking', { configurable: true, get: () => true });
+      }, true);
       const create = URL.createObjectURL.bind(URL);
       window.__playbackFault = 'none';
       URL.createObjectURL = (blob) => {
@@ -76,7 +87,7 @@ async function main() {
     const ready = async (label, seek) => {
       try { await page.waitForFunction(({ label, seek }) => {
       const video = document.querySelector(`video[aria-label="${label}"]`);
-      return video?.readyState >= 2 && video.videoWidth > 0 && !video.error &&
+      return video?.readyState >= 2 && video.videoWidth > 0 && !video.error && !video.seeking &&
         (seek === null || Math.abs(video.currentTime - seek) < 0.15);
       }, { label, seek }, { timeout: 15000 }); }
       catch (error) {
@@ -143,6 +154,20 @@ async function main() {
     console.log('NETWORK_RETRY_OK: native missing-media error, keyboard retry, incident seek and draft preserved');
 
     await dialog.press('Escape');
+    await page.evaluate(() => { window.__holdEvidenceFrame = true; });
+    await page.getByRole('button', { name: 'Review footage', exact: true }).first().click();
+    await page.waitForFunction(() => window.__heldEvidence?.readyState === 1 && window.__heldEvidence.seeking);
+    await dialog.getByRole('status').filter({ hasText: 'Loading recording…' }).waitFor({ timeout: 3000 });
+    await dialog.getByRole('alert').filter({ hasText: 'taking too long' }).waitFor({ timeout: 20000 });
+    await dialog.screenshot({ path: path.join(output, 'metadata-only-timeout.png') });
+    await dialog.getByRole('button', { name: 'Retry playback', exact: true }).click();
+    await ready('Incident evidence playback', expectedSeek);
+    assert.equal(await dialog.getByRole('status').filter({ hasText: 'Loading recording…' }).count(), 0);
+    assert.equal(await dialog.getByRole('alert').count(), 0);
+    assert.equal(await note.inputValue(), 'Draft retained through a recording load failure and retry.');
+    console.log('METADATA_ONLY_OK: metadata does not dismiss loading; deadline, retry, incident seek and draft preserved');
+
+    await dialog.press('Escape');
     await page.evaluate(() => { window.__playbackFault = 'slow'; });
     await page.getByRole('button', { name: 'Review footage', exact: true }).first().click();
     await dialog.getByRole('status').filter({ hasText: 'Loading recording…' }).waitFor();
@@ -172,8 +197,11 @@ async function main() {
     await ready('Incident evidence playback', expectedSeek);
     assert.equal(await note.inputValue(), 'Draft retained through a recording load failure and retry.');
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ timeoutRecovery: true, staleErrorIgnored: true, reviewSurvivedReload: true,
-      mobileWidth: 390, networkRequests, slowRequests, runtimeErrors: errors.length, browserVersion: browser.version() }));
+    const results = { timeoutRecovery: true, metadataOnlyRecovery: true, simulatedMetadataOnlyState: true,
+      staleErrorIgnored: true, reviewSurvivedReload: true, mobileWidth: 390, networkRequests, slowRequests,
+      runtimeErrors: errors.length, browserVersion: browser.version() };
+    await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');
+    console.log(JSON.stringify(results));
     await context.close();
   } finally { releaseSlow(); await browser.close(); }
 }

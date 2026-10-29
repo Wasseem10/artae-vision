@@ -13,11 +13,21 @@ function PlaybackAttempt({ url, seek, label, videoRef, onRetry, focusOnMount }: 
   const [loaded, setLoaded] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const timeout = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const seekApplied = useRef(false);
+  function acceptFrame(video: HTMLVideoElement) {
+    // Metadata alone says nothing about whether the requested incident frame
+    // has decoded. Keep the deadline while the initial seek is outstanding.
+    if (!seekApplied.current || video.error || video.readyState < 2 || video.seeking) return;
+    clearTimeout(timeout.current);
+    setLoaded(true);
+    setProblem(null);
+  }
   useEffect(() => {
     const video = videoRef.current;
     if (focusOnMount) video?.focus();
-    // Metadata can arrive from a cached recording before this effect runs.
-    if (!video?.error && (video?.readyState ?? 0) < 1) {
+    // Cached metadata may arrive before this effect. Only a decoded frame
+    // with a completed initial seek can bypass the load deadline.
+    if (!video?.error && (!seekApplied.current || (video?.readyState ?? 0) < 2 || video?.seeking)) {
       timeout.current = setTimeout(() => setProblem("This recording is taking too long to load."), 15000);
     }
     return () => { clearTimeout(timeout.current); video?.pause(); };
@@ -25,13 +35,18 @@ function PlaybackAttempt({ url, seek, label, videoRef, onRetry, focusOnMount }: 
   return <div>
     <video ref={videoRef} controls playsInline src={url} aria-label={label}
       onLoadedMetadata={(event) => {
-        clearTimeout(timeout.current);
         try {
           event.currentTarget.currentTime = seek;
-          setLoaded(true);
-          setProblem(null);
-        } catch { setProblem("This recording could not be opened at the incident time."); }
+          seekApplied.current = true;
+          acceptFrame(event.currentTarget);
+        } catch {
+          clearTimeout(timeout.current);
+          setProblem("This recording could not be opened at the incident time.");
+        }
       }}
+      onLoadedData={(event) => acceptFrame(event.currentTarget)}
+      onCanPlay={(event) => acceptFrame(event.currentTarget)}
+      onSeeked={(event) => acceptFrame(event.currentTarget)}
       onError={(event) => {
         clearTimeout(timeout.current);
         const code = event.currentTarget.error?.code;
