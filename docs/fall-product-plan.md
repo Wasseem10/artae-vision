@@ -5,6 +5,23 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+October 29 reliability follow-up: the [evidence playback readiness guard](playback-frame-readiness-2026-10-29.md)
+keeps loading bounded until a frame is available and the initial incident seek
+has finished. Metadata alone no longer dismisses loading. Controlled failure
+and retry checks preserve review notes; detector accuracy remains unchanged.
+
+October 28 reliability follow-up: the [hidden-tab guard](hidden-tab-recovery-2026-10-28.md)
+ends startup or monitoring when the document becomes hidden, retains available
+evidence, and requires an explicit fresh start. Three controlled browser cases
+cover loading, a staged sample, and a synthetic camera. This is a lifecycle fix,
+not improved detector accuracy or a guarantee of background monitoring.
+
+October 23 reliability follow-up: the [video-source guard](video-source-reliability-2026-10-23.md)
+stops a frozen input after 15 seconds without media-clock progress and handles
+ended camera tracks explicitly. Local browser checks preserve existing evidence
+and recover through a fresh session. This does not improve detector accuracy;
+reviewed person labels and independent multi-person validation remain required.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule
