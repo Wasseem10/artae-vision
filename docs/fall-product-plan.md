@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 1 review follow-up: the [save-completion fix](review-save-completion-2026-11-01.md)
+keeps an incident visibly pending until its review save finishes. A controlled
+delay reproduces the premature closed status exposed by the playback CI test.
+This improves review-state clarity without changing detector accuracy.
+
 October 29 reliability follow-up: the [evidence playback readiness guard](playback-frame-readiness-2026-10-29.md)
 keeps loading bounded until a frame is available and the initial incident seek
 has finished. Metadata alone no longer dismisses loading. Controlled failure

@@ -1,5 +1,10 @@
 # Keep playback loading until an incident frame is ready
 
+November 1 follow-up: hosted CI passed the playback recovery cases but failed
+the saved-note check after reload. The [review-save completion analysis](review-save-completion-2026-11-01.md)
+records the premature closed status and its regression. The local results below
+remain historical results, not a claim that October 29's hosted run passed.
+
 October 29, 2026. Main remains `174346215`; PRs #16–21 are open. Yesterday's
 hidden-tab change passed hosted Linux [Web quality](https://github.com/Wasseem10/artae-vision/actions/runs/40760045292)
 at `b76671b` in 6m6s. This follow-up fixes an initial evidence playback gap.

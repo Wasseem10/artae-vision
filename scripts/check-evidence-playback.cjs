@@ -50,6 +50,23 @@ async function main() {
       } else await route.continue();
     });
     await context.addInitScript(() => {
+      // Hold the next database-open success callback before a review can write.
+      // This makes slow device storage deterministic without changing its bytes.
+      const openDatabase = indexedDB.open.bind(indexedDB);
+      window.__reviewSaveQA = { holdNextOpen: false, held: false, release: null };
+      indexedDB.open = (...args) => {
+        const request = openDatabase(...args);
+        if (window.__reviewSaveQA.holdNextOpen) {
+          window.__reviewSaveQA.holdNextOpen = false;
+          Object.defineProperty(request, 'onsuccess', { configurable: true, set(callback) {
+            request.addEventListener('success', event => {
+              window.__reviewSaveQA.held = true;
+              window.__reviewSaveQA.release = () => callback.call(request, event);
+            }, { once: true });
+          } });
+        }
+        return request;
+      };
       // Expose a controlled metadata-only/unfinished-seek state on one player.
       // Native media still decodes underneath; this is not a network bandwidth test.
       window.__holdEvidenceFrame = false;
@@ -188,8 +205,20 @@ async function main() {
     });
     assert.equal(await dialog.getByRole('alert').count(), 0, 'Late errors must not replace the new attempt');
     assert.equal(await note.inputValue(), 'Draft retained through a recording load failure and retry.');
+    await page.evaluate(() => { window.__reviewSaveQA.holdNextOpen = true; });
     await page.getByRole('button', { name: 'Mark reviewed', exact: true }).click();
+    await page.waitForFunction(() => window.__reviewSaveQA.held);
+    const log = page.getByRole('complementary');
+    await log.getByText('Saving review…', { exact: true }).first().waitFor();
+    await dialog.getByRole('status').filter({ hasText: 'Saving review…' }).waitFor();
+    assert.equal(await page.getByText('Closed · reviewed', { exact: true }).count(), 0,
+      'Do not display a completed review before the device save commits');
+    assert.equal(await page.getByText('Review saved on this device', { exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Download incident report', exact: true }).isEnabled(), false);
+    await dialog.screenshot({ path: path.join(output, 'pending-review-save.png') });
+    await page.evaluate(() => window.__reviewSaveQA.release());
     await page.getByText('Closed · reviewed', { exact: true }).waitFor();
+    await page.getByText('Review saved on this device', { exact: true }).waitFor();
     await dialog.press('Escape');
     await page.reload();
     await page.getByRole('button').filter({ hasText: 'Sample: fall-lateral' }).first().click();
@@ -198,6 +227,7 @@ async function main() {
     assert.equal(await note.inputValue(), 'Draft retained through a recording load failure and retry.');
     assert.deepEqual(errors, []);
     const results = { timeoutRecovery: true, metadataOnlyRecovery: true, simulatedMetadataOnlyState: true,
+      delayedReviewSave: true, noPrematureCompletion: true,
       staleErrorIgnored: true, reviewSurvivedReload: true, mobileWidth: 390, networkRequests, slowRequests,
       runtimeErrors: errors.length, browserVersion: browser.version() };
     await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(results, null, 2) + '\n');

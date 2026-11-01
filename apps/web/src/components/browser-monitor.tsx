@@ -86,6 +86,7 @@ function IncidentReviewPanel({
         <textarea value={responseChecklist} maxLength={4000} rows={4} placeholder="Paste the steps your organization uses for this type of alert." onChange={(e) => onDraft({ reviewerNote, responseChecklist: e.target.value })} />
       </label>
     </details>
+    {busy && <p role="status">Saving review…</p>}
     <div className={styles.reviewActions}>
       {event.review?.status !== "resolved" && <>
         {event.review?.status !== "acknowledged" && <button type="button" disabled={busy} onClick={() => onReview("acknowledged", reviewerNote, responseChecklist)}>Acknowledge</button>}
@@ -1336,7 +1337,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                           ? "Account footage available for this event." : scope === "guest" ? "Evidence is kept on this device." : "Waiting for this event’s recording upload."}</p>
                       </details> : null}
                       <span>
-                        {event.review?.status === "resolved"
+                        {reviewing === event.id ? "Review save pending" : event.review?.status === "resolved"
                           ? event.review.outcome === "false_alarm" ? "Closed · marked as false alarm" : "Closed · reviewed"
                           : event.review?.status === "acknowledged" ? "Acknowledged · awaiting resolution" : "Needs review"}
                       </span>
