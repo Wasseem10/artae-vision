@@ -1,5 +1,9 @@
 # Provisional review of interrupted fall histories
 
+November 2 follow-up: [fresh full-skeleton context](motion-pose-context.md) is now
+available in a separate capture. It does not replace this draft or resolve its
+uncertain historical associations automatically.
+
 October 27, 2026. The [AI review draft](benchmarks/motion-review-ai-draft-v1.json)
 records visual hypotheses for all **21 frames and 52 archived observations** in
 the [frozen review packet](motion-association-review.md). It contains 48 tentative

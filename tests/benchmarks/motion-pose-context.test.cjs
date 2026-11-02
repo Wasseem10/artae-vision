@@ -1,6 +1,8 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
 const { summarize } = require('../../scripts/experiments/capture-motion-review-poses.cjs');
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 function fixture() {
@@ -40,4 +42,16 @@ test('rejects truncated skeletons, nonfinite coordinates and invalid raw slot ma
     r=>r.frames[0].observations.push({slot:'multi-0',rawIndex:0,features:r.frames[0].observations[0].features})]){
     const {packet,report}=fixture();mutate(report);assert.throws(()=>summarize(report,packet));
   }
+});
+test('published fresh capture preserves all review frames and explicit inference provenance',()=>{
+  const root=path.resolve(__dirname,'../..');
+  const packet=require('../../docs/benchmarks/motion-review-packet-v1.json');
+  const report=require('../../docs/benchmarks/motion-pose-context-v1.json');
+  assert.equal(report.newInference,true);assert.equal(report.promoted,false);
+  assert.equal(report.packetId,packet.packetId);assert.equal(report.frameCount,21);assert.equal(report.warmupSamples,306);
+  assert.equal(report.exactFeatureFrames,report.rows.filter(r=>r.exactFeatures).length);
+  assert.deepEqual(report.rows.map(r=>r.key),packet.frames.map(r=>r.key));
+  assert.equal(report.fingerprint.harness,sha(fs.readFileSync(path.join(root,'scripts/experiments/capture-motion-review-poses.cjs'))));
+  assert.equal(report.fingerprint.template,sha(fs.readFileSync(path.join(root,'scripts/experiments/motion-pose-context.html'))));
+  assert.match(report.captureSha256,/^[a-f0-9]{64}$/);
 });

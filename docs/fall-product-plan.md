@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 2 evidence follow-up: a [fresh full-skeleton capture](motion-pose-context.md)
+adds 33-landmark primary/raw multi poses for the 21 selected review frames after
+306 sequential inference samples. All 21 selected compact-feature outputs match
+the archive exactly. This is new inference and review context, not person labels
+or improved fall accuracy; independent adjudication remains required.
+
 October 27 visual follow-up: a [provisional AI review](motion-review-provisional-audit.md)
 now records person-count and torso-center association hypotheses for all 21
 review frames. It highlights clustered centers on one actor alongside missing
