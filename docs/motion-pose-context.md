@@ -76,6 +76,23 @@ opens without a server, external scripts, or network access.
 
 ## Verification and remaining gate
 
+The Tracking evidence workflow runs on pull requests that touch tracking rules,
+benchmark inputs, tests, or published evidence. A Linux runner installs the
+locked web dependencies and runs every JavaScript and Python benchmark test.
+These checks use the committed summaries and synthetic cases. Reproducing the
+video capture and visually adjudicating a person's identity require the local
+media and viewer described above. [Workflow](../.github/workflows/tracking-evidence.yml)
+
+On November 3, all 42 JavaScript tests and seven Python tests passed locally,
+including the primary-continuity and visible-person audits. Run the same suites
+from the repository root with Node 24 and Python 3:
+
+```sh
+pnpm --dir apps/web install --frozen-lockfile --ignore-scripts
+node --test tests/benchmarks/*.test.cjs
+python3 -m unittest discover -s tests/benchmarks -p 'test_*.py'
+```
+
 - All **35** focused tracking/history/evidence/review tests pass. New cases
   reject changed packets, missing frames or sources, incomplete warmup counts,
   mismatched timestamps, truncated skeletons, nonfinite values and invalid raw
