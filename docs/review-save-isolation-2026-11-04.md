@@ -52,6 +52,15 @@ existing playback regression also checks that a pending new review does not
 expose a downloadable completed report. The new isolation regression is included
 in Web quality CI, including failure-artifact retention and path triggers.
 
+The first hosted run, [41884490486](https://github.com/Wasseem10/artae-vision/actions/runs/41884490486),
+passed the existing browser suite and the new open-incident case, then failed
+waiting for the injected error in the acknowledged case. The fixture initially
+armed the next database open before Playwright dispatched the review click,
+allowing an intervening recorder write to consume it. Arming now happens in the
+click's capture phase, immediately before the review handler, with an explicit
+pending-review assertion. Both cases pass locally in the CI-matching Chromium
+`153.0.8010.12` after this correction. The application assertions remain intact.
+
 ## Scope and next gate
 
 This is a controlled write-order regression, not a measurement of physical disk

@@ -25,7 +25,15 @@ async function main() {
         });
         await context.addInitScript(() => {
           const openDatabase = indexedDB.open.bind(indexedDB);
-          window.__reviewIsolation = { holdNext: false, held: false, fail: null, backgroundCommits: 0 };
+          window.__reviewIsolation = { armReview: false, holdNext: false, held: false, fail: null, backgroundCommits: 0 };
+          // Arm within this click's synchronous dispatch. Arming before Playwright
+          // locates/clicks the button could intercept a recorder save instead.
+          document.addEventListener('click', event => {
+            if (window.__reviewIsolation.armReview && event.target.closest('button')?.textContent === 'Mark reviewed') {
+              window.__reviewIsolation.armReview = false;
+              window.__reviewIsolation.holdNext = true;
+            }
+          }, true);
           indexedDB.open = (...args) => {
             const request = openDatabase(...args);
             if (window.__reviewIsolation.holdNext) {
@@ -70,9 +78,10 @@ async function main() {
         await dialog.getByText('Reviewer note and response steps', { exact: true }).click();
         const note = page.getByLabel('Reviewer note (optional)');
         await note.fill('Review draft must survive a failed save.');
-        await page.evaluate(() => { window.__reviewIsolation.holdNext = true; });
+        await page.evaluate(() => { window.__reviewIsolation.armReview = true; });
         await dialog.getByRole('button', { name: 'Mark reviewed', exact: true }).click();
         await page.waitForFunction(() => window.__reviewIsolation.held);
+        await dialog.getByRole('status').filter({ hasText: 'Saving review…' }).waitFor();
         await dialog.press('Escape');
         // Stopping finalizes real recording segments and persists the shared session
         // while the separate review save is still waiting for its database open.
