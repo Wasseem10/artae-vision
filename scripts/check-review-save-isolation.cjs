@@ -69,7 +69,16 @@ async function main() {
         await page.goto(url);
         await page.getByRole('button', { name: 'Start agent', exact: true }).click();
         await page.getByText('Analyzing real video', { exact: true }).waitFor({ timeout: 60000 });
-        await page.getByRole('button', { name: 'Review footage', exact: true }).first().click({ timeout: 30000 });
+        // Give review setup time before the short source ends. Once evidence is
+        // available, pause the source briefly while native recording stays active.
+        const inputVideo = page.locator('video').first();
+        await inputVideo.evaluate(video => { video.playbackRate = 0.5; });
+        const reviewButton = page.getByRole('button', { name: 'Review footage', exact: true }).first();
+        await reviewButton.waitFor({ timeout: 45000 });
+        await inputVideo.evaluate(video => video.pause());
+        assert.equal(await page.getByRole('button', { name: 'Stop agent', exact: true }).count(), 1,
+          'The overlap fixture requires active recording');
+        await reviewButton.click();
         const dialog = page.getByRole('dialog');
         if (previousOutcome) {
           await dialog.getByRole('button', { name: 'Acknowledge', exact: true }).click();
@@ -86,7 +95,7 @@ async function main() {
         // Stopping finalizes real recording segments and persists the shared session
         // while the separate review save is still waiting for its database open.
         const stop = page.getByRole('button', { name: 'Stop agent', exact: true });
-        if (await stop.count()) await stop.click();
+        await stop.click();
         await page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
         await page.waitForFunction(() => window.__reviewIsolation.backgroundCommits > 0);
         await page.evaluate(() => window.__reviewIsolation.fail());

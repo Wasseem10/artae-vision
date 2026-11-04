@@ -35,12 +35,12 @@ allows recording finalization writes to commit, then injects an error into that
 specific open. Other database operations remain native. Requests to external
 services and the API are blocked.
 
-Two cases pass in Chrome `156.0.8078.80` against the updated production build:
+The final fixture passes in Chromium `153.0.8010.12` against the updated production build:
 
 | Prior outcome | Background commits while review waits | Stored clips | Result after failed review |
 | --- | ---: | ---: | --- |
-| No review | 2 | 2 | No review persisted |
-| Acknowledged | 2 | 2 | Acknowledgment retained |
+| No review | 1 | 2 | No review persisted |
+| Acknowledged | 1 | 2 | Acknowledgment retained |
 
 Both cases retain the note draft, expose an enabled retry action, and preserve
 the successful retry's outcome and note after reload. There are zero page
@@ -60,6 +60,16 @@ allowing an intervening recorder write to consume it. Arming now happens in the
 click's capture phase, immediately before the review handler, with an explicit
 pending-review assertion. Both cases pass locally in the CI-matching Chromium
 `153.0.8010.12` after this correction. The application assertions remain intact.
+
+The second hosted run, [41886301424](https://github.com/Wasseem10/artae-vision/actions/runs/41886301424),
+again passed the existing suite but exposed another fixture prerequisite. The
+short sample could finish before the pending review, leaving no background write
+to overlap. The final fixture plays the source at half speed, pauses it briefly
+once incident evidence is available, and asserts that recording is still active.
+It then explicitly stops recording while the review open is held. The source
+pause leaves native recording active and occurs within the video-stall deadline.
+Both final local cases commit one background write and retain two clips. CI runs
+this targeted regression first so a setup failure is reported promptly.
 
 ## Scope and next gate
 

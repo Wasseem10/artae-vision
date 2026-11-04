@@ -47,13 +47,13 @@ jobs:
             sleep 1
           done
           if [ "$READY" -ne 1 ]; then cat /tmp/artae-web.log; exit 1; fi
+          node ../../scripts/check-review-save-isolation.cjs || { cat /tmp/artae-web.log; exit 1; }
           pnpm test:live || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-inference-health.cjs || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-video-source-health.cjs || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-storage-failure-replay.cjs || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-hidden-monitor.cjs || { cat /tmp/artae-web.log; exit 1; }
           node ../../scripts/check-evidence-playback.cjs || { cat /tmp/artae-web.log; exit 1; }
-          node ../../scripts/check-review-save-isolation.cjs || { cat /tmp/artae-web.log; exit 1; }
       - name: Keep browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
