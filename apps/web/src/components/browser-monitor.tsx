@@ -205,7 +205,6 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   async function reviewIncident(event: BrowserEvent, outcome: ReviewOutcome, reviewerNote: string, responseChecklist: string) {
     const s = current.current;
     if (!s || reviewing || s.scope !== accountScope.current) return;
-    const previousReview = event.review;
     const details = {
       reviewer_note: reviewerNote.trim(),
       response_checklist: responseChecklist.trim(),
@@ -214,11 +213,18 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     setSaveProblem(null);
     try {
       if (s.scope === "guest" || event.reviewOnly) {
-        event.review = {
+        const review: NonNullable<BrowserEvent["review"]> = {
           status: outcome === "acknowledged" ? "acknowledged" : "resolved",
           outcome, reviewed_at: new Date().toISOString(),
           ...details,
         };
+        // Recording persists this session independently. Keep the pending outcome
+        // out of that shared object until its own device write has committed.
+        await saveLocal({
+          ...s,
+          events: s.events.map((item) => item.id === event.id ? { ...item, review } : item),
+        });
+        event.review = review;
       } else {
         // Wait for the account's create/event queue; never claim a remote save optimistically.
         await cloudQueue.current;
@@ -226,12 +232,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
           throw new Error("Save this alert to your account before reviewing it.");
         Object.assign(event, cloudEventFields(await reviewCloudEvent(s, event, outcome, details)));
       }
-      // Device-only suggestions and guest reviews need a committed local copy.
-      // Account alerts were already committed remotely.
-      if (s.scope === "guest" || event.reviewOnly) await saveLocal(s);
       persist(s);
     } catch (e) {
-      if (s.scope === "guest" || event.reviewOnly) event.review = previousReview;
       setSaveProblem(e instanceof Error ? e.message : "Review could not be saved. Please retry.");
     } finally {
       setReviewing(null);

@@ -214,7 +214,7 @@ async function main() {
     assert.equal(await page.getByText('Closed · reviewed', { exact: true }).count(), 0,
       'Do not display a completed review before the device save commits');
     assert.equal(await page.getByText('Review saved on this device', { exact: true }).count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Download incident report', exact: true }).isEnabled(), false);
+    assert.equal(await page.getByRole('button', { name: 'Download incident report', exact: true }).count(), 0);
     await dialog.screenshot({ path: path.join(output, 'pending-review-save.png') });
     await page.evaluate(() => window.__reviewSaveQA.release());
     await page.getByText('Closed · reviewed', { exact: true }).waitFor();
