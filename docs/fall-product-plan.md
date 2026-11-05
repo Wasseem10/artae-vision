@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 5 review follow-up: an [offline annotation comparator](motion-review-comparison.md)
+now identifies disagreements between person-count, duplicate and identity
+assignments without confusing renamed person IDs with identity errors. It keeps
+unknown labels unresolved and makes no accuracy or adjudication decision.
+Independent human labels and untouched validation footage remain outstanding.
+
 November 2 evidence follow-up: a [fresh full-skeleton capture](motion-pose-context.md)
 adds 33-landmark primary/raw multi poses for the 21 selected review frames after
 306 sequential inference samples. All 21 selected compact-feature outputs match

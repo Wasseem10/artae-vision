@@ -38,6 +38,10 @@ coverage, counts, and notes explaining uncertain/non-person assignments.
 Neither a reviewer name nor a completed export establishes independent
 adjudication. There is no automatic saving; export before closing the page.
 
+To reconcile separate exports, use the [offline comparison tool](motion-review-comparison.md).
+It highlights count, duplicate and identity disagreements while allowing
+consistent person-ID renaming and keeping uncertain assignments unresolved.
+
 ## Reproduce locally
 
 Use the pinned full comparison archive, prepared research media, and FFmpeg.
