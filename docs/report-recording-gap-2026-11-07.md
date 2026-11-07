@@ -37,6 +37,8 @@ boundary, take precedence and receive no gap notice.
 - Three new unit cases cover the small gap, exact containment and boundary,
   larger gaps, and nearby metadata without playback. The first case fails on
   the preceding implementation because its clip list is empty.
+- The shared-boundary case uses fractional timestamps so floating-point
+  subtraction order cannot label an exactly containing endpoint as a tiny gap.
 - All 96 web unit tests pass, including the existing recorder-boundary selector
   tests. TypeScript, ESLint, the production build and diff checks pass locally.
 - A synthetic HTML export was rendered in Chromium `153.0.8010.12` at desktop

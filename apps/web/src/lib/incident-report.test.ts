@@ -45,9 +45,9 @@ describe("incident report", () => {
 
   it("prefers containing playback and does not claim a gap at a shared boundary", () => {
     const report = buildIncidentReport({ ...session, clips: [
-      { id: "containing", start: 0, duration: 10, width: 640, height: 480, url: "blob:exact" },
-      { id: "nearby", start: 10.03, duration: 9.9, width: 640, height: 480, url: "blob:nearby" },
-    ] }, { ...event, at: 10, evidence: undefined });
+      { id: "containing", start: 0.1, duration: 0.2, width: 640, height: 480, url: "blob:exact" },
+      { id: "nearby", start: 0.33, duration: 9.9, width: 640, height: 480, url: "blob:nearby" },
+    ] }, { ...event, at: 0.1 + 0.2, evidence: undefined });
     expect(report.evidence.clips.map(clip => clip.id)).toEqual(["containing"]);
     expect(report.evidence.playback).toEqual({ clipId: "containing", match: "contains_event", gapSeconds: 0 });
     expect(renderIncidentReportHtml(report)).not.toContain("does not contain the event timestamp");

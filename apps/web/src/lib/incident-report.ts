@@ -106,7 +106,7 @@ export function buildIncidentReport(
   // Match the review player's selection, including its bounded recorder-gap fallback.
   const playbackClip = atSeconds === null ? undefined : clipForEvent(session.clips, atSeconds);
   const playbackGap = playbackClip && atSeconds !== null
-    ? Math.max(playbackClip.start - atSeconds, atSeconds - playbackClip.start - playbackClip.duration, 0)
+    ? Math.max(playbackClip.start - atSeconds, atSeconds - (playbackClip.start + playbackClip.duration), 0)
     : 0;
   const clips = session.clips
     .filter((clip) => {
