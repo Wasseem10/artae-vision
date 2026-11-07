@@ -28,6 +28,41 @@ const event: BrowserEvent = {
 };
 
 describe("incident report", () => {
+  it("includes the review player's nearby segment and discloses a recording gap", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "before-gap", start: 0, duration: 9.96, width: 640, height: 480, url: "blob:before" },
+      { id: "after-gap", start: 10.03, duration: 9.9, width: 640, height: 480, url: "blob:after" },
+    ] }, { ...event, at: 10, evidence: undefined });
+    expect(report.evidence.clips.map(clip => clip.id)).toEqual(["after-gap"]);
+    expect(report.evidence.playback).toMatchObject({ clipId: "after-gap", match: "nearby_segment" });
+    expect(report.evidence.playback?.gapSeconds).toBeCloseTo(0.03);
+    const html = renderIncidentReportHtml(report);
+    expect(html).toContain("approximately 30 ms");
+    expect(html).toContain("does not contain the event timestamp");
+    expect(html).not.toContain("No matching clip metadata");
+    expect(html).not.toContain("blob:after");
+  });
+
+  it("prefers containing playback and does not claim a gap at a shared boundary", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "containing", start: 0, duration: 10, width: 640, height: 480, url: "blob:exact" },
+      { id: "nearby", start: 10.03, duration: 9.9, width: 640, height: 480, url: "blob:nearby" },
+    ] }, { ...event, at: 10, evidence: undefined });
+    expect(report.evidence.clips.map(clip => clip.id)).toEqual(["containing"]);
+    expect(report.evidence.playback).toEqual({ clipId: "containing", match: "contains_event", gapSeconds: 0 });
+    expect(renderIncidentReportHtml(report)).not.toContain("does not contain the event timestamp");
+  });
+
+  it("keeps larger gaps missing and does not describe metadata-only footage as playable", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "too-far", start: 0, duration: 9, width: 640, height: 480, url: "blob:far" },
+      { id: "metadata", start: 10.03, duration: 9.9, width: 640, height: 480 },
+    ] }, { ...event, at: 10, evidence: undefined });
+    expect(report.evidence.clips).toEqual([]);
+    expect(report.evidence.playback).toBeNull();
+    expect(renderIncidentReportHtml(report)).toContain("No matching clip metadata");
+  });
+
   it("uses review data and related clip metadata without embedding unrelated footage", () => {
     const report = buildIncidentReport(session, event, {
       generatedAt: "2026-09-26T13:00:00Z",

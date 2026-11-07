@@ -1,4 +1,5 @@
 import type { BrowserClip, BrowserEvent, BrowserSession, ReviewOutcome } from "./browser-sessions";
+import { clipForEvent } from "./event-evidence";
 
 export type IncidentReportOptions = {
   reviewerNote?: string;
@@ -53,6 +54,11 @@ export type IncidentReport = {
     requestedRecordingIds: string[];
     windowStartSeconds: number | null;
     windowEndSeconds: number | null;
+    playback: {
+      clipId: string;
+      match: "contains_event" | "nearby_segment";
+      gapSeconds: number;
+    } | null;
     clips: IncidentReportClip[];
   };
   organizationChecklist: string | null;
@@ -97,11 +103,16 @@ export function buildIncidentReport(
   const timestampSource = recordedOccurredAt ? "event" : occurredAt ? "session_offset" : "unavailable";
   const requestedRecordingIds = [...new Set(event.evidence?.recording_ids ?? [])];
   const recordingIdSet = new Set(requestedRecordingIds);
+  // Match the review player's selection, including its bounded recorder-gap fallback.
+  const playbackClip = atSeconds === null ? undefined : clipForEvent(session.clips, atSeconds);
+  const playbackGap = playbackClip && atSeconds !== null
+    ? Math.max(playbackClip.start - atSeconds, atSeconds - playbackClip.start - playbackClip.duration, 0)
+    : 0;
   const clips = session.clips
     .filter((clip) => {
       const start = finiteNonnegative(clip.start);
       const duration = finiteNonnegative(clip.duration);
-      return recordingIdSet.has(clip.id) || (atSeconds !== null && start !== null && duration !== null &&
+      return clip === playbackClip || recordingIdSet.has(clip.id) || (atSeconds !== null && start !== null && duration !== null &&
         start <= atSeconds && atSeconds <= start + duration);
     })
     .map((clip): IncidentReportClip => {
@@ -173,6 +184,11 @@ export function buildIncidentReport(
       requestedRecordingIds,
       windowStartSeconds: finiteNonnegative(event.evidence?.start_seconds),
       windowEndSeconds: finiteNonnegative(event.evidence?.end_seconds),
+      playback: playbackClip ? {
+        clipId: playbackClip.id,
+        match: playbackGap > 0 ? "nearby_segment" : "contains_event",
+        gapSeconds: playbackGap,
+      } : null,
       clips,
     },
     organizationChecklist: options.checklistText?.trim() || null,
@@ -208,6 +224,10 @@ function availabilityLabel(value: IncidentReportClip["availability"]): string {
 
 /** Self-contained print/download page. It never embeds video, external links, or executable script. */
 export function renderIncidentReportHtml(report: IncidentReport): string {
+  const playback = report.evidence.playback;
+  const playbackNote = playback?.match === "nearby_segment"
+    ? `<p class="caption">Review playback uses nearby segment ${escapeHtml(playback.clipId)}. Its recorded interval is approximately ${Math.max(1, Math.round(playback.gapSeconds * 1000))} ms from the event and does not contain the event timestamp.</p>`
+    : "";
   const clipRows = report.evidence.clips.length
     ? report.evidence.clips.map((clip) => `<tr><td>${escapeHtml(clip.id)}</td><td>${escapeHtml(clip.startedAt ?? `${clip.startSeconds}s from start`)}</td><td>${escapeHtml(clip.endedAt ?? `${clip.endSeconds}s from start`)}</td><td>${escapeHtml(`${clip.durationSeconds}s · ${clip.width}×${clip.height}`)}</td><td>${escapeHtml(availabilityLabel(clip.availability))}</td></tr>`).join("")
     : '<tr><td colspan="5">No matching clip metadata available</td></tr>';
@@ -227,6 +247,6 @@ export function renderIncidentReportHtml(report: IncidentReport): string {
 <section><h2>Incident</h2><div class="grid">${field("Event", report.event.title)}${field("Event ID", report.event.id)}${field("Occurred (UTC)", report.event.occurredAt)}${field("Time source", report.event.timestampSource.replaceAll("_", " "))}${field("Elapsed in session", report.event.atSeconds === null ? null : `${report.event.atSeconds}s`)}${field("Session", report.session.name)}${field("Session ID", report.session.id)}${field("Session started (UTC)", report.session.startedAt)}${field("Monitoring job", report.session.job)}${field("Record storage", report.session.storage.replaceAll("_", " "))}</div></section>
 <section><h2>Human review</h2><div class="grid">${field("Review state", reviewLabel(report))}${field("Last review update (UTC)", report.review.reviewedAt)}</div><h3>Reviewer note</h3>${note}</section>
 <section><h2>Automated observation and provenance</h2><div class="grid">${field("Candidate source", report.provenance.detection)}${field("Optional cloud review status", report.provenance.optionalCloudReviewStatus)}${field("Landmark visibility", report.event.landmarkVisibility === null ? null : `${Math.round(report.event.landmarkVisibility * 100)}%`)}</div><h3>Automated summary</h3><div class="multiline">${escapeHtml(report.event.automatedSummary ?? "No automated summary available.")}</div><h3>Recorded actions</h3>${actions}</section>
-<section><h2>Evidence metadata</h2><div class="grid">${field("Evidence status", report.evidence.status)}${field("Requested recording IDs", report.evidence.requestedRecordingIds.length ? report.evidence.requestedRecordingIds.join(", ") : null)}${field("Window start", report.evidence.windowStartSeconds === null ? null : `${report.evidence.windowStartSeconds}s`)}${field("Window end", report.evidence.windowEndSeconds === null ? null : `${report.evidence.windowEndSeconds}s`)}</div><table><thead><tr><th>Clip ID</th><th>Start (UTC)</th><th>End (UTC)</th><th>Duration · resolution</th><th>Availability</th></tr></thead><tbody>${clipRows}</tbody></table></section>
+<section><h2>Evidence metadata</h2><div class="grid">${field("Evidence status", report.evidence.status)}${field("Requested recording IDs", report.evidence.requestedRecordingIds.length ? report.evidence.requestedRecordingIds.join(", ") : null)}${field("Window start", report.evidence.windowStartSeconds === null ? null : `${report.evidence.windowStartSeconds}s`)}${field("Window end", report.evidence.windowEndSeconds === null ? null : `${report.evidence.windowEndSeconds}s`)}</div>${playbackNote}<table><thead><tr><th>Clip ID</th><th>Start (UTC)</th><th>End (UTC)</th><th>Duration · resolution</th><th>Availability</th></tr></thead><tbody>${clipRows}</tbody></table></section>
 ${checklist}<section><h2>Limitations</h2><ul>${report.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section></body></html>`;
 }
