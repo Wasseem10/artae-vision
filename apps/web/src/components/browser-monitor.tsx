@@ -111,6 +111,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   const [reviewDrafts, setReviewDrafts] = useState<Record<string, { reviewerNote: string; responseChecklist: string }>>({});
   const [allowFallCloud, setAllowFallCloud] = useState(false);
   const current = useRef<BrowserSession | null>(null),
+    historyRequest = useRef(0),
     stopRef = useRef<() => void>(() => {}),
     endRef = useRef<() => void>(() => {}),
     active = useRef(false),
@@ -433,6 +434,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       setProblem("Enter the caregiver phone in international format, such as +12065550142.");
       return;
     }
+    historyRequest.current++;
     active.current = true;
     setRunning(true);
     setProblem(null);
@@ -1050,29 +1052,37 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     }
   }
   async function openSession(s: BrowserSession, cloudOnly = false) {
-    if (running || saving || reviewing) return;
+    if (running || saving || reviewing || s.scope !== accountScope.current) return;
+    const request = ++historyRequest.current;
+    const isCurrentRequest = () => mounted.current && !active.current &&
+      request === historyRequest.current && s.scope === accountScope.current;
     // History rows intentionally omit blobs. Keep the current session's full
     // in-memory copy: it may be the only recording after a device save fails.
     const memory = current.current;
     const reuseMemory = !cloudOnly && memory?.id === s.id && memory.scope === s.scope;
     if (!reuseMemory) setSaveProblem(null);
     let loaded = reuseMemory ? memory : s;
+    let warning: string | null = null;
     if (!cloudOnly && !reuseMemory) {
       try { loaded = await loadLocalSession(s); }
-      catch { setSaveProblem("Local footage could not load. Trying the account copy if available."); }
+      catch { warning = "Local footage could not load. Trying the account copy if available."; }
     }
+    if (!isCurrentRequest()) return;
     if (s.cloud)
       try {
         const remote = await loadCloudSession(s);
         loaded = cloudOnly ? remote : mergeSession(loaded, remote);
       } catch {
-        setSaveProblem(
-          cloudOnly
-            ? "Could not open the account copy. Your local recording has not been removed."
-            : "Account history is unavailable right now. Showing any recordings saved on this device.",
-        );
-        if (cloudOnly) return;
+        warning = cloudOnly
+          ? "Could not open the account copy. Your local recording has not been removed."
+          : "Account history is unavailable right now. Showing any recordings saved on this device.";
+        if (cloudOnly) {
+          if (isCurrentRequest()) setSaveProblem(warning);
+          return;
+        }
       }
+    if (!isCurrentRequest()) return;
+    if (warning) setSaveProblem(warning);
     current.current = loaded;
     setSession(loaded);
     setInferenceHealth(new InferenceHealth().summary());
