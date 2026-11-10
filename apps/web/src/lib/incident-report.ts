@@ -1,6 +1,8 @@
 import type { BrowserClip, BrowserEvent, BrowserSession, ReviewOutcome } from "./browser-sessions";
 import { clipForEvent } from "./event-evidence";
 
+const TRACK_LABEL_LIMITATION = "Track labels are local to this session and may switch between people. They do not identify a person.";
+
 export type IncidentReportOptions = {
   reviewerNote?: string;
   checklistText?: string;
@@ -35,6 +37,8 @@ export type IncidentReport = {
     atSeconds: number | null;
     occurredAt: string | null;
     timestampSource: "event" | "session_offset" | "unavailable";
+    /** A temporary session-local detector label, never a verified identity. */
+    personTrackId: number | null;
     landmarkVisibility: number | null;
     automatedSummary: string | null;
   };
@@ -136,6 +140,7 @@ export function buildIncidentReport(
     "This is a prototype incident record. An automated candidate does not establish that a fall or injury occurred.",
     "Video is not embedded in this report. Open the incident in Artae to inspect any available recording.",
     "Reviewer identity and checklist completion are not recorded by this report.",
+    TRACK_LABEL_LIMITATION,
   ];
   if (event.reviewOnly) limitations.push("This was a device-only motion review suggestion. No caregiver alert was sent for this suggestion.");
   if (!clips.length) limitations.push("No matching recording metadata was available when this report was generated.");
@@ -158,6 +163,8 @@ export function buildIncidentReport(
       atSeconds,
       occurredAt,
       timestampSource,
+      personTrackId: typeof event.personTrackId === "number" && Number.isSafeInteger(event.personTrackId) && event.personTrackId > 0
+        ? event.personTrackId : null,
       landmarkVisibility: Number.isFinite(event.visibility) && event.visibility > 0
         ? Math.min(1, Math.max(0, event.visibility)) : null,
       automatedSummary: event.summary?.trim() || null,
@@ -246,7 +253,7 @@ export function renderIncidentReportHtml(report: IncidentReport): string {
 <header><h1>${escapeHtml(report.title)}</h1><p>Artae prototype · ${escapeHtml(report.generatedAt ? `Generated ${report.generatedAt}` : "Generation time not recorded")}</p></header>
 <section><h2>Incident</h2><div class="grid">${field("Event", report.event.title)}${field("Event ID", report.event.id)}${field("Occurred (UTC)", report.event.occurredAt)}${field("Time source", report.event.timestampSource.replaceAll("_", " "))}${field("Elapsed in session", report.event.atSeconds === null ? null : `${report.event.atSeconds}s`)}${field("Session", report.session.name)}${field("Session ID", report.session.id)}${field("Session started (UTC)", report.session.startedAt)}${field("Monitoring job", report.session.job)}${field("Record storage", report.session.storage.replaceAll("_", " "))}</div></section>
 <section><h2>Human review</h2><div class="grid">${field("Review state", reviewLabel(report))}${field("Last review update (UTC)", report.review.reviewedAt)}</div><h3>Reviewer note</h3>${note}</section>
-<section><h2>Automated observation and provenance</h2><div class="grid">${field("Candidate source", report.provenance.detection)}${field("Optional cloud review status", report.provenance.optionalCloudReviewStatus)}${field("Landmark visibility", report.event.landmarkVisibility === null ? null : `${Math.round(report.event.landmarkVisibility * 100)}%`)}</div><h3>Automated summary</h3><div class="multiline">${escapeHtml(report.event.automatedSummary ?? "No automated summary available.")}</div><h3>Recorded actions</h3>${actions}</section>
+<section><h2>Automated observation and provenance</h2><div class="grid">${field("Candidate source", report.provenance.detection)}${field("Session track", report.event.personTrackId === null ? null : `Track ${report.event.personTrackId}`)}${field("Optional cloud review status", report.provenance.optionalCloudReviewStatus)}${field("Landmark visibility", report.event.landmarkVisibility === null ? null : `${Math.round(report.event.landmarkVisibility * 100)}%`)}</div><p class="caption">${escapeHtml(TRACK_LABEL_LIMITATION)}</p><h3>Automated summary</h3><div class="multiline">${escapeHtml(report.event.automatedSummary ?? "No automated summary available.")}</div><h3>Recorded actions</h3>${actions}</section>
 <section><h2>Evidence metadata</h2><div class="grid">${field("Evidence status", report.evidence.status)}${field("Requested recording IDs", report.evidence.requestedRecordingIds.length ? report.evidence.requestedRecordingIds.join(", ") : null)}${field("Window start", report.evidence.windowStartSeconds === null ? null : `${report.evidence.windowStartSeconds}s`)}${field("Window end", report.evidence.windowEndSeconds === null ? null : `${report.evidence.windowEndSeconds}s`)}</div>${playbackNote}<table><thead><tr><th>Clip ID</th><th>Start (UTC)</th><th>End (UTC)</th><th>Duration · resolution</th><th>Availability</th></tr></thead><tbody>${clipRows}</tbody></table></section>
 ${checklist}<section><h2>Limitations</h2><ul>${report.limitations.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></section></body></html>`;
 }
