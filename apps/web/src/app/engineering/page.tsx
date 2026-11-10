@@ -5,9 +5,12 @@ import styles from "@/components/marketing-page.module.css";
 
 export const metadata: Metadata = { title: "Engineering · Artae Vision", description: "Architecture, measured limitations, evaluation evidence, and engineering decisions behind the Artae Vision prototype." };
 const repo = "https://github.com/Wasseem10/artae-vision";
+// Published evidence is pinned so these claims remain inspectable before PRs merge.
+const trackingEvidence = `${repo}/blob/55253530d9290ed38fca6a503a34ede4c6deaedb`;
+const reliabilityEvidence = `${repo}/blob/36e1ce4786d569fc69b1aab5443d65c7a9ed61ab`;
 export default function EngineeringPage() {
   return <main className={styles.page}><ProductHeader /><article className={styles.document}>
-    <small>ENGINEERING CASE STUDY / OCTOBER 2026</small>
+    <small>ENGINEERING CASE STUDY / NOVEMBER 2026</small>
     <h1>A camera event is only useful when you can inspect it.</h1>
     <p className={styles.lede}>Artae Vision connects real browser inference to recorded evidence and a human review workflow. Fall detection is the research focus, with substantial accuracy limitations still unresolved.</p>
     <div className={styles.heroActions}><Link className={styles.heroPrimary} href="/live">Run the sample</Link><a className={styles.heroSecondary} href={repo}>Read the source</a></div>
@@ -25,6 +28,26 @@ export default function EngineeringPage() {
       <tr><th scope="row"><a href={repo + "/blob/main/docs/mpfdd-first-look-result.md"}>MPFDD shared frame</a></th><td>2 / 22</td><td>0 / 6</td><td>Harder multi-person scenes; only 63 seconds of negative footage.</td></tr>
     </tbody></table></div>
     <p className={styles.notice}>The staged demo shows the workflow. It does not establish real-world recall, an acceptable false-alert rate, or readiness for unattended monitoring. The combined negative footage across four audited sources is only about 0.49 hours.</p>
+    <section aria-labelledby="tracking-experiment">
+    <h2 id="tracking-experiment">A tracking change we rejected</h2>
+    <p>A research candidate predicted pose motion, searched for the lowest-cost assignment across up to four observations, and kept a separate fall history per track. Ambiguous matches reset that history. Baseline and candidate received identical pose observations from a fresh MediaPipe pass for each clip.</p>
+    <ul>
+      <li><strong>Previously examined MPFDD clips:</strong> the baseline alerted on 2 of 22 fall clips; the candidate alerted on 0 of 22. Both alerted on 0 of 6 activity clips, covering only about 63 seconds of negative footage.</li>
+      <li><strong>Five staged demo controls:</strong> the baseline alerted on 3 of 3 fall clips; the candidate alerted on 0 of 3. Neither alerted on the two activity clips.</li>
+    </ul>
+    <p><strong>The candidate was rejected and remains outside the live detector.</strong> Replay reproduced all 3,356 candidate outputs across 33 clips. In each of the five regressions, an armed history was discarded for ambiguity within three seconds before the baseline alert. Synthetic crossing tests had passed, but they had not exposed these video failures.</p>
+    <p>Read the <a href={`${trackingEvidence}/docs/motion-association-comparison.md`}>paired experiment and failure analysis</a>, inspect the <a href={`${trackingEvidence}/docs/benchmarks/motion-association-v1.json`}>per-clip results and source hashes</a>, or review the <a href={`${trackingEvidence}/scripts/experiments/motion-association.cjs`}>association implementation</a>. These are development results from already examined footage. Independent person/duplicate labels and untouched validation footage remain required before another promotion decision.</p>
+    </section>
+    <section aria-labelledby="workflow-checks">
+    <h2 id="workflow-checks">Verified workflow checks</h2>
+    <p>The <a href="https://github.com/Wasseem10/artae-vision/actions/runs/42515861506">November 8 Linux CI run</a> passed 96 web unit tests, TypeScript, ESLint, the production build and the browser recovery suite at revision <code>36e1ce4</code>. The browser suite uses local inference assets and blocks production API access.</p>
+    <ul>
+      <li><strong>Interrupted monitoring:</strong> exercise stalled inference, frozen video, an ended camera track and a hidden tab; verify visible interruption and resource cleanup.</li>
+      <li><strong>Evidence and review:</strong> exercise failed storage, corrupt recordings and delayed review saves; verify retained drafts, explicit retry and saved outcomes after reload.</li>
+      <li><strong>Session ordering:</strong> delay an older history read while selecting another session or starting live monitoring; verify that the late result and its errors cannot replace the current view.</li>
+    </ul>
+    <p>Inspect the <a href={`${reliabilityEvidence}/.github/workflows/web-quality.yml`}>reproducible CI workflow</a>, <a href={`${reliabilityEvidence}/docs/review-save-isolation-2026-11-04.md`}>overlapping-save regression</a> and <a href={`${reliabilityEvidence}/docs/history-load-order-2026-11-08.md`}>history-ordering regression</a>. These checks cover controlled Chromium failures. Authenticated production delivery, other browsers, operating-system interruptions and field detection performance need separate verification.</p>
+    </section>
     <h2>Engineering decisions</h2>
     <ul><li><strong>Keep alerts separate from suggestions.</strong> Model candidates that failed cross-source validation stayed outside the caregiver alert path.</li><li><strong>Preserve the primary observer.</strong> A four-pose-only pipeline regressed on CAUCAFall. Fusing it with the original primary observer recovered some detections while adding one false alert.</li><li><strong>Save reviews before claiming success.</strong> Local and account save failures stay visible; optional enrichment must preserve a review completed while the cloud response was in flight.</li><li><strong>Diagnose observation before tuning thresholds.</strong> The next accuracy step is to label visible people and compare raw poses, retained tracks, and event timing on failed shared-frame clips, then evaluate changes on untouched clips and hard negatives.</li></ul>
     <h2>Explore the evidence</h2>
