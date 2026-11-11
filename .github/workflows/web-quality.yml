@@ -9,7 +9,8 @@ permissions:
   contents: read
 jobs:
   web:
-    runs-on: ubuntu-latest
+    # Keep browser checks on the validated OS release; upgrade it explicitly.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
