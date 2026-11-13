@@ -31,7 +31,11 @@ jobs:
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm build
-      - run: pnpm exec playwright install --with-deps chromium
+      - name: Install browser dependencies
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          pnpm exec playwright install --with-deps chromium 2>&1 | tee /tmp/artae-browser-install.log
       - name: Verify guest workflow and recovery from model and video failures
         timeout-minutes: 8
         env:
@@ -64,6 +68,7 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
           path: |
+            /tmp/artae-browser-install.log
             /tmp/artae-web.log
             artifacts/inference-health/
             artifacts/video-source-health/
