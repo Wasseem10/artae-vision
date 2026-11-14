@@ -1,11 +1,94 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./api", () => ({API_URL:"https://api.example.test", request:vi.fn()}));
 import { request } from "./api";
-import { analyzePublicDemo, cloudEventFields, createPublicDemo, eventsPendingCloudSave, loadBrowserWorkspace, loadCloudSession, mergeSession, reviewCloudEvent, sessionMetadata, type BrowserSession } from "./browser-sessions";
+import { buildIncidentReport, renderIncidentReportHtml } from "./incident-report";
+import { analyzePublicDemo, cloudEventFields, createPublicDemo, eventsPendingCloudSave, loadBrowserWorkspace, loadCloudSession, mergeSession, reviewCloudEvent, saveCloudEvent, sessionMetadata, type BrowserSession } from "./browser-sessions";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.mocked(request).mockReset(); });
 
 describe("merging account and local history", () => {
+  it("sends stored detection provenance and restores it from an account-only history load", async () => {
+    const session: BrowserSession = { id: "session", scope: "account", name: "Hallway", job: "fall",
+      createdAt: "2026-11-13T12:00:00Z", clips: [], events: [] };
+    const event = { id: "event", at: 3, title: "Possible fall", visibility: .8,
+      personTrackId: 2, detectionSource: "temporal_and_pose_window" as const };
+    vi.mocked(request).mockResolvedValueOnce({ details: { detection_source: "temporal_and_pose_window" } });
+    const saved = cloudEventFields(await saveCloudEvent(session, event));
+    expect(JSON.parse(vi.mocked(request).mock.calls[0][1]?.body as string)).toMatchObject({
+      id: "event", track_id: 2, detection_source: "temporal_and_pose_window",
+    });
+    expect(saved.detectionSource).toBe("temporal_and_pose_window");
+    vi.mocked(request).mockResolvedValueOnce([{ source_event_id: "event", occurred_at_seconds: 3,
+      confidence: .8, event_type: "person_fall", track_id: 2,
+      details: { detection_source: "temporal_and_pose_window", review: { status: "resolved", outcome: "false_alarm" } },
+    }]).mockResolvedValueOnce([]);
+    const remote = await loadCloudSession(session);
+    expect(remote.events[0].detectionSource).toBe("temporal_and_pose_window");
+    const report = buildIncidentReport(remote, remote.events[0]);
+    expect(report.provenance.detection).toContain("PoseWindowLogistic/v1 agreement");
+    expect(report.review.outcome).toBe("false_alarm");
+  });
+
+  it("does not erase device provenance when an older API omits it in save or review responses", () => {
+    const event = { detectionSource: "temporal_and_pose_window", review: undefined };
+    const fields = cloudEventFields({ details: { review: { status: "resolved", outcome: "false_alarm" } } });
+    expect(fields).not.toHaveProperty("detectionSource");
+    Object.assign(event, fields);
+    expect(event.detectionSource).toBe("temporal_and_pose_window");
+    expect(event.review).toMatchObject({ outcome: "false_alarm" });
+    expect(cloudEventFields({ details: { detection_source: "temporal_rule" } }).detectionSource).toBe("temporal_rule");
+  });
+
+  it("keeps recorded rule agreement after an account reload without restoring an outdated review", async () => {
+    const local: BrowserSession = { id: "session", scope: "account", name: "Hallway", job: "fall",
+      createdAt: "2026-11-11T12:00:00Z", clips: [], events: [{ id: "event", at: 3,
+        title: "Possible fall", visibility: .8, personTrackId: 2, detectionSource: "temporal_and_pose_window",
+        review: { status: "acknowledged", outcome: "acknowledged", reviewer_note: "Old local note" },
+        sms: { status: "accepted", provider: "aws" } }] };
+    vi.mocked(request).mockResolvedValueOnce([{ source_event_id: "event", occurred_at_seconds: 3,
+      confidence: .8, event_type: "person_fall", track_id: 2, details: {
+        review: { status: "resolved", outcome: "false_alarm", reviewer_note: "Latest account decision" },
+        sms: { status: "failed", provider: "aws" },
+      } }]).mockResolvedValueOnce([]);
+    const remote = await loadCloudSession(local);
+    expect(remote.events[0].detectionSource).toBeUndefined();
+    const merged = mergeSession(local, remote);
+    expect(merged.events[0]).toMatchObject({ detectionSource: "temporal_and_pose_window", saved: true,
+      review: { status: "resolved", outcome: "false_alarm", reviewer_note: "Latest account decision" },
+      sms: { status: "failed" } });
+    const report = buildIncidentReport(merged, merged.events[0]);
+    expect(report.provenance.detection).toContain("PoseWindowLogistic/v1 agreement");
+    expect(renderIncidentReportHtml(report)).toContain("Resolved — false alarm");
+    expect(local.events[0].review?.status).toBe("acknowledged");
+    expect(remote.events[0].detectionSource).toBeUndefined();
+  });
+
+  it("uses explicit account provenance and does not transfer provenance across event IDs", () => {
+    const local: BrowserSession = { id: "session", scope: "account", name: "Room", job: "fall",
+      createdAt: "2026-11-11T12:00:00Z", clips: [], events: [{ id: "event", at: 3,
+        title: "Possible fall", visibility: .8, detectionSource: "temporal_and_pose_window" }] };
+    const remote: BrowserSession = { ...local, events: [
+      { ...local.events[0], detectionSource: "temporal_rule" },
+      { ...local.events[0], id: "other-event", detectionSource: undefined },
+    ] };
+    const merged = mergeSession(local, remote);
+    expect(merged.events.find(item => item.id === "event")?.detectionSource).toBe("temporal_rule");
+    expect(merged.events.find(item => item.id === "other-event")?.detectionSource).toBeUndefined();
+    expect(buildIncidentReport(merged, merged.events[1]).provenance.detection).not.toContain("agreement");
+  });
+
+  it("never carries device provenance across accounts or sessions", () => {
+    const local: BrowserSession = { id: "session", scope: "account", name: "Room", job: "fall",
+      createdAt: "2026-11-11T12:00:00Z", clips: [], events: [{ id: "event", at: 3,
+        title: "Possible fall", visibility: .8, detectionSource: "temporal_and_pose_window" }] };
+    for (const change of [{ id: "other-session" }, { scope: "other-account" }]) {
+      const remote: BrowserSession = { ...local, ...change,
+        events: [{ ...local.events[0], detectionSource: undefined }] };
+      expect(mergeSession(local, remote)).toBe(remote);
+      expect(mergeSession(local, remote).events[0].detectionSource).toBeUndefined();
+    }
+  });
+
   it("still loads cloud footage and saved agents when local storage is blocked", async () => {
     vi.stubGlobal("indexedDB", { open: () => { throw new Error("Storage blocked"); } });
     vi.mocked(request).mockResolvedValueOnce([{ id: "saved", name: "Cloud session", job: "presence", created_at: "2026-09-09T12:00:00Z" }])

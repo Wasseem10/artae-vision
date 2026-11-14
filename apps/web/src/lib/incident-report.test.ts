@@ -28,6 +28,69 @@ const event: BrowserEvent = {
 };
 
 describe("incident report", () => {
+  it("preserves separate event tracks at the same timestamp without assigning a person identity", () => {
+    const events = [2, 4].map(personTrackId => ({ ...event, id: `event-${personTrackId}`, personTrackId }));
+    const reports = events.map(item => buildIncidentReport({ ...session, events }, item));
+    expect(reports.map(report => report.event.personTrackId)).toEqual([2, 4]);
+    expect(reports[0].evidence.playback?.clipId).toBe(reports[1].evidence.playback?.clipId);
+    for (const report of reports) {
+      const html = renderIncidentReportHtml(report);
+      expect(html).toContain(`<dt>Session track</dt><dd>Track ${report.event.personTrackId}</dd>`);
+      expect(html).toContain("may switch between people");
+      expect(html).toContain("They do not identify a person");
+    }
+  });
+
+  it("leaves legacy and invalid tracks unavailable instead of guessing from the title", () => {
+    for (const personTrackId of [undefined, 0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      const report = buildIncidentReport(session, { ...event, title: "Possible fall · person 7", personTrackId });
+      expect(report.event.personTrackId).toBeNull();
+      expect(renderIncidentReportHtml(report)).toContain("<dt>Session track</dt><dd>Unavailable</dd>");
+    }
+  });
+
+  it("keeps the stored track label on a device-only motion suggestion", () => {
+    const report = buildIncidentReport(session, { ...event, personTrackId: 3, reviewOnly: true });
+    expect(report.event.personTrackId).toBe(3);
+    expect(report.session.storage).toBe("device");
+    expect(report.provenance.detection).toContain("device-only motion review suggestion");
+  });
+
+  it("includes the review player's nearby segment and discloses a recording gap", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "before-gap", start: 0, duration: 9.96, width: 640, height: 480, url: "blob:before" },
+      { id: "after-gap", start: 10.03, duration: 9.9, width: 640, height: 480, url: "blob:after" },
+    ] }, { ...event, at: 10, evidence: undefined });
+    expect(report.evidence.clips.map(clip => clip.id)).toEqual(["after-gap"]);
+    expect(report.evidence.playback).toMatchObject({ clipId: "after-gap", match: "nearby_segment" });
+    expect(report.evidence.playback?.gapSeconds).toBeCloseTo(0.03);
+    const html = renderIncidentReportHtml(report);
+    expect(html).toContain("approximately 30 ms");
+    expect(html).toContain("does not contain the event timestamp");
+    expect(html).not.toContain("No matching clip metadata");
+    expect(html).not.toContain("blob:after");
+  });
+
+  it("prefers containing playback and does not claim a gap at a shared boundary", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "containing", start: 0.1, duration: 0.2, width: 640, height: 480, url: "blob:exact" },
+      { id: "nearby", start: 0.33, duration: 9.9, width: 640, height: 480, url: "blob:nearby" },
+    ] }, { ...event, at: 0.1 + 0.2, evidence: undefined });
+    expect(report.evidence.clips.map(clip => clip.id)).toEqual(["containing"]);
+    expect(report.evidence.playback).toEqual({ clipId: "containing", match: "contains_event", gapSeconds: 0 });
+    expect(renderIncidentReportHtml(report)).not.toContain("does not contain the event timestamp");
+  });
+
+  it("keeps larger gaps missing and does not describe metadata-only footage as playable", () => {
+    const report = buildIncidentReport({ ...session, clips: [
+      { id: "too-far", start: 0, duration: 9, width: 640, height: 480, url: "blob:far" },
+      { id: "metadata", start: 10.03, duration: 9.9, width: 640, height: 480 },
+    ] }, { ...event, at: 10, evidence: undefined });
+    expect(report.evidence.clips).toEqual([]);
+    expect(report.evidence.playback).toBeNull();
+    expect(renderIncidentReportHtml(report)).toContain("No matching clip metadata");
+  });
+
   it("uses review data and related clip metadata without embedding unrelated footage", () => {
     const report = buildIncidentReport(session, event, {
       generatedAt: "2026-09-26T13:00:00Z",
