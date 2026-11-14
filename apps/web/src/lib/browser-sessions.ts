@@ -40,6 +40,7 @@ export type IncidentReview = {
 export type IncidentReviewDetails = Pick<IncidentReview, "reviewer_note" | "response_checklist">;
 export type CloudEventResult = {
   details: {
+    detection_source?: "temporal_rule" | "temporal_and_pose_window";
     summary?: string;
     strands_agent?: { status: string; summary: string; tools_invoked?: string[] };
     review?: IncidentReview;
@@ -52,6 +53,9 @@ export type CloudEventResult = {
 };
 export function cloudEventFields(result: CloudEventResult) {
   return {
+    // Older API responses omit this field. Do not erase the device's source
+    // when applying save/review responses to an existing event.
+    ...(result.details.detection_source ? { detectionSource: result.details.detection_source } : {}),
     saved: true,
     coordinator: result.details.strands_agent?.status,
     summary: result.details.summary ?? result.details.strands_agent?.summary,
@@ -250,6 +254,7 @@ export async function saveCloudEvent(
       at_seconds: event.at,
       landmark_visibility: event.visibility,
       track_id: event.personTrackId ?? 1,
+      detection_source: event.detectionSource,
     }),
   });
 }
