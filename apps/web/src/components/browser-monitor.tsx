@@ -48,7 +48,7 @@ import {
 import styles from "./instant-demo.module.css";
 
 import { buildIncidentReport, renderIncidentReportHtml } from "@/lib/incident-report";
-import { clipForEvent } from "@/lib/event-evidence";
+import { clipForEvent, recordingGapSeconds } from "@/lib/event-evidence";
 import { startSegmentedRecording, type RecordingState } from "@/lib/segment-recorder";
 import { EvidencePlayback } from "./evidence-playback";
 
@@ -134,6 +134,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
     url: string;
     owned: boolean;
     seek: number;
+    start: number;
+    duration: number;
   } | null>(null);
   const [metrics, setMetrics] = useState({
     frames: 0,
@@ -165,6 +167,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
 
   const reviewEvent = session?.events.find((event) => event.id === selectedReviewId);
+  // Use the interval actually opened in the player, even if new segments arrive.
+  const reviewGap = reviewEvent && replay ? recordingGapSeconds(replay, reviewEvent.at) : 0;
   const sessionRecording = recording?.sessionId === session?.id ? recording : null;
   const evidencePending = sessionRecording?.state === "recording" || sessionRecording?.state === "finalizing";
   useEffect(() => {
@@ -411,6 +415,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
         url: clip.blob ? URL.createObjectURL(clip.blob) : clip.url!,
         owned: !!clip.blob,
         seek: Math.max(0, at - clip.start),
+        start: clip.start,
+        duration: clip.duration,
       });
   }
   async function start() {
@@ -1489,7 +1495,8 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       </section>
       <dialog ref={reviewDialogRef} className={styles.reviewDialog} aria-labelledby="incident-review-title" onCancel={() => setSelectedReviewId(null)} onClose={() => setSelectedReviewId(null)}>
         {reviewEvent && <><header><div><small>INCIDENT REVIEW · {formatTime(reviewEvent.at)}</small><h2 id="incident-review-title">{reviewEvent.title}</h2></div><button type="button" onClick={() => reviewDialogRef.current?.close()} aria-label="Close incident review">Close</button></header>
-          <p>Playback starts up to three seconds before this event. {running ? "Monitoring continues while you review." : "This session has stopped; evidence is kept."}</p>
+          <p>{reviewGap > 0 ? "Playback opens the nearest available segment." : "Playback starts up to three seconds before this event."} {running ? "Monitoring continues while you review." : "This session has stopped; evidence is kept."}</p>
+          {reviewGap > 0 && <p className={styles.evidenceNotice} role="status"><strong>Nearby recording only.</strong> This segment’s recorded interval does not include the event timestamp (about {Math.max(1, Math.round(reviewGap * 1000))} ms gap). Review surrounding footage before deciding.</p>}
           <div className={styles.reviewBody}><div>{replay && <EvidencePlayback key={replay.url} url={replay.url}
             seek={replay.seek} videoRef={playbackRef} label="Incident evidence playback" />}
             {replay && <a href={replay.url} download="artae-evidence.webm">Download evidence segment</a>}</div>

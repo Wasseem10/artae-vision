@@ -1,5 +1,5 @@
 import type { BrowserClip, BrowserEvent, BrowserSession, ReviewOutcome } from "./browser-sessions";
-import { clipForEvent } from "./event-evidence";
+import { clipForEvent, recordingGapSeconds } from "./event-evidence";
 
 const TRACK_LABEL_LIMITATION = "Track labels are local to this session and may switch between people. They do not identify a person.";
 
@@ -110,7 +110,7 @@ export function buildIncidentReport(
   // Match the review player's selection, including its bounded recorder-gap fallback.
   const playbackClip = atSeconds === null ? undefined : clipForEvent(session.clips, atSeconds);
   const playbackGap = playbackClip && atSeconds !== null
-    ? Math.max(playbackClip.start - atSeconds, atSeconds - (playbackClip.start + playbackClip.duration), 0)
+    ? recordingGapSeconds(playbackClip, atSeconds)
     : 0;
   const clips = session.clips
     .filter((clip) => {

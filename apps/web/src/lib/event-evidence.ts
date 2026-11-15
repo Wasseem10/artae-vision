@@ -1,4 +1,9 @@
 import type { BrowserClip } from "./browser-sessions";
+
+/** Distance from an event to the selected segment's recorded interval. */
+export function recordingGapSeconds(clip: Pick<BrowserClip, "start" | "duration">, at: number): number {
+  return Math.max(clip.start - at, at - (clip.start + clip.duration), 0);
+}
 /** Recorder restarts can leave tiny timestamp gaps between playable segments.
  * Prefer containing footage, then the nearest segment within 250 ms. */
 export function clipForEvent(clips: BrowserClip[], at: number): BrowserClip | undefined {
