@@ -100,7 +100,7 @@ export function LoginPage() {
       const detail = failure instanceof Error ? failure.message : "Authentication failed. Please try again.";
       setError(
         mode === "login" && detail.toLowerCase().includes("invalid login credentials")
-          ? "No account was found with those details. Choose Create account if this is your first time."
+          ? "Email or password is incorrect. Check your details, or create an account if this is your first visit."
           : detail,
       );
     } finally {
@@ -128,8 +128,8 @@ export function LoginPage() {
           <h2>{mode === "login" ? "Welcome back." : "Create your account."}</h2>
           <p className={styles.intro}>{mode === "login" ? "Sign in to use the monitor with saved agents, footage, and incident history." : "Create an account to save monitoring agents, footage, and incident reviews."}</p>
           <div className={styles.authMode} role="group" aria-label="Authentication mode">
-            <button className={mode === "login" ? styles.activeMode : ""} onClick={() => { setMode("login"); setError(""); setMessage(""); }} type="button">Log in</button>
-            <button className={mode === "signup" ? styles.activeMode : ""} onClick={() => { setMode("signup"); setError(""); setMessage(""); }} type="button">Create account</button>
+            <button aria-pressed={mode === "login"} disabled={working} className={mode === "login" ? styles.activeMode : ""} onClick={() => { setMode("login"); setError(""); setMessage(""); }} type="button">Log in</button>
+            <button aria-pressed={mode === "signup"} disabled={working} className={mode === "signup" ? styles.activeMode : ""} onClick={() => { setMode("signup"); setError(""); setMessage(""); }} type="button">Create account</button>
           </div>
           {isSupabaseConfigured() && googleAvailable === true ? (
             <>
@@ -145,17 +145,14 @@ export function LoginPage() {
               <div className={styles.divider}><span>or use email</span></div>
             </>
           ) : null}
-          {mode === "login" ? (
-            <p className={styles.previewNote}>First time here? Choose <strong>Create account</strong> above, then use your email and a new password.</p>
-          ) : null}
           <form onSubmit={submit} noValidate>
             <label>
-              <span>Work email</span>
-              <input autoComplete="email" inputMode="email" onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" type="email" value={email} />
+              <span>Email address</span>
+              <input disabled={working} autoComplete="email" inputMode="email" onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" value={email} />
             </label>
             <label>
               <span>Password</span>
-              <input autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" type="password" value={password} />
+              <input disabled={working} autoComplete={mode === "signup" ? "new-password" : "current-password"} onChange={(event) => setPassword(event.target.value)} placeholder="8+ characters" type="password" value={password} />
             </label>
             {error ? <p className={styles.error} role="alert">{error}</p> : null}
             {message ? <p className={styles.success} role="status">{message}</p> : null}
@@ -165,7 +162,7 @@ export function LoginPage() {
           <p className={styles.previewNote}><Link href="/live">Try the monitor without an account →</Link></p>
           {!isSupabaseConfigured() ? <p className={styles.previewNote}>Account sign-in is unavailable until Supabase is configured. Guest recordings are not cloud backups.</p> : null}
         </div>
-        <p className={styles.legal}>By continuing, you agree to the Terms and Privacy Policy.</p>
+        <p className={styles.legal}><Link href="/privacy">How Artae handles video and account data</Link></p>
       </section>
     </main>
   );
