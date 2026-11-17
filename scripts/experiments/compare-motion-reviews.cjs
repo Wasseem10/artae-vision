@@ -8,7 +8,7 @@ const digest = value => crypto.createHash('sha256').update(JSON.stringify(value)
 const category = actor => actor.startsWith('person-') ? 'person' : actor;
 const unresolved = actor => ['uncertain', 'unreviewed'].includes(actor);
 
-function compareReviews(packet, left, right) {
+function validatePacket(packet) {
   assert.equal(packet.schemaVersion, 1, 'Unknown packet schema');
   const { packetId, ...content } = packet;
   assert.equal(packetId, digest(content), 'Packet content does not match its digest');
@@ -23,6 +23,10 @@ function compareReviews(packet, left, right) {
     assert.ok(slots.every(slot => typeof slot === 'string' && slot), 'Invalid observation slot');
     assert.equal(new Set(slots).size, slots.length, 'Duplicate observation slot');
   }
+}
+
+function compareReviews(packet, left, right) {
+  validatePacket(packet);
   validateReview(left, packet);
   validateReview(right, packet);
 
@@ -86,7 +90,7 @@ function compareReviews(packet, left, right) {
     declaredHumanAdjudicated: review.humanAdjudicated ?? null,
   });
   return {
-    schemaVersion: 1, packetId, purpose: 'Annotation comparison for human adjudication',
+    schemaVersion: 1, packetId: packet.packetId, purpose: 'Annotation comparison for human adjudication',
     newInference: false, adjudicated: false, promoted: false,
     warning: 'Agreement is not ground truth or detector accuracy. Uncertain labels remain unresolved. Identity comparisons are correlated observation pairs, not independent samples.',
     inputs: { left: describe(left), right: describe(right) }, totals, clips: rows,
@@ -109,4 +113,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { compareReviews };
+module.exports = { compareReviews, validatePacket };

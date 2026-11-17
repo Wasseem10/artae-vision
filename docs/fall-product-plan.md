@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 17 failure-analysis follow-up: [person-observation coverage](person-observation-coverage.md)
+now separates primary, raw multi and combined assignments per frame. It exposes
+repeated actor assignments alongside unrepresented people and retains bounds
+for uncertain observations. Results use the existing provisional AI draft;
+no independent labels, new inference or detector improvement are claimed.
+
 November 5 review follow-up: an [offline annotation comparator](motion-review-comparison.md)
 now identifies disagreements between person-count, duplicate and identity
 assignments without confusing renamed person IDs with identity errors. It keeps
