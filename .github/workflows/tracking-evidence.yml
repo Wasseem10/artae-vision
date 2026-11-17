@@ -1,0 +1,43 @@
+name: Tracking evidence
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/tracking-evidence.yml"
+      - ".gitattributes"
+      - "tests/benchmarks/**"
+      - "scripts/experiments/**"
+      - "scripts/audit-mpfdd-visible-people.py"
+      - "scripts/pose-audit-selection.cjs"
+      - "scripts/score-primary-continuity.cjs"
+      - "docs/benchmarks/**"
+      - "apps/web/package.json"
+      - "apps/web/pnpm-lock.yaml"
+      - "apps/web/src/lib/browser-pose.ts"
+      - "apps/web/src/lib/multi-person-fall.ts"
+      - "apps/web/src/lib/pose-window-fall.ts"
+      - "apps/web/src/lib/fall-window-model.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tracking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - name: Install locked compiler dependencies
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Check tracking rules and published evidence
+        run: node --test tests/benchmarks/*.test.cjs
+      - name: Check visible-person audit
+        run: python3 -m unittest discover -s tests/benchmarks -p 'test_*.py'

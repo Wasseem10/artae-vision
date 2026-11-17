@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-10-10",
+  "reviewStatus": "provisional-ai-visual-review",
+  "annotator": "Codex visual inspection; no independent human adjudication",
+  "sourceRevision": "ec6cbcd81ed27e745ba5f6918192d7ec302d31c2",
+  "manifestSha256": "77b10d1a1eda79892e8915bd8b4d95be647f2e9f6e6afdc545469fde9f42b49d",
+  "browserReportSha256": "59922e6dae7ae1d88d65c9b89fe7b93c2e16b80d8831da23c997b3e7d73a30ad",
+  "selection": "Three purposively selected clips suggested by the observation diagnostic; fixed 2, 5, and 7 second samples selected before visual count annotation. These clips were already examined for development.",
+  "countingRule": "Count a distinct physically present person when recognizable head/torso or connected body is visible, including partial occlusion and floor postures. Exclude people fully outside the frame, furniture, reflections, and screen images. This is a provisional count, not person identity or bounding-box ground truth.",
+  "frames": [
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 2,
+      "visiblePeople": 1,
+      "videoSha256": "e72703a9b15536509a0beb9b5562eba354c61208d362fe0c78231ddbda62f4fc",
+      "notes": "One standing person is visible; the second nominal participant is outside the frame. Two empty chairs are visible."
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 5,
+      "visiblePeople": 2,
+      "videoSha256": "e72703a9b15536509a0beb9b5562eba354c61208d362fe0c78231ddbda62f4fc",
+      "notes": "Two separated standing/walking people are visible."
+    },
+    {
+      "caseId": "mpfdd-s1-p2-f0-adl-1",
+      "seconds": 7,
+      "visiblePeople": 2,
+      "videoSha256": "e72703a9b15536509a0beb9b5562eba354c61208d362fe0c78231ddbda62f4fc",
+      "notes": "Two separated people are visible; a pole is adjacent to the walking person."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 2,
+      "visiblePeople": 2,
+      "videoSha256": "d67f22497fa56c196a997f37ae71d2a42cacbf617211e2a90310228727a8c959",
+      "notes": "One foreground upright person and one rear bent person are visible. Furniture partly obscures the rear person."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 5,
+      "visiblePeople": 2,
+      "videoSha256": "d67f22497fa56c196a997f37ae71d2a42cacbf617211e2a90310228727a8c959",
+      "notes": "One foreground person is near the floor and one rear person is bent over furniture."
+    },
+    {
+      "caseId": "mpfdd-s2-p2-f2-fall-4",
+      "seconds": 7,
+      "visiblePeople": 2,
+      "videoSha256": "d67f22497fa56c196a997f37ae71d2a42cacbf617211e2a90310228727a8c959",
+      "notes": "Two people are visible on/near the floor; furniture partly obscures the rear legs."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 2,
+      "visiblePeople": 4,
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "notes": "Four separated people are visible in the classroom."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 5,
+      "visiblePeople": 4,
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "notes": "Four people are visible; the moving foreground person partly overlaps the rear person."
+    },
+    {
+      "caseId": "mpfdd-s3-p4-f1-fall-2",
+      "seconds": 7,
+      "visiblePeople": 4,
+      "videoSha256": "024de463cfaf28ff086ad7feb50f62220826f5f663654fa6a530bbecdab6aa96",
+      "notes": "Four people are visible; the two on the left partly overlap."
+    }
+  ]
+}

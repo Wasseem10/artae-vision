@@ -1,0 +1,2626 @@
+{
+  "schemaVersion": 1,
+  "scope": "Offline diagnosis of previously examined development observations",
+  "promoted": false,
+  "newInference": false,
+  "sourceReportSha256": "5c2e4955c2f996d85b291065f9aa9393d18c35d725344feab686149808ef57ed",
+  "captureRevision": "2b61b3022fa91702598c868471a9783cf0d6d3a4",
+  "instrumentationSha256": "524aa005443391ae7f39fe55a277abb6496b6afd39e4edbe1ef9fc72339ba193",
+  "diagnosticScriptSha256": "f5d3161a668b9df18c8d8764b075697a65a3f105e37a6a890905ceeb60782890",
+  "rules": {
+    "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+    "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+    "apps/web/src/lib/multi-person-fall.ts": "9f63f2d110f209d4f2adbbc781f33092bc4f231ede906ab7885645abe0a0f692",
+    "apps/web/src/lib/fall-window-model.json": "a3f6b1643982269552ab996e0f506bf334296c881349855bf8f1c82303c36804"
+  },
+  "clips": 33,
+  "sampledFrames": 3356,
+  "rows": [
+    {
+      "id": "mpfdd-s1-p2-f0-adl-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 120,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 3,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 220,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 2,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 2.9,
+          "id": 2,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.9
+        },
+        {
+          "seconds": 10.6,
+          "id": 3,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 9.7
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f0-adl-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 100,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 10,
+      "ambiguousFrames": 4,
+      "fusionSuppressed": 86,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 8,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 2,
+          "id": 1,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 1
+        },
+        {
+          "seconds": 6.1,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 6
+        },
+        {
+          "seconds": 6.1,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6
+        },
+        {
+          "seconds": 6.3,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 6.3,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 6.5,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.4
+        },
+        {
+          "seconds": 6.5,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.4
+        },
+        {
+          "seconds": 8.4,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 8.3
+        },
+        {
+          "seconds": 8.4,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.3
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f0-adl-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 18,
+      "ambiguousFrames": 7,
+      "fusionSuppressed": 133,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 15,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 4,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 1.4,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 1.3
+        },
+        {
+          "seconds": 1.4,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.3
+        },
+        {
+          "seconds": 1.7,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.6
+        },
+        {
+          "seconds": 1.7,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.6
+        },
+        {
+          "seconds": 1.9,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.8
+        },
+        {
+          "seconds": 1.9,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.8
+        },
+        {
+          "seconds": 2.3,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.2
+        },
+        {
+          "seconds": 2.3,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.2
+        },
+        {
+          "seconds": 2.5,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.4
+        },
+        {
+          "seconds": 2.5,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.4
+        },
+        {
+          "seconds": 2.7,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.6
+        },
+        {
+          "seconds": 2.7,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.6
+        },
+        {
+          "seconds": 5.3,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 5.2
+        },
+        {
+          "seconds": 5.3,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 5.2
+        },
+        {
+          "seconds": 5.3,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.2
+        },
+        {
+          "seconds": 7.9,
+          "id": 17,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 6.9
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f1-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 28,
+      "ambiguousFrames": 11,
+      "fusionSuppressed": 64,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 24,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": 6.3,
+      "threeSecondsBeforeBaselineAlert": [
+        {
+          "seconds": 5,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5.2,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.7,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.7,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        }
+      ],
+      "droppedHistories": [
+        {
+          "seconds": 5,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5.2,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.7,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.7,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 7.5,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        },
+        {
+          "seconds": 7.5,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        },
+        {
+          "seconds": 7.7,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.6
+        },
+        {
+          "seconds": 7.7,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.6
+        },
+        {
+          "seconds": 7.9,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.8
+        },
+        {
+          "seconds": 7.9,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.8
+        },
+        {
+          "seconds": 8.1,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8
+        },
+        {
+          "seconds": 8.1,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8
+        },
+        {
+          "seconds": 8.8,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 8.8,
+          "id": 16,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 9,
+          "id": 17,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 9,
+          "id": 18,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 9.2,
+          "id": 19,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.1
+        },
+        {
+          "seconds": 9.2,
+          "id": 20,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.1
+        },
+        {
+          "seconds": 9.2,
+          "id": 21,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.1
+        },
+        {
+          "seconds": 9.4,
+          "id": 23,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.3
+        },
+        {
+          "seconds": 9.4,
+          "id": 24,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.3
+        },
+        {
+          "seconds": 9.4,
+          "id": 22,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.3
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f1-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 2,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 102,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 4.4,
+          "id": 1,
+          "reason": "expired",
+          "status": "descending",
+          "lastObservedSeconds": 3.5
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f1-fall-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 2,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 102,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s1-p2-f2-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 18,
+      "ambiguousFrames": 8,
+      "fusionSuppressed": 88,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 16,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 5,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.9
+        },
+        {
+          "seconds": 5.3,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.2
+        },
+        {
+          "seconds": 5.3,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.2
+        },
+        {
+          "seconds": 5.5,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.4
+        },
+        {
+          "seconds": 5.5,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.4
+        },
+        {
+          "seconds": 5.7,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.7,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 6.7,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.6
+        },
+        {
+          "seconds": 6.7,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.6
+        },
+        {
+          "seconds": 6.9,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 6.9,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 7.1,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.3,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.3,
+          "id": 16,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f2-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 11,
+      "ambiguousFrames": 5,
+      "fusionSuppressed": 105,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 10,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 6.6,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 6.5
+        },
+        {
+          "seconds": 6.6,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.5
+        },
+        {
+          "seconds": 6.9,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 6.9,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 7.1,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.3,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.3,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.5,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        },
+        {
+          "seconds": 7.5,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s1-p2-f2-fall-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 8,
+      "ambiguousFrames": 3,
+      "fusionSuppressed": 92,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 6,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 8.8,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 8.8,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 9.7,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.6
+        },
+        {
+          "seconds": 9.7,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.6
+        },
+        {
+          "seconds": 9.9,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.8
+        },
+        {
+          "seconds": 9.9,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.8
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f0-adl-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 5,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 123,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 2,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 1,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 0.9
+        },
+        {
+          "seconds": 1,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 0.9
+        },
+        {
+          "seconds": 5.4,
+          "id": 4,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 4.4
+        },
+        {
+          "seconds": 8,
+          "id": 5,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 7.1
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f0-adl-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 110,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 1,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 107,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s2-p2-f0-adl-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": false,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 1,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 103,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s2-p2-f1-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 81,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 1,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 81,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s2-p2-f1-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 100,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 3,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 91,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 1.2,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 1.1
+        },
+        {
+          "seconds": 1.2,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f1-fall-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 80,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 7,
+      "ambiguousFrames": 2,
+      "fusionSuppressed": 77,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 5,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 6.9,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 6.9,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 7.1,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f1-fall-4",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 90,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 2,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 89,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s2-p2-f1-fall-5",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 70,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 1,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 70,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 0,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": []
+    },
+    {
+      "id": "mpfdd-s2-p2-f2-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 80,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 15,
+      "ambiguousFrames": 4,
+      "fusionSuppressed": 94,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 12,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 4.6,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.6,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.6,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 5.2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.2,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.2,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.1
+        },
+        {
+          "seconds": 5.8,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.7
+        },
+        {
+          "seconds": 5.8,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.7
+        },
+        {
+          "seconds": 5.8,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.7
+        },
+        {
+          "seconds": 6,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 6,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 6,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 7.4,
+          "id": 14,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.4
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f2-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 101,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 9,
+      "ambiguousFrames": 3,
+      "fusionSuppressed": 107,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 6,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 3,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 3.9,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 3.9,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 6.7,
+          "id": 4,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 5.8
+        },
+        {
+          "seconds": 9,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 9,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 9.5,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.4
+        },
+        {
+          "seconds": 9.5,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 9.4
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f2-fall-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 91,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 11,
+      "ambiguousFrames": 3,
+      "fusionSuppressed": 90,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 9,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 3,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 3.6,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.5
+        },
+        {
+          "seconds": 3.6,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.5
+        },
+        {
+          "seconds": 3.6,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.5
+        },
+        {
+          "seconds": 8.2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.2,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.2,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.9,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.8
+        },
+        {
+          "seconds": 8.9,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.8
+        },
+        {
+          "seconds": 8.9,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.8
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f2-fall-4",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 80,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 2,
+      "ambiguousFrames": 0,
+      "fusionSuppressed": 66,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 0,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 5.7,
+          "id": 1,
+          "reason": "expired",
+          "status": "upright",
+          "lastObservedSeconds": 4.7
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s2-p2-f2-fall-5",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 111,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 15,
+      "ambiguousFrames": 6,
+      "fusionSuppressed": 108,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 12,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 6,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 6,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 8,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.9
+        },
+        {
+          "seconds": 8,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 7.9
+        },
+        {
+          "seconds": 8.2,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.2,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 9,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 9,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.9
+        },
+        {
+          "seconds": 10.7,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 10.6
+        },
+        {
+          "seconds": 10.7,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.6
+        },
+        {
+          "seconds": 10.9,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.8
+        },
+        {
+          "seconds": 10.9,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.8
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s3-p4-f1-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 92,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 4,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 67,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 4.2,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.1
+        },
+        {
+          "seconds": 4.2,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.6
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s3-p4-f1-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 162,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 25,
+      "ambiguousFrames": 10,
+      "fusionSuppressed": 174,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 21,
+        "expired": 2,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 6,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 3.6,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.5
+        },
+        {
+          "seconds": 3.6,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.5
+        },
+        {
+          "seconds": 4.9,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.8
+        },
+        {
+          "seconds": 4.9,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.8
+        },
+        {
+          "seconds": 5.4,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 5.3
+        },
+        {
+          "seconds": 5.4,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.3
+        },
+        {
+          "seconds": 5.4,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.3
+        },
+        {
+          "seconds": 6.3,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 6.3,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 8.2,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.2,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.1
+        },
+        {
+          "seconds": 8.4,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.3
+        },
+        {
+          "seconds": 8.4,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.3
+        },
+        {
+          "seconds": 8.6,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.5
+        },
+        {
+          "seconds": 8.6,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.5
+        },
+        {
+          "seconds": 8.8,
+          "id": 16,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 8.8,
+          "id": 17,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 8.7
+        },
+        {
+          "seconds": 10.6,
+          "id": 18,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 10.5
+        },
+        {
+          "seconds": 10.6,
+          "id": 19,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.5
+        },
+        {
+          "seconds": 10.7,
+          "id": 20,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.6
+        },
+        {
+          "seconds": 10.7,
+          "id": 21,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 10.6
+        },
+        {
+          "seconds": 12,
+          "id": 24,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.1
+        },
+        {
+          "seconds": 12.5,
+          "id": 23,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.6
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s3-p4-f1-fall-3",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 131,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 11,
+      "ambiguousFrames": 3,
+      "fusionSuppressed": 109,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 8,
+        "expired": 1,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 2,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 3.7,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.6
+        },
+        {
+          "seconds": 3.7,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.6
+        },
+        {
+          "seconds": 6,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 6,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 6,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.9
+        },
+        {
+          "seconds": 7,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.9
+        },
+        {
+          "seconds": 7,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.9
+        },
+        {
+          "seconds": 7,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 8.3,
+          "id": 11,
+          "reason": "expired",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s3-p4-f1-fall-4",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 91,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 40,
+      "ambiguousFrames": 19,
+      "fusionSuppressed": 44,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 38,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 4,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": 4.9,
+      "threeSecondsBeforeBaselineAlert": [
+        {
+          "seconds": 2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.9
+        },
+        {
+          "seconds": 2,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.9
+        },
+        {
+          "seconds": 2.2,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.1
+        },
+        {
+          "seconds": 2.2,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.1
+        },
+        {
+          "seconds": 3.4,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.3
+        },
+        {
+          "seconds": 3.4,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.3
+        },
+        {
+          "seconds": 3.9,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 3.9,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 4.1,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4
+        },
+        {
+          "seconds": 4.1,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4
+        },
+        {
+          "seconds": 4.3,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.2
+        },
+        {
+          "seconds": 4.3,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.2
+        },
+        {
+          "seconds": 4.6,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.6,
+          "id": 17,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.8,
+          "id": 18,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.7
+        },
+        {
+          "seconds": 4.8,
+          "id": 19,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.7
+        }
+      ],
+      "droppedHistories": [
+        {
+          "seconds": 1.4,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 1.3
+        },
+        {
+          "seconds": 1.4,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.3
+        },
+        {
+          "seconds": 2,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.9
+        },
+        {
+          "seconds": 2,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 1.9
+        },
+        {
+          "seconds": 2.2,
+          "id": 6,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.1
+        },
+        {
+          "seconds": 2.2,
+          "id": 7,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 2.1
+        },
+        {
+          "seconds": 3.4,
+          "id": 8,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.3
+        },
+        {
+          "seconds": 3.4,
+          "id": 9,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.3
+        },
+        {
+          "seconds": 3.9,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 3.9,
+          "id": 11,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 3.8
+        },
+        {
+          "seconds": 4.1,
+          "id": 12,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4
+        },
+        {
+          "seconds": 4.1,
+          "id": 13,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4
+        },
+        {
+          "seconds": 4.3,
+          "id": 14,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.2
+        },
+        {
+          "seconds": 4.3,
+          "id": 15,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.2
+        },
+        {
+          "seconds": 4.6,
+          "id": 10,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.6,
+          "id": 17,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.5
+        },
+        {
+          "seconds": 4.8,
+          "id": 18,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.7
+        },
+        {
+          "seconds": 4.8,
+          "id": 19,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 4.7
+        },
+        {
+          "seconds": 6.1,
+          "id": 16,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6
+        },
+        {
+          "seconds": 6.1,
+          "id": 21,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6
+        },
+        {
+          "seconds": 6.3,
+          "id": 22,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 6.3,
+          "id": 23,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.2
+        },
+        {
+          "seconds": 6.5,
+          "id": 24,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.4
+        },
+        {
+          "seconds": 6.5,
+          "id": 25,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.4
+        },
+        {
+          "seconds": 6.7,
+          "id": 26,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.6
+        },
+        {
+          "seconds": 6.7,
+          "id": 27,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.6
+        },
+        {
+          "seconds": 6.9,
+          "id": 28,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 6.9,
+          "id": 29,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.8
+        },
+        {
+          "seconds": 7.1,
+          "id": 30,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 31,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.3,
+          "id": 32,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.3,
+          "id": 33,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.5,
+          "id": 34,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        },
+        {
+          "seconds": 7.5,
+          "id": 35,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.4
+        },
+        {
+          "seconds": 7.8,
+          "id": 36,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.7
+        },
+        {
+          "seconds": 7.8,
+          "id": 37,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.7
+        },
+        {
+          "seconds": 8,
+          "id": 38,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.9
+        },
+        {
+          "seconds": 8,
+          "id": 39,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.9
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s4-p4-f2-fall-1",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 71,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 5,
+      "ambiguousFrames": 2,
+      "fusionSuppressed": 74,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 5,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 6.8,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 6.7
+        },
+        {
+          "seconds": 6.8,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.7
+        },
+        {
+          "seconds": 7,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.9
+        },
+        {
+          "seconds": 7,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.9
+        },
+        {
+          "seconds": 7,
+          "id": 5,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 6.9
+        }
+      ]
+    },
+    {
+      "id": "mpfdd-s4-p4-f2-fall-2",
+      "scope": "previously examined MPFDD development",
+      "expectedFall": true,
+      "sampledFrames": 81,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 4,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 67,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 0,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 7.4,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "upright",
+          "lastObservedSeconds": 7.3
+        },
+        {
+          "seconds": 7.4,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        }
+      ]
+    },
+    {
+      "id": "demo-fall-lateral.mp4",
+      "scope": "staged demo control",
+      "expectedFall": true,
+      "sampledFrames": 121,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 5,
+      "ambiguousFrames": 2,
+      "fusionSuppressed": 82,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 4,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": 6.7,
+      "threeSecondsBeforeBaselineAlert": [
+        {
+          "seconds": 5.7,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.7,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.9,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.8
+        },
+        {
+          "seconds": 5.9,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.8
+        }
+      ],
+      "droppedHistories": [
+        {
+          "seconds": 5.7,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.7,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.6
+        },
+        {
+          "seconds": 5.9,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.8
+        },
+        {
+          "seconds": 5.9,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 5.8
+        }
+      ]
+    },
+    {
+      "id": "demo-fall-forward.mp4",
+      "scope": "staged demo control",
+      "expectedFall": true,
+      "sampledFrames": 121,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 5,
+      "ambiguousFrames": 2,
+      "fusionSuppressed": 59,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 4,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": 7.9,
+      "threeSecondsBeforeBaselineAlert": [
+        {
+          "seconds": 7.1,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.3,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.3,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        }
+      ],
+      "droppedHistories": [
+        {
+          "seconds": 7.1,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.1,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7
+        },
+        {
+          "seconds": 7.3,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        },
+        {
+          "seconds": 7.3,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.2
+        }
+      ]
+    },
+    {
+      "id": "demo-fall-backwards.mp4",
+      "scope": "staged demo control",
+      "expectedFall": true,
+      "sampledFrames": 121,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 3,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 119,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": 7.9,
+      "threeSecondsBeforeBaselineAlert": [
+        {
+          "seconds": 7.2,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 7.1
+        },
+        {
+          "seconds": 7.2,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.1
+        }
+      ],
+      "droppedHistories": [
+        {
+          "seconds": 7.2,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 7.1
+        },
+        {
+          "seconds": 7.2,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 7.1
+        }
+      ]
+    },
+    {
+      "id": "demo-sitting.mp4",
+      "scope": "staged demo control",
+      "expectedFall": false,
+      "sampledFrames": 121,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 5,
+      "ambiguousFrames": 2,
+      "fusionSuppressed": 117,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 4,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 11.3,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 11.2
+        },
+        {
+          "seconds": 11.3,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.2
+        },
+        {
+          "seconds": 11.5,
+          "id": 3,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.4
+        },
+        {
+          "seconds": 11.5,
+          "id": 4,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.4
+        }
+      ]
+    },
+    {
+      "id": "demo-bending.mp4",
+      "scope": "staged demo control",
+      "expectedFall": false,
+      "sampledFrames": 121,
+      "replayMatchesEveryFrame": true,
+      "historiesCreated": 3,
+      "ambiguousFrames": 1,
+      "fusionSuppressed": 115,
+      "capacitySuppressed": 0,
+      "dropsByReason": {
+        "ambiguous": 2,
+        "expired": 0,
+        "capacity": 0,
+        "clock-reset": 0
+      },
+      "armedHistoriesDropped": 1,
+      "descendingHistoriesDropped": 1,
+      "firstBaselineAlertSeconds": null,
+      "threeSecondsBeforeBaselineAlert": null,
+      "droppedHistories": [
+        {
+          "seconds": 11.6,
+          "id": 2,
+          "reason": "ambiguous",
+          "status": "unarmed",
+          "lastObservedSeconds": 11.5
+        },
+        {
+          "seconds": 11.6,
+          "id": 1,
+          "reason": "ambiguous",
+          "status": "descending",
+          "lastObservedSeconds": 11.5
+        }
+      ]
+    }
+  ]
+}

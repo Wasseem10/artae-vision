@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "scope": "Synthetic pose-feature sequences, not video clips, independent accuracy evidence, or a detector candidate",
+  "intervalSeconds": 0.1,
+  "poses": {
+    "standing": {"x": 0.25, "y": 0.3, "verticality": 0.9, "aspect": 0.5, "visibility": 0.95},
+    "descent": {"x": 0.25, "y": 0.35, "verticality": 0.9, "aspect": 0.5, "visibility": 0.95},
+    "down": {"x": 0.25, "y": 0.7, "verticality": 0.3, "aspect": 1.2, "visibility": 0.95},
+    "downFar": {"x": 0.75, "y": 0.7, "verticality": 0.3, "aspect": 1.2, "visibility": 0.95},
+    "sitting": {"x": 0.25, "y": 0.5, "verticality": 0.9, "aspect": 0.6, "visibility": 0.95},
+    "bystander": {"x": 0.75, "y": 0.3, "verticality": 0.9, "aspect": 0.5, "visibility": 0.95}
+  },
+  "cases": [
+    {"id": "same-person-fall", "expectedFall": true, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 7, "actor": "a", "pose": "descent"},
+      {"from": 8, "through": 19, "actor": "a", "pose": "down"}
+    ]},
+    {"id": "different-person-already-down", "expectedFall": false, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 19, "actor": "b", "pose": "down"}
+    ]},
+    {"id": "short-occlusion-different-person", "expectedFall": false, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 9, "actor": null, "pose": null},
+      {"from": 10, "through": 23, "actor": "b", "pose": "down"}
+    ]},
+    {"id": "large-horizontal-change", "expectedFall": false, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 19, "actor": "b", "pose": "downFar"}
+    ]},
+    {"id": "same-person-sits", "expectedFall": false, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 19, "actor": "a", "pose": "sitting"}
+    ]},
+    {"id": "already-down-from-start", "expectedFall": false, "segments": [
+      {"from": 0, "through": 19, "actor": "a", "pose": "down"}
+    ]},
+    {"id": "same-person-fall-with-bystander", "expectedFall": true, "bystander": true, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 7, "actor": "a", "pose": "descent"},
+      {"from": 8, "through": 19, "actor": "a", "pose": "down"}
+    ]},
+    {"id": "long-occlusion-different-person", "expectedFall": false, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 17, "actor": null, "pose": null},
+      {"from": 18, "through": 30, "actor": "b", "pose": "down"}
+    ]},
+    {"id": "new-person-arms-before-real-fall", "expectedFall": true, "segments": [
+      {"from": 0, "through": 6, "actor": "a", "pose": "standing"},
+      {"from": 7, "through": 14, "actor": "b", "pose": "standing"},
+      {"from": 15, "through": 15, "actor": "b", "pose": "descent"},
+      {"from": 16, "through": 28, "actor": "b", "pose": "down"}
+    ]}
+  ]
+}

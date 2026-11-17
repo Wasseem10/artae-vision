@@ -1,0 +1,393 @@
+{
+  "schemaVersion": 1,
+  "packetId": "0a0e79286bafeb1e027378690219623feb06a7198a565f01fd01b18a58ef320a",
+  "status": "draft",
+  "reviewer": "Codex — provisional AI visual review; not human-adjudicated",
+  "frames": [
+    {
+      "key": "mpfdd-s1-p2-f1-fall-1@4.9",
+      "visiblePeople": 2,
+      "notes": "Provisional AI observation, not human-adjudicated. Two visible people. P and M0 lie on/near foreground person-1 upper body; rear standing person-2 has no nearby archived center. Empty chairs are visible, but these centers do not support a chair false-positive label. Center proximity cannot confirm duplicate full skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s1-p2-f1-fall-1@5",
+      "visiblePeople": 2,
+      "notes": "Provisional AI observation, not human-adjudicated. Two visible people. P and M0 lie on/near foreground person-1 upper body; rear standing person-2 has no nearby archived center. Empty chairs are visible, but these centers do not support a chair false-positive label. Center proximity cannot confirm duplicate full skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s1-p2-f1-fall-1@5.1",
+      "visiblePeople": 2,
+      "notes": "Provisional AI observation, not human-adjudicated. Two visible people. P and M0 lie on/near foreground person-1 upper body; rear standing person-2 has no nearby archived center. Empty chairs are visible, but these centers do not support a chair false-positive label. Center proximity cannot confirm duplicate full skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@3.3",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0 and M2 clustered on the body. P and M1 lie on blue-clothed person-2. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-2",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@3.4",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0 and M2 clustered on the body. P and M1 lie on blue-clothed person-2. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-2",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@3.5",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0; P and M1 lie on blue-clothed person-2. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-2"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@3.8",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0; P and M1 lie on blue-clothed person-2. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-2"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@3.9",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0; P lies on blue-clothed person-2. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@4",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0; P lies on the blue torso of person-2. M1 is uncertain: its center lies at the blurred body/stool overlap, and the archive has no skeleton to resolve the association. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-2"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "uncertain"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@4.5",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0 and M1 clustered on the body. P is uncertain: the blue-clothed person-2 is partly hidden by the foreground stool and the center overlaps the body/stool boundary. Continuity is suggestive but insufficient to label the center as person or furniture. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "uncertain"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@4.6",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0 and M1 clustered on the body. P is uncertain: the blue-clothed person-2 is partly hidden by the foreground stool and the center overlaps the body/stool boundary. Continuity is suggestive but insufficient to label the center as person or furniture. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "uncertain"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "mpfdd-s3-p4-f1-fall-4@4.7",
+      "visiblePeople": 4,
+      "notes": "Provisional AI observation, not human-adjudicated. Four visible people. Back-left person-1 and back-center person-3 have no nearby archived centers. Right seated person-4 has M0 and M1 clustered on the body. P is uncertain: the blue-clothed person-2 is partly hidden by the foreground stool and the center overlaps the body/stool boundary. Continuity is suggestive but insufficient to label the center as person or furniture. These are center associations, not confirmed duplicate skeletons.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "uncertain"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-4"
+        },
+        {
+          "slot": "multi-1",
+          "actor": "person-4"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-lateral.mp4@5.6",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-lateral.mp4@5.7",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-lateral.mp4@5.8",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-forward.mp4@7",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-forward.mp4@7.1",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-forward.mp4@7.2",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-backwards.mp4@7.1",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-backwards.mp4@7.2",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    },
+    {
+      "key": "demo-fall-backwards.mp4@7.3",
+      "visiblePeople": 1,
+      "notes": "Provisional AI observation, not human-adjudicated. One visible person in blue shirt and gray shorts on the mattress. P and M0 both lie on/near this person’s torso or upper body. No other person is visible. This suggests two observations of the same actor, but the archive has no full skeletons. No fall-event timing label is inferred.",
+      "assignments": [
+        {
+          "slot": "primary",
+          "actor": "person-1"
+        },
+        {
+          "slot": "multi-0",
+          "actor": "person-1"
+        }
+      ]
+    }
+  ],
+  "reviewedOn": "2026-10-27",
+  "reviewStatus": "provisional-ai-visual-review",
+  "humanAdjudicated": false,
+  "promoted": false,
+  "newInference": false,
+  "sourceReportSha256": "5c2e4955c2f996d85b291065f9aa9393d18c35d725344feab686149808ef57ed",
+  "captureRevision": "2b61b3022fa91702598c868471a9783cf0d6d3a4",
+  "scope": "Selected development failures. Coarse torso-center associations only; not skeleton labels, independent ground truth, training labels, identity accuracy, or fall-event annotations.",
+  "method": "Visually inspected all 21 original source frames with archived primary/raw multi torso-center overlays. Local packet and original image SHA256 digests verified. No inference rerun. Person IDs are descriptive hypotheses consistent only within each clip.",
+  "actorRegistry": {
+    "mpfdd-s1-p2-f1-fall-1": {
+      "person-1": "Foreground person in black sleeveless top and dark shorts, kneeling/tipping onto floor.",
+      "person-2": "Rear standing person in black sleeveless top and denim shorts by parapet."
+    },
+    "mpfdd-s3-p4-f1-fall-4": {
+      "person-1": "Back-left seated person in dark clothing and light shoes.",
+      "person-2": "Foreground moving/falling person in blue top and gray trousers.",
+      "person-3": "Back-center person in dark clothing behind small stool, then seated/bent.",
+      "person-4": "Right seated person in dark clothing beside curtain/windows."
+    },
+    "demo-fall-lateral.mp4": {
+      "person-1": "Only visible person; blue shirt, gray shorts and blue shoes, rotating onto side on mattress."
+    },
+    "demo-fall-forward.mp4": {
+      "person-1": "Only visible person; blue shirt and gray shorts, landing prone on mattress."
+    },
+    "demo-fall-backwards.mp4": {
+      "person-1": "Only visible person; blue shirt and gray shorts, falling backwards onto mattress."
+    }
+  }
+}

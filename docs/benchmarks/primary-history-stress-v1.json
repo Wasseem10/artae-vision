@@ -1,0 +1,778 @@
+{
+  "schemaVersion": 1,
+  "scope": "Constructed pose features, no video inference, held-out validation, detector change, or field accuracy claim",
+  "control": "Oracle restarts the entire fused rule only at explicit fixture actor changes; uses unavailable identity labels and is not a deployable association algorithm",
+  "codeRevision": "0a12b58508db23d877bf1375c65aba846ffc2cd8",
+  "localGitDirty": false,
+  "nodeVersion": "v24.21.0",
+  "typescriptVersion": "5.9.3",
+  "sourceHashes": {
+    "apps/web/src/lib/browser-pose.ts": "4ddc010693ba01c8d8eb241d957458ab0bdedc20b2a237e2f682094433d8da33",
+    "apps/web/src/lib/pose-window-fall.ts": "141d0501fe5e0bef1d34fa4e363545ce810cc9bb499104841b72298b16d749ec",
+    "apps/web/src/lib/multi-person-fall.ts": "9f63f2d110f209d4f2adbbc781f33092bc4f231ede906ab7885645abe0a0f692",
+    "apps/web/src/lib/fall-window-model.json": "a3f6b1643982269552ab996e0f506bf334296c881349855bf8f1c82303c36804"
+  },
+  "casesSha256": "eee5660f0e42f6723886128da66a0c6dbe1ab9a3ebbb07821e8f84d5a5b0ab87",
+  "results": [
+    {
+      "id": "same-person-fall",
+      "expectedFall": true,
+      "frames": 20,
+      "actorBoundarySeconds": [],
+      "baseline": {
+        "temporalEvents": [
+          {
+            "seconds": 1.6,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.9,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          },
+          {
+            "seconds": 1.6,
+            "phase": "alerted"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [
+          {
+            "seconds": 1.6,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.9,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          },
+          {
+            "seconds": 1.6,
+            "phase": "alerted"
+          }
+        ]
+      }
+    },
+    {
+      "id": "different-person-already-down",
+      "expectedFall": false,
+      "frames": 20,
+      "actorBoundarySeconds": [
+        0.7
+      ],
+      "baseline": {
+        "temporalEvents": [
+          {
+            "seconds": 1.6,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.8,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          },
+          {
+            "seconds": 1.6,
+            "phase": "alerted"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unarmed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "short-occlusion-different-person",
+      "expectedFall": false,
+      "frames": 24,
+      "actorBoundarySeconds": [
+        1
+      ],
+      "baseline": {
+        "temporalEvents": [
+          {
+            "seconds": 2,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unobserved"
+          },
+          {
+            "seconds": 1,
+            "phase": "descending"
+          },
+          {
+            "seconds": 2,
+            "phase": "alerted"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unobserved"
+          },
+          {
+            "seconds": 1,
+            "phase": "unarmed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "large-horizontal-change",
+      "expectedFall": false,
+      "frames": 20,
+      "actorBoundarySeconds": [
+        0.7
+      ],
+      "baseline": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.8,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unarmed"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unarmed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "same-person-sits",
+      "expectedFall": false,
+      "frames": 20,
+      "actorBoundarySeconds": [],
+      "baseline": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          }
+        ]
+      }
+    },
+    {
+      "id": "already-down-from-start",
+      "expectedFall": false,
+      "frames": 20,
+      "actorBoundarySeconds": [],
+      "baseline": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "same-person-fall-with-bystander",
+      "expectedFall": true,
+      "frames": 20,
+      "actorBoundarySeconds": [],
+      "baseline": {
+        "temporalEvents": [
+          {
+            "seconds": 1.6,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.9,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          },
+          {
+            "seconds": 1.6,
+            "phase": "alerted"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [
+          {
+            "seconds": 1.6,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 0.9,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "descending"
+          },
+          {
+            "seconds": 1.6,
+            "phase": "alerted"
+          }
+        ]
+      }
+    },
+    {
+      "id": "long-occlusion-different-person",
+      "expectedFall": false,
+      "frames": 31,
+      "actorBoundarySeconds": [
+        1.8
+      ],
+      "baseline": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unobserved"
+          },
+          {
+            "seconds": 1.8,
+            "phase": "unarmed"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [],
+        "windowSuggestionEvents": [],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unobserved"
+          },
+          {
+            "seconds": 1.8,
+            "phase": "unarmed"
+          }
+        ]
+      }
+    },
+    {
+      "id": "new-person-arms-before-real-fall",
+      "expectedFall": true,
+      "frames": 29,
+      "actorBoundarySeconds": [
+        0.7
+      ],
+      "baseline": {
+        "temporalEvents": [
+          {
+            "seconds": 2.5,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 1.7,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 1.5,
+            "phase": "descending"
+          },
+          {
+            "seconds": 2.5,
+            "phase": "alerted"
+          }
+        ]
+      },
+      "oracleResetControl": {
+        "temporalEvents": [
+          {
+            "seconds": 2.5,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "windowSuggestionEvents": [
+          {
+            "seconds": 1.7,
+            "trackIds": [
+              1
+            ]
+          }
+        ],
+        "primaryPhaseTransitions": [
+          {
+            "seconds": 0,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 0.6,
+            "phase": "upright"
+          },
+          {
+            "seconds": 0.7,
+            "phase": "unarmed"
+          },
+          {
+            "seconds": 1.3,
+            "phase": "upright"
+          },
+          {
+            "seconds": 1.5,
+            "phase": "descending"
+          },
+          {
+            "seconds": 2.5,
+            "phase": "alerted"
+          }
+        ]
+      }
+    }
+  ],
+  "summary": {
+    "syntheticFallCases": 3,
+    "syntheticNonfallCases": 6,
+    "baseline": {
+      "syntheticFallCasesAlerted": 3,
+      "syntheticNonfallCasesAlerted": 2
+    },
+    "oracleResetControl": {
+      "syntheticFallCasesAlerted": 3,
+      "syntheticNonfallCasesAlerted": 0
+    }
+  },
+  "observedWindow": {
+    "scope": "Unchanged rule state in a previously captured selected window; provisional actor associations, no counterfactual video result",
+    "captureSha256": "c766a03528b1f166010fa58d0e04e775e9a6c4e1235b6e299168b9c9861722bd",
+    "captureCodeRevision": "ac51b8a524d937eac900d266c5e0fb07d029e91f",
+    "reviewStatus": "provisional-ai-overlay-review",
+    "summary": {
+      "frames": 21,
+      "ambiguousFrames": 4,
+      "phaseCounts": {
+        "upright": 15,
+        "descending": 6
+      },
+      "temporalAlertFrames": 0,
+      "windowSuggestionFrames": 0
+    },
+    "observations": [
+      {
+        "seconds": 5,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.1,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.2,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.3,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.4,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.5,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.6,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.7,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.8,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 5.9,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.1,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "dark",
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.2,
+        "primaryId": 1,
+        "association": "ambiguous",
+        "actor": null,
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.3,
+        "primaryId": 1,
+        "association": "ambiguous",
+        "actor": null,
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.4,
+        "primaryId": 1,
+        "association": "ambiguous",
+        "actor": null,
+        "phase": "upright",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.5,
+        "primaryId": 1,
+        "association": "ambiguous",
+        "actor": null,
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.6,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "blue",
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.7,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "blue",
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.8,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "blue",
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 6.9,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "blue",
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      },
+      {
+        "seconds": 7,
+        "primaryId": 1,
+        "association": "matched",
+        "actor": "blue",
+        "phase": "descending",
+        "temporalHit": false,
+        "windowSuggestionHit": false
+      }
+    ],
+    "annotationsSha256": "e9de6d5ef4a2c1754fd9984fb59ea12974f392cbbcd56e96f7e86242fa2ebbb0"
+  }
+}
