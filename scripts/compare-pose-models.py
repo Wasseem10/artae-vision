@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 from pathlib import Path
 
@@ -18,29 +19,53 @@ def matched(result: dict) -> bool:
                for timestamp in result["detectedAtSeconds"])
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("baseline", type=Path)
-    parser.add_argument("candidate", type=Path)
-    args = parser.parse_args()
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    reports = [json.loads(path.read_text(encoding="utf-8")) for path in (args.baseline, args.candidate)]
-    expected = {item["id"]: item for item in manifest["cases"]}
-    if len(expected) != 100:
-        raise ValueError("Expected the full 100-clip CAUCAFall manifest")
+def unique_cases(rows: list[dict], source: str) -> dict[str, dict]:
+    if not isinstance(rows, list) or len(rows) != 100:
+        raise ValueError(f"Expected exactly 100 {source} cases")
+    ids = [row["id"] for row in rows]
+    if any(not isinstance(case_id, str) or not case_id for case_id in ids) or len(set(ids)) != len(ids):
+        raise ValueError(f"Invalid or duplicate {source} case IDs")
+    return dict(zip(ids, rows))
+
+
+def finite_number(value: object, minimum: float = 0) -> bool:
+    return type(value) in (int, float) and math.isfinite(value) and value >= minimum
+
+
+def compare_reports(manifest: dict, reports: list[dict]) -> dict:
+    if len(reports) != 2:
+        raise ValueError("Expected baseline and candidate reports")
+    expected = unique_cases(manifest["cases"], "manifest")
+    for case_id, definition in expected.items():
+        category, ranges = definition["category"], definition["eventRanges"]
+        if category not in ("fall", "daily_activity") or not isinstance(ranges, list) or len(ranges) != int(category == "fall"):
+            raise ValueError(f"Invalid manifest label: {case_id}")
+        for event in ranges:
+            if not finite_number(event["start"]) or not finite_number(event["end"]) or event["start"] > event["end"]:
+                raise ValueError(f"Invalid manifest event interval: {case_id}")
+    if not any(item["category"] == "daily_activity" for item in expected.values()):
+        raise ValueError("Activity footage is required for negative exposure")
     by_report = []
     for report in reports:
         if report["status"] != "complete" or report["dataset"]["datasetId"] != manifest["datasetId"]:
             raise ValueError("Incomplete or incorrect dataset")
-        results = {item["id"]: item for item in report["results"]}
-        if len(results) != 100 or set(results) != set(expected):
+        results = unique_cases(report["results"], "report")
+        if set(results) != set(expected):
             raise ValueError("Report cases differ from the manifest")
         for case_id, result in results.items():
             definition = expected[case_id]
             if (result["videoSha256"] != definition["videoSha256"] or
-                result["eventRanges"] != definition["eventRanges"] or
-                result["framesAnalyzed"] < 1):
+                result["category"] != definition["category"] or
+                result["eventRanges"] != definition["eventRanges"]):
                 raise ValueError(f"Unmatched case provenance: {case_id}")
+            frames, poses = result["framesAnalyzed"], result["framesWithPose"]
+            duration, alerts = result["durationSeconds"], result["detectedAtSeconds"]
+            if (type(frames) is not int or frames < 1 or type(poses) is not int or not 0 <= poses <= frames or
+                not finite_number(duration) or duration == 0 or not finite_number(result["meanInferenceMs"])):
+                raise ValueError(f"Invalid observation metrics: {case_id}")
+            if (not isinstance(alerts, list) or
+                any(not finite_number(t) or t > duration for t in alerts)):
+                raise ValueError(f"Invalid alert timestamp: {case_id}")
         by_report.append(results)
     baseline, candidate = by_report
     gains = [case_id for case_id, result in baseline.items() if result["category"] == "fall"
@@ -73,7 +98,20 @@ def main() -> None:
             "candidate": round(statistics.mean(result["meanInferenceMs"] for result in candidate.values()), 2),
         },
     }
-    print(json.dumps(output, indent=2))
+    return output
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("baseline", type=Path)
+    parser.add_argument("candidate", type=Path)
+    parser.add_argument("--manifest", type=Path, default=MANIFEST,
+                        help="Local CAUCAFall manifest (defaults to the prepared browser dataset)")
+    args = parser.parse_args()
+    manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    reports = [json.loads(path.read_text(encoding="utf-8")) for path in (args.baseline, args.candidate)]
+    output = compare_reports(manifest, reports)
+    print(json.dumps(output, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

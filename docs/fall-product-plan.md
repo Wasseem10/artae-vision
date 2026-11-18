@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 18 benchmark follow-up: the [pose comparison input checks](pose-comparison-input-integrity.md)
+reject duplicate clips, manifest-label mismatches and invalid numeric metrics
+before scoring. All results on five existing CAUCAFall reports remain identical;
+this is scoring-integrity verification, not a new detector evaluation.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule
