@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "scope": "Scorer input integrity on previously examined development reports; no new detector evaluation",
+  "baselineRevision": "17434621568012e8d05a72d23c0d98953de45b37",
+  "comparatorSha256": "7162e4ea7a394f60472d577651e7daf8ff42933f3478e5fab4b4fe5f80a5fa80",
+  "manifestSha256": "b984a772a641d225479b3416e0c77f75fe649827f8adb0e696fd844524bada54",
+  "newInference": false,
+  "mutatedCopies": {
+    "duplicateRow": "rejected",
+    "categoryMismatch": "rejected"
+  },
+  "baselineSha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+  "comparisons": [
+    {
+      "report": "evaluation-full.json",
+      "sha256": "174f93dc9f7eec232c8e899fb974f3d854fc59c655c4312e4109abf41792182d",
+      "unchanged": true,
+      "comparison": {
+        "baselineModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "candidateModel": "MediaPipe Pose Landmarker full float16/1",
+        "baselineMatchedFalls": 17,
+        "candidateMatchedFalls": 19,
+        "gainedFallIds": [
+          "cauca-s3-fall-backwards",
+          "cauca-s4-fall-left",
+          "cauca-s6-fall-right",
+          "cauca-s6-fall-sitting",
+          "cauca-s8-fall-backwards"
+        ],
+        "lostFallIds": [
+          "cauca-s1-fall-backwards",
+          "cauca-s1-fall-right",
+          "cauca-s9-fall-left"
+        ],
+        "candidateDailyActivityClipsAlerted": [
+          "cauca-s8-adl-kneel"
+        ],
+        "candidateDailyActivityAlertsPerAnalyzedHour": 7.0,
+        "meanPoseCoverage": {
+          "baseline": 0.7722,
+          "candidate": 0.8038
+        },
+        "meanInferenceMs": {
+          "baseline": 20.52,
+          "candidate": 29.05
+        }
+      }
+    },
+    {
+      "report": "evaluation-heavy.json",
+      "sha256": "ec881edb70e5c596b329524388b67b42f0e637ee83b0d74fefb19e3a973656a2",
+      "unchanged": true,
+      "comparison": {
+        "baselineModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "candidateModel": "MediaPipe Pose Landmarker heavy float16/1",
+        "baselineMatchedFalls": 17,
+        "candidateMatchedFalls": 22,
+        "gainedFallIds": [
+          "cauca-s1-fall-left",
+          "cauca-s3-fall-backwards",
+          "cauca-s3-fall-left",
+          "cauca-s4-fall-left",
+          "cauca-s6-fall-right",
+          "cauca-s7-fall-left",
+          "cauca-s8-fall-backwards",
+          "cauca-s9-fall-backwards"
+        ],
+        "lostFallIds": [
+          "cauca-s1-fall-backwards",
+          "cauca-s9-fall-left",
+          "cauca-s10-fall-left"
+        ],
+        "candidateDailyActivityClipsAlerted": [],
+        "candidateDailyActivityAlertsPerAnalyzedHour": 0.0,
+        "meanPoseCoverage": {
+          "baseline": 0.7722,
+          "candidate": 0.831
+        },
+        "meanInferenceMs": {
+          "baseline": 20.52,
+          "candidate": 77.2
+        }
+      }
+    },
+    {
+      "report": "evaluation-multiperson-unfused.json",
+      "sha256": "458235e4a377425b1f0a95e20b9ef63e1ec18fa8c80231db996ed04c9bcfff3a",
+      "unchanged": true,
+      "comparison": {
+        "baselineModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "candidateModel": "MediaPipe Pose Landmarker lite float16/1",
+        "baselineMatchedFalls": 17,
+        "candidateMatchedFalls": 8,
+        "gainedFallIds": [
+          "cauca-s8-fall-sitting"
+        ],
+        "lostFallIds": [
+          "cauca-s1-fall-backwards",
+          "cauca-s1-fall-right",
+          "cauca-s2-fall-left",
+          "cauca-s4-fall-backwards",
+          "cauca-s5-fall-backwards",
+          "cauca-s7-fall-backwards",
+          "cauca-s9-fall-forward",
+          "cauca-s9-fall-left",
+          "cauca-s10-fall-left",
+          "cauca-s10-fall-right"
+        ],
+        "candidateDailyActivityClipsAlerted": [],
+        "candidateDailyActivityAlertsPerAnalyzedHour": 0.0,
+        "meanPoseCoverage": {
+          "baseline": 0.7722,
+          "candidate": 0.7366
+        },
+        "meanInferenceMs": {
+          "baseline": 20.52,
+          "candidate": 31.11
+        }
+      }
+    },
+    {
+      "report": "evaluation-multiperson.json",
+      "sha256": "35f1bf706228c138e86deb81cad00e92f9411178e07a2fa14b9714e2ed5e9c74",
+      "unchanged": true,
+      "comparison": {
+        "baselineModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "candidateModel": "MediaPipe Pose Landmarker lite float16/1",
+        "baselineMatchedFalls": 17,
+        "candidateMatchedFalls": 20,
+        "gainedFallIds": [
+          "cauca-s4-fall-left",
+          "cauca-s7-fall-forward",
+          "cauca-s8-fall-backwards"
+        ],
+        "lostFallIds": [],
+        "candidateDailyActivityClipsAlerted": [
+          "cauca-s10-adl-walk"
+        ],
+        "candidateDailyActivityAlertsPerAnalyzedHour": 7.0,
+        "meanPoseCoverage": {
+          "baseline": 0.7722,
+          "candidate": 0.7986
+        },
+        "meanInferenceMs": {
+          "baseline": 20.52,
+          "candidate": 47.3
+        }
+      }
+    },
+    {
+      "report": "evaluation.json",
+      "sha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+      "unchanged": true,
+      "comparison": {
+        "baselineModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "candidateModel": "MediaPipe Pose Landmarker Lite float16/1",
+        "baselineMatchedFalls": 17,
+        "candidateMatchedFalls": 17,
+        "gainedFallIds": [],
+        "lostFallIds": [],
+        "candidateDailyActivityClipsAlerted": [],
+        "candidateDailyActivityAlertsPerAnalyzedHour": 0.0,
+        "meanPoseCoverage": {
+          "baseline": 0.7722,
+          "candidate": 0.7722
+        },
+        "meanInferenceMs": {
+          "baseline": 20.52,
+          "candidate": 20.52
+        }
+      }
+    }
+  ]
+}
