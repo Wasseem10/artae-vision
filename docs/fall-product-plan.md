@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 22 recording follow-up: [unexpected recorder stops](unexpected-recorder-stop-2026-11-22.md)
+now fail visibly without an automatic restart, retain usable final footage and
+leave detection running. Unit and controlled native-browser checks cover the
+failure and explicit fresh-session recovery; detector accuracy is unchanged.
+
 November 1 review follow-up: the [save-completion fix](review-save-completion-2026-11-01.md)
 keeps an incident visibly pending until its review save finishes. A controlled
 delay reproduces the premature closed status exposed by the playback CI test.

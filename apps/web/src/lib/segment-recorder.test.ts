@@ -152,4 +152,20 @@ describe("segmented recording lifecycle", () => {
     expect(run.onFailure).not.toHaveBeenCalled();
     expect(run.onState).toHaveBeenLastCalledWith("stopped");
   });
+
+  it.each([100, 1500])("does not restart after an unsolicited stop at %i ms", (elapsed) => {
+    const run = setup();
+    vi.advanceTimersByTime(elapsed);
+    run.recorders[0].finish();
+    run.recorders[0].finish();
+    run.recording.stop();
+    vi.advanceTimersByTime(30000);
+    expect(run.createRecorder).toHaveBeenCalledOnce();
+    expect(run.onFailure).toHaveBeenCalledOnce();
+    expect(run.onState).toHaveBeenLastCalledWith("failed");
+    expect(run.trackStop).toHaveBeenCalledOnce();
+    expect(run.onSegment).toHaveBeenCalledTimes(elapsed >= 200 ? 1 : 0);
+    if (elapsed >= 200) expect(run.onSegment.mock.calls[0][0]).toMatchObject({ start: 0, duration: elapsed / 1000 });
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });

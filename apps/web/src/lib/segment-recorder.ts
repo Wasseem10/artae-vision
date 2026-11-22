@@ -78,6 +78,10 @@ export function startSegmentedRecording(options: Options): { stop: () => void } 
             try { options.onSegment({ blob, start, duration }); } catch { fail(); }
           }
         }
+        // Only our rotation/user stop freezes an end. A native stop without
+        // either request means capture was interrupted. Keep final bytes above,
+        // but do not silently retry the same stream or discard short failures.
+        if (segment.end === null && !stopped) fail();
         if (stopped && !failed) options.onState("stopped");
         else next();
       };
