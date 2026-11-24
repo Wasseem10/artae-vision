@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 24 benchmark follow-up: [paired comparison output](pose-comparison-input-integrity.md)
+now exposes baseline and candidate outcomes for every clip and reports both
+activity-alert denominators as reported video duration. It explicitly does not
+claim verified analyzed hours; existing archived scores remain unchanged.
+
 November 18 benchmark follow-up: the [pose comparison input checks](pose-comparison-input-integrity.md)
 reject duplicate clips, manifest-label mismatches and invalid numeric metrics
 before scoring. All results on five existing CAUCAFall reports remain identical;

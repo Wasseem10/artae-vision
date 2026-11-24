@@ -1,4 +1,4 @@
-"""Compare two browser replays on identical, hash-verified CAUCAFall clips."""
+"""Compare browser reports against a CAUCAFall manifest, with explicit exposure."""
 
 from __future__ import annotations
 
@@ -30,6 +30,31 @@ def unique_cases(rows: list[dict], source: str) -> dict[str, dict]:
 
 def finite_number(value: object, minimum: float = 0) -> bool:
     return type(value) in (int, float) and math.isfinite(value) and value >= minimum
+
+
+def activity_exposure(results: dict[str, dict]) -> dict:
+    activities = [row for row in results.values() if row["category"] == "daily_activity"]
+    seconds = sum(row["durationSeconds"] for row in activities)
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ValueError("Invalid total activity video duration")
+    alerts = sum(len(row["detectedAtSeconds"]) for row in activities)
+    return {
+        "clips": len(activities),
+        "clipsAlerted": sum(bool(row["detectedAtSeconds"]) for row in activities),
+        "alertCount": alerts,
+        "reportedVideoSeconds": seconds,
+        "alertsPerReportedVideoHour": round(alerts / seconds * 3600, 2),
+        "analyzedExposureVerified": False,
+    }
+
+
+def clip_outcome(result: dict) -> dict:
+    return {
+        "reportedVideoSeconds": result["durationSeconds"],
+        "alertTimestampsSeconds": list(result["detectedAtSeconds"]),
+        # An activity clip has no annotated fall to match; null is not a miss.
+        "matchedFall": matched(result) if result["category"] == "fall" else None,
+    }
 
 
 def compare_reports(manifest: dict, reports: list[dict]) -> dict:
@@ -74,9 +99,13 @@ def compare_reports(manifest: dict, reports: list[dict]) -> dict:
               and matched(result) and not matched(candidate[case_id])]
     false_alerts = [case_id for case_id, result in candidate.items()
                     if result["category"] == "daily_activity" and result["detectedAtSeconds"]]
-    negative_hours = sum(result["durationSeconds"] for result in candidate.values()
-                         if result["category"] == "daily_activity") / 3600
     output = {
+        "schemaVersion": 2,
+        "limitations": [
+            "Activity rates use reported video duration, not verified analyzed exposure or field monitoring hours.",
+            "Manifest consistency does not establish annotation correctness, complete inference replay or independent validation.",
+            "A matched fall has an alert within the annotated interval plus the existing two-second allowance; it does not prove person identity.",
+        ],
         "baselineModel": reports[0]["provenance"]["detector"]["model"],
         "candidateModel": reports[1]["provenance"]["detector"]["model"],
         "baselineMatchedFalls": sum(matched(result) for result in baseline.values() if result["category"] == "fall"),
@@ -84,9 +113,16 @@ def compare_reports(manifest: dict, reports: list[dict]) -> dict:
         "gainedFallIds": gains,
         "lostFallIds": losses,
         "candidateDailyActivityClipsAlerted": false_alerts,
-        "candidateDailyActivityAlertsPerAnalyzedHour": round(sum(
-            len(result["detectedAtSeconds"]) for result in candidate.values()
-            if result["category"] == "daily_activity") / negative_hours, 2),
+        "dailyActivityExposure": {
+            "baseline": activity_exposure(baseline),
+            "candidate": activity_exposure(candidate),
+        },
+        "perClip": [{
+            "id": case_id, "category": definition["category"],
+            "eventRanges": [dict(event) for event in definition["eventRanges"]],
+            "baseline": clip_outcome(baseline[case_id]),
+            "candidate": clip_outcome(candidate[case_id]),
+        } for case_id, definition in expected.items()],
         "meanPoseCoverage": {
             "baseline": round(statistics.mean(result["framesWithPose"] / result["framesAnalyzed"]
                                               for result in baseline.values()), 4),

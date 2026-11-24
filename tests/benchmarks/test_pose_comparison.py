@@ -38,9 +38,62 @@ class PoseComparisonTests(unittest.TestCase):
         self.assertEqual(result["gainedFallIds"], ["clip-1"])
         self.assertEqual(result["lostFallIds"], ["clip-0"])
         self.assertEqual(result["candidateDailyActivityClipsAlerted"], ["clip-50"])
-        self.assertEqual(result["candidateDailyActivityAlertsPerAnalyzedHour"], 14.4)
+        self.assertEqual(result["schemaVersion"], 2)
+        self.assertNotIn("candidateDailyActivityAlertsPerAnalyzedHour", result)
+        self.assertEqual(result["dailyActivityExposure"]["candidate"], {
+            "clips": 50, "clipsAlerted": 1, "alertCount": 2,
+            "reportedVideoSeconds": 500, "alertsPerReportedVideoHour": 14.4,
+            "analyzedExposureVerified": False,
+        })
         self.assertEqual(result["meanPoseCoverage"], {"baseline": .5, "candidate": .5})
         self.assertEqual((manifest, reports), original)
+
+    def test_paired_rows_reconcile_with_scores_and_keep_activity_distinct_from_misses(self):
+        manifest, reports = fixture()
+        reports[0]["results"][0]["detectedAtSeconds"] = [1, 2]
+        reports[1]["results"][1]["detectedAtSeconds"] = [5]
+        reports[0]["results"][50]["detectedAtSeconds"] = [1, 3]
+        reports[1]["results"][51]["detectedAtSeconds"] = [2]
+        reports[1]["results"].reverse()
+        result = compare(manifest, reports)
+        rows = result["perClip"]
+        self.assertEqual([row["id"] for row in rows], [case["id"] for case in manifest["cases"]])
+        self.assertEqual(rows[0]["baseline"]["alertTimestampsSeconds"], [1, 2])
+        self.assertTrue(rows[0]["baseline"]["matchedFall"])
+        self.assertFalse(rows[0]["candidate"]["matchedFall"])
+        for side in ("baseline", "candidate"):
+            self.assertEqual(sum(row[side]["matchedFall"] is True for row in rows), result[f"{side}MatchedFalls"])
+            activities = [row for row in rows if row["category"] == "daily_activity"]
+            self.assertTrue(all(row[side]["matchedFall"] is None for row in activities))
+            self.assertEqual(sum(len(row[side]["alertTimestampsSeconds"]) for row in activities),
+                             result["dailyActivityExposure"][side]["alertCount"])
+        rows[0]["baseline"]["alertTimestampsSeconds"].append(99)
+        rows[0]["eventRanges"][0]["start"] = 99
+        self.assertEqual(reports[0]["results"][0]["detectedAtSeconds"], [1, 2])
+        self.assertEqual(manifest["cases"][0]["eventRanges"][0]["start"], 2)
+
+    def test_each_side_uses_its_own_reported_exposure_without_claiming_analyzed_hours(self):
+        manifest, reports = fixture()
+        for report in reports:
+            report["results"][50]["detectedAtSeconds"] = [1]
+        for row in reports[1]["results"][50:]:
+            row["durationSeconds"] = 20
+        result = compare(manifest, reports)
+        exposure = result["dailyActivityExposure"]
+        self.assertEqual(exposure["baseline"]["reportedVideoSeconds"], 500)
+        self.assertEqual(exposure["candidate"]["reportedVideoSeconds"], 1000)
+        self.assertEqual(exposure["baseline"]["alertsPerReportedVideoHour"], 7.2)
+        self.assertEqual(exposure["candidate"]["alertsPerReportedVideoHour"], 3.6)
+        self.assertFalse(exposure["baseline"]["analyzedExposureVerified"])
+        self.assertFalse(exposure["candidate"]["analyzedExposureVerified"])
+        self.assertIn("not verified analyzed exposure", result["limitations"][0])
+
+    def test_overflowing_exposure_is_rejected(self):
+        manifest, reports = fixture()
+        for row in reports[1]["results"][50:]:
+            row["durationSeconds"] = 1e308
+        with self.assertRaisesRegex(ValueError, "total activity video duration"):
+            compare(manifest, reports)
 
     def test_duplicates_are_rejected_before_dictionary_conversion(self):
         for target in ("manifest", "baseline", "candidate"):

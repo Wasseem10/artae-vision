@@ -1,4 +1,41 @@
-# Reject invalid inputs before comparing pose models
+# Validate and explain pose-model comparisons
+
+November 24 follow-up: output schema 2 now includes paired per-clip results and
+activity exposure for **both** reports. It replaces the misleading
+`candidateDailyActivityAlertsPerAnalyzedHour` field with
+`dailyActivityExposure.candidate.alertsPerReportedVideoHour`. The denominator
+is the sum of reported activity-video durations, not independently verified
+analyzed exposure. Existing callers must migrate to that path; no repository
+application consumes the old field. Historical verification files are retained
+unchanged with their original schema.
+
+Each side now reports activity-clip count, clips alerted, total alert count,
+reported video seconds and the normalized rate. Multiple alerts in one clip
+count separately in the rate but only once in `clipsAlerted`. Both sides carry
+`analyzedExposureVerified: false`. This remains false even when a report declares
+itself complete. Total-duration overflow is rejected before producing a rate.
+
+`perClip` follows manifest order and pairs baseline/candidate alert timestamps,
+reported duration and `matchedFall`. Activity clips use `matchedFall: null`;
+they are not missed falls. All alert timestamps remain visible, including those
+outside a fall's matching interval. The existing interval plus two-second
+allowance is unchanged and stated in the output's limitations. This does not
+verify which person an alert concerned.
+
+The schema-2 compatibility run reprocessed five previously examined reports,
+each containing the same 100 clips. Existing scores and gain/loss/alert lists
+are unchanged; the renamed candidate rate has the same numeric value. Every
+paired timestamp list and duration matches its input row. Each report has
+50 activity clips with **514.05 reported video seconds**. This is repeated
+evaluation of the same footage, not five independent test sets or five times
+the negative exposure. The [new verification record](benchmarks/paired-comparison-2026-11-24.json)
+pins inputs, output hashes, comparator source and paired totals. Full generated
+reports remain local under `artifacts/paired-comparison-2026-11-24/` and can be
+regenerated using the CLI below. No inference was rerun and no model promoted.
+
+All **11 regression tests** pass locally, including new checks for symmetric
+denominators, per-clip reconciliation, activity/null semantics, detached output
+snapshots and overflow. CI runs the same test module. There is no UI change.
 
 November 18, 2026. The CAUCAFall comparison script now rejects duplicate clip
 rows, mismatched labels and invalid numeric observations before calculating a
@@ -36,7 +73,7 @@ evidence that the archived reports were corrupt.
 
 ## Archived compatibility check
 
-The old and updated scripts compared the original baseline against each of five
+On November 18, the old and updated scripts compared the original baseline against each of five
 existing 100-clip reports. **All output fields matched exactly**, including
 gained/lost clip lists, false-alert lists, exposure, coverage and timing.
 
