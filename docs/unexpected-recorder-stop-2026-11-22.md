@@ -1,5 +1,9 @@
 # Keep an unexpected recorder stop visible
 
+November 23 follow-up: [review without footage](review-without-footage-2026-11-23.md)
+replaces the disabled incident action with a review path that explicitly
+discloses missing video. Recording interruption behavior below is unchanged.
+
 November 22, 2026. An unsolicited `MediaRecorder` stop now ends recording with
 the existing failure message, keeps any usable final segment, and requires a
 fresh session to record again. Pose inference continues independently.

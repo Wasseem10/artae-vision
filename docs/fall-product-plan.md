@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 23 workflow follow-up: [review without footage](review-without-footage-2026-11-23.md)
+lets reviewers acknowledge an incident and save observations when video is
+missing or pending. The same dialog explicitly discloses the limitation and
+offers footage if it arrives later, retaining the draft. Accuracy is unchanged.
+
 November 22 recording follow-up: [unexpected recorder stops](unexpected-recorder-stop-2026-11-22.md)
 now fail visibly without an automatic restart, retain usable final footage and
 leave detection running. Unit and controlled native-browser checks cover the

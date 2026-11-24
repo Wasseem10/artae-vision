@@ -167,6 +167,7 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
   const [notificationState, setNotificationState] = useState<NotificationPermission | "unsupported">("default");
 
   const reviewEvent = session?.events.find((event) => event.id === selectedReviewId);
+  const availableReviewClip = reviewEvent && session ? clipForEvent(session.clips, reviewEvent.at) : undefined;
   // Use the interval actually opened in the player, even if new segments arrive.
   const reviewGap = reviewEvent && replay ? recordingGapSeconds(replay, reviewEvent.at) : 0;
   const sessionRecording = recording?.sessionId === session?.id ? recording : null;
@@ -1364,12 +1365,11 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
                           const clip = clipForEvent(session.clips, event.at);
                           if (clip) {
                             playClip(clip, Math.max(clip.start, event.at - 3));
-                            setSelectedReviewId(event.id);
-                          }
+                          } else setReplay(null);
+                          setSelectedReviewId(event.id);
                         }}
-                        disabled={!clipForEvent(session.clips, event.at)}
                       >
-                        Review footage
+                        {clipForEvent(session.clips, event.at) ? "Review footage" : "Review incident"}
                       </button>
                       {!clipForEvent(session.clips, event.at) && <small>{evidencePending ? sessionRecording?.state === "finalizing" ? "Finishing this event’s recording…" : "Recording this event’s evidence…" : "No recording is available for this event."}</small>}
                       {event.sms && <small>SMS: {event.sms.status.replaceAll("_", " ")}{event.sms.destination ? ` · ${event.sms.destination}` : ""}{event.sms.error ? ` · ${event.sms.error}` : ""}</small>}
@@ -1495,12 +1495,17 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
       </section>
       <dialog ref={reviewDialogRef} className={styles.reviewDialog} aria-labelledby="incident-review-title" onCancel={() => setSelectedReviewId(null)} onClose={() => setSelectedReviewId(null)}>
         {reviewEvent && <><header><div><small>INCIDENT REVIEW · {formatTime(reviewEvent.at)}</small><h2 id="incident-review-title">{reviewEvent.title}</h2></div><button type="button" onClick={() => reviewDialogRef.current?.close()} aria-label="Close incident review">Close</button></header>
-          <p>{reviewGap > 0 ? "Playback opens the nearest available segment." : "Playback starts up to three seconds before this event."} {running ? "Monitoring continues while you review." : "This session has stopped; evidence is kept."}</p>
+          <p>{replay ? reviewGap > 0 ? "Playback opens the nearest available segment." : "Playback starts up to three seconds before this event." : "Review the incident details and record what you observed."} {running ? "Monitoring continues while you review." : "This session has stopped; available evidence is kept."}</p>
           {reviewGap > 0 && <p className={styles.evidenceNotice} role="status"><strong>Nearby recording only.</strong> This segment’s recorded interval does not include the event timestamp (about {Math.max(1, Math.round(reviewGap * 1000))} ms gap). Review surrounding footage before deciding.</p>}
           <div className={styles.reviewBody}><div>{replay && <EvidencePlayback key={replay.url} url={replay.url}
             seek={replay.seek} videoRef={playbackRef} label="Incident evidence playback" />}
-            {replay && <a href={replay.url} download="artae-evidence.webm">Download evidence segment</a>}</div>
-            <section><h3>Record the outcome</h3><p>Inspect the footage before marking the event reviewed. A model suggestion is not a confirmed fall.</p>
+            {replay && <a href={replay.url} download="artae-evidence.webm">Download evidence segment</a>}
+            {!replay && <div className={styles.evidenceNotice}>
+              <p role="status">{availableReviewClip ? "A recording is now available for review." : evidencePending ? "Recording is still being prepared. You can save notes while waiting." : "No recording is available for this event."}</p>
+              {availableReviewClip && <button type="button" onClick={() => playClip(availableReviewClip, Math.max(availableReviewClip.start, reviewEvent.at - 3))}>Open available footage</button>}
+              <p>Saving an outcome does not verify the event or establish that footage was reviewed.</p>
+            </div>}</div>
+            <section><h3>Record the outcome</h3><p>{replay ? "Inspect the footage before marking the event reviewed." : "Record your observations and any follow-up in the reviewer note."} A model suggestion is not a confirmed fall.</p>
               <IncidentReviewPanel key={reviewEvent.id} event={reviewEvent} busy={reviewing !== null} draft={reviewDrafts[reviewEvent.id]} onDraft={(draft) => setReviewDrafts((drafts) => ({ ...drafts, [reviewEvent.id]: draft }))} onReview={(outcome, note, checklist) => void reviewIncident(reviewEvent, outcome, note, checklist)} onExport={() => downloadIncidentReport(reviewEvent)} />
               {reviewDrafts[reviewEvent.id] && !reviewEvent.review?.reviewed_at && <p>Draft kept while this page is open. Save an outcome to keep it in history.</p>}
               <p role="status">{reviewing === reviewEvent.id ? "Saving…" : reviewEvent.review?.status === "resolved" ? "Review complete. Your saved outcome is reflected in the event log." : reviewEvent.review?.status === "acknowledged" ? "Acknowledged. An outcome is still required." : "Awaiting your review."}</p>

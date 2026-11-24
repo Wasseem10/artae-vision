@@ -197,7 +197,7 @@ async function startSample(page, sample) {
     try {
       await startSample(negative.page, 'sitting');
       await negative.page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
-      assert.equal(await negative.page.getByRole('button', { name: 'Review footage', exact: true }).count(), 0,
+      assert.equal(await negative.page.getByRole('button', { name: /^Review (footage|incident)$/ }).count(), 0,
         'Sitting control must not create a fall incident');
       assert.ok(negative.rejectedCalls() > 0, 'Negative control must also run with API 503');
       console.log('SITTING_OK: frames processed without a false fall incident with API 503');

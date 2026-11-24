@@ -76,7 +76,7 @@ async function main() {
           await analyzed();
           if (mode === 'sample') {
             await page.getByRole('button', { name: 'Review footage', exact: true }).first().waitFor({ timeout: 30000 });
-            events = await page.getByRole('button', { name: 'Review footage', exact: true }).count();
+            events = await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count();
           } else {
             const labels = await page.evaluate(() => window.__visibilityQA.camera.map(t => t.label));
             assert.ok(labels.length && labels.every(label => /fake/i.test(label)), 'Synthetic camera only');
@@ -94,7 +94,7 @@ async function main() {
         assert.equal(await frames(), stoppedFrames);
         await warning.waitFor();
         assert.equal(await page.getByRole('button', { name: 'Stop agent', exact: true }).count(), 0);
-        assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).count(), events);
+        assert.equal(await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count(), events);
         if (mode === 'sample') {
           const footage = page.getByRole('heading', { name: 'Recorded footage', exact: true }).locator('..');
           await footage.getByRole('button').filter({ hasText: /^\d+:\d+–/ }).first().click();

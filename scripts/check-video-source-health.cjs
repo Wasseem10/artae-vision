@@ -58,7 +58,7 @@ async function main() {
         let eventsBefore = 0;
         if (mode === 'frozen-video') {
           await page.getByRole('button', { name: 'Review footage', exact: true }).first().waitFor({ timeout: 30000 });
-          eventsBefore = await page.getByRole('button', { name: 'Review footage', exact: true }).count();
+          eventsBefore = await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count();
           await page.locator('video:not([controls])').evaluate(video => video.pause());
         } else if (mode === 'camera-ended') {
           const labels = await page.evaluate(() => window.__sourceQA.tracks.map(track => track.label));
@@ -84,7 +84,7 @@ async function main() {
           const stoppedFrames = await analyzed();
           await page.waitForTimeout(500);
           assert.equal(await analyzed(), stoppedFrames);
-          assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).count(), eventsBefore);
+          assert.equal(await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count(), eventsBefore);
           if (mode === 'frozen-video') {
             const footage = page.getByRole('heading', { name: 'Recorded footage', exact: true }).locator('..');
             await footage.getByRole('button').filter({ hasText: /^\d+:\d+–/ }).first().click();

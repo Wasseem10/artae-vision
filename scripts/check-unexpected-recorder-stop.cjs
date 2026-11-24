@@ -26,7 +26,13 @@ async function main() {
       window.MediaRecorder = class extends NativeRecorder {
         constructor(...args) {
           super(...args);
-          window.__recorderQA.push({ recorder: this, createdAt: performance.now() });
+          const entry = { recorder: this, createdAt: performance.now() };
+          // Hold the recovered session's first finalization callback until its
+          // pending incident is open. Native bytes/events still come from Chromium.
+          if (window.__recorderQA.length === 1) Object.defineProperty(this, 'onstop', {
+            set(callback) { this.addEventListener('stop', event => { entry.releaseStop = () => callback(event); }, { once: true }); },
+          });
+          window.__recorderQA.push(entry);
         }
       };
     });
@@ -49,8 +55,8 @@ async function main() {
       return video?.readyState >= 2 && video.videoWidth > 0 && !video.error;
     });
     // A later real sample incident proves inference survives recording failure.
-    await page.getByRole('button', { name: 'Review footage', exact: true }).first().waitFor({ timeout: 30000 });
-    assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).first().isDisabled(), true);
+    await page.getByRole('button', { name: 'Review incident', exact: true }).first().waitFor({ timeout: 30000 });
+    assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).count(), 0);
     await page.getByText('No recording is available for this event.', { exact: true }).first().waitFor();
     assert.equal(await page.evaluate(() => window.__recorderQA.length), 1, 'No automatic recorder restart');
     assert.equal(await page.evaluate(() => window.__recorderQA[0].recorder.stream.getTracks().every(t => t.readyState === 'ended')), true);
@@ -63,12 +69,26 @@ async function main() {
     await page.getByRole('button', { name: 'Start agent', exact: true }).click();
     await page.waitForFunction(() => window.__recorderQA.length === 2 && window.__recorderQA[1].recorder.state === 'recording');
     assert.equal(await warning.count(), 0);
-    await page.getByRole('button', { name: 'Review footage', exact: true }).first().waitFor({ timeout: 30000 });
-    await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Review footage' && !b.disabled));
+    await page.getByRole('button', { name: 'Review incident', exact: true }).first().click({ timeout: 30000 });
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('Recording is still being prepared. You can save notes while waiting.', { exact: true }).waitFor();
+    assert.equal(await dialog.locator('video').count(), 0);
+    await dialog.getByText('Reviewer note and response steps', { exact: true }).click();
+    await dialog.getByLabel('Reviewer note (optional)').fill('Draft started while footage was pending.');
+    await page.waitForFunction(() => !!window.__recorderQA[1].releaseStop, null, { timeout: 15000 });
+    await page.evaluate(() => window.__recorderQA[1].releaseStop());
+    await dialog.getByText('A recording is now available for review.', { exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Open available footage', exact: true }).click();
+    await page.waitForFunction(() => {
+      const video = document.querySelector('video[aria-label="Incident evidence playback"]');
+      return video?.readyState >= 2 && video.videoWidth > 0 && !video.error && !video.seeking;
+    });
+    assert.equal(await dialog.getByLabel('Reviewer note (optional)').inputValue(), 'Draft started while footage was pending.');
+    await page.keyboard.press('Escape');
     await page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
     assert.deepEqual(errors, []);
     const result = { retainedDecodedFootage: true, detectionContinued: true, missingIncidentEvidenceDisclosed: true,
-      noAutomaticRestart: true, explicitRestartRecovered: true, pageErrors: errors };
+      noAutomaticRestart: true, explicitRestartRecovered: true, pendingReviewRecoveredFootage: true, pageErrors: errors };
     await fs.writeFile(path.join(output, 'results.json'), JSON.stringify(result, null, 2));
     console.log(JSON.stringify(result));
   } finally { await browser.close(); }

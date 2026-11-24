@@ -42,7 +42,7 @@ async function main() {
         await page.getByText('Analyzing real video', { exact: true }).waitFor({ timeout: 60000 });
         await page.getByRole('button', { name: 'Review footage', exact: true }).first().waitFor({ timeout: 30000 });
         await page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
-        const events = await page.getByRole('button', { name: 'Review footage', exact: true }).count();
+        const events = await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count();
         const warning = page.getByRole('alert').filter({ hasText: 'Local history could not be saved' });
         if (mode === 'blocked-writes') {
           await warning.waitFor();
@@ -57,7 +57,7 @@ async function main() {
           return video?.readyState >= 2 && video.videoWidth > 0 && !video.error;
         }, null, { timeout: 15000 });
         await playable();
-        assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).count(), events);
+        assert.equal(await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count(), events);
         if (mode === 'blocked-writes') await warning.waitFor();
         const downloaded = page.waitForEvent('download');
         await page.getByRole('link', { name: 'Download this segment', exact: true }).click();
@@ -80,7 +80,7 @@ async function main() {
           await page.getByText('Analyzing real video', { exact: true }).waitFor({ timeout: 60000 });
           await page.getByRole('button', { name: 'Start agent', exact: true }).waitFor({ timeout: 30000 });
           await history.click(); await playable();
-          assert.equal(await page.getByRole('button', { name: 'Review footage', exact: true }).count(), events);
+          assert.equal(await page.getByRole('button', { name: /^Review (footage|incident)$/ }).count(), events);
         }
         await page.reload();
         if (mode === 'healthy') {
