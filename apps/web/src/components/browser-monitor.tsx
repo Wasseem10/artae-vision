@@ -1288,10 +1288,10 @@ export function BrowserMonitor({ workspace = false, experience = "general" }: { 
               </p>
               <p>Measured over up to 30 recent results. Processing speed is not detection accuracy. Pose tracks may miss or duplicate a person. Person numbers are temporary tracking labels; they do not verify identity.</p>
             </details>
-            {running && job === "fall" && poseCoverage !== null && <p className={styles.note} role="status">
-              Body pose visible in {poseCoverage}% of recent frames. {poseCoverage < 70
+            {running && job === "fall" && poseCoverage !== null && <p className={styles.note}>
+              Body pose visible in {poseCoverage}% of recent frames. <span role="status">{poseCoverage < 70
                 ? "Detection may miss a fall. Reposition the camera so each person's full body is visible."
-                : "Keep each full body in view."}
+                : "Keep each full body in view."}</span>
             </p>}
             {(job === "custom" || (seniorSafety && scope === "guest")) && <p className={styles.note} role="status">{visualFrames} frames checked by AWS. {visualStatus || (job === "fall" ? "AWS review is optional; local detection and evidence run in this browser." : "Collecting the first four frames…")}</p>}
             <div className={styles.replay}>

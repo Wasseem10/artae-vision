@@ -5,6 +5,11 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 25 accessibility follow-up: [pose guidance announcements](pose-guidance-announcements-2026-11-25.md)
+now separate changing percentages from live camera guidance. A controlled
+browser check verifies stable guidance text during metric updates while keeping
+incident announcements enabled. Actual screen-reader speech remains untested.
+
 November 23 workflow follow-up: [review without footage](review-without-footage-2026-11-23.md)
 lets reviewers acknowledge an incident and save observations when video is
 missing or pending. The same dialog explicitly discloses the limitation and
