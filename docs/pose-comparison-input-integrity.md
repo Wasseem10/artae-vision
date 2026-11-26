@@ -1,5 +1,11 @@
 # Validate and explain pose-model comparisons
 
+November 26 follow-up: [fall-alert timing](fall-alert-timing-2026-11-26.md)
+adds per-clip timestamp partitions and symmetric totals to schema 2. It separates
+alerts inside the annotation, inside the existing two-second post-event allowance,
+and outside the matching window. Existing scores and fields are unchanged.
+Fourteen regression tests now pass; the 11-test count below records November 24.
+
 November 24 follow-up: output schema 2 now includes paired per-clip results and
 activity exposure for **both** reports. It replaces the misleading
 `candidateDailyActivityAlertsPerAnalyzedHour` field with

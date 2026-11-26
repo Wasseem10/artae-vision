@@ -13,10 +13,41 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "apps/web/public/vision/caucafall/manifest.json"
 
 
-def matched(result: dict) -> bool:
+def fall_alert_timing(result: dict) -> dict:
+    """Partition reported fall-clip alerts without asserting their ground truth."""
     event = result["eventRanges"][0]
-    return any(event["start"] <= timestamp <= min(result["durationSeconds"], event["end"] + 2)
-               for timestamp in result["detectedAtSeconds"])
+    groups = {"withinAnnotatedInterval": [], "withinPostEventAllowance": [], "outsideMatchingWindow": []}
+    for timestamp in result["detectedAtSeconds"]:
+        if event["start"] <= timestamp <= event["end"]:
+            key = "withinAnnotatedInterval"
+        elif event["end"] < timestamp <= min(result["durationSeconds"], event["end"] + 2):
+            key = "withinPostEventAllowance"
+        else:
+            key = "outsideMatchingWindow"
+        groups[key].append(timestamp)
+    return groups
+
+
+def matched(result: dict) -> bool:
+    groups = fall_alert_timing(result)
+    return bool(groups["withinAnnotatedInterval"] or groups["withinPostEventAllowance"])
+
+
+def summarize_fall_alert_timing(results: dict[str, dict]) -> dict:
+    falls = [row for row in results.values() if row["category"] == "fall"]
+    groups = [fall_alert_timing(row) for row in falls]
+    return {
+        "clips": len(falls),
+        "alertCount": sum(len(row["detectedAtSeconds"]) for row in falls),
+        "withinAnnotatedInterval": sum(len(group["withinAnnotatedInterval"]) for group in groups),
+        "withinPostEventAllowance": sum(len(group["withinPostEventAllowance"]) for group in groups),
+        "outsideMatchingWindow": sum(len(group["outsideMatchingWindow"]) for group in groups),
+        "clipsWithOutsideAlerts": sum(bool(group["outsideMatchingWindow"]) for group in groups),
+        "clipsMatchedOnlyInAllowance": sum(bool(group["withinPostEventAllowance"]) and
+            not group["withinAnnotatedInterval"] for group in groups),
+        "matchedClipsWithOutsideAlerts": sum(bool(group["outsideMatchingWindow"]) and
+            bool(group["withinAnnotatedInterval"] or group["withinPostEventAllowance"]) for group in groups),
+    }
 
 
 def unique_cases(rows: list[dict], source: str) -> dict[str, dict]:
@@ -54,6 +85,7 @@ def clip_outcome(result: dict) -> dict:
         "alertTimestampsSeconds": list(result["detectedAtSeconds"]),
         # An activity clip has no annotated fall to match; null is not a miss.
         "matchedFall": matched(result) if result["category"] == "fall" else None,
+        "fallAlertTiming": fall_alert_timing(result) if result["category"] == "fall" else None,
     }
 
 
@@ -105,6 +137,7 @@ def compare_reports(manifest: dict, reports: list[dict]) -> dict:
             "Activity rates use reported video duration, not verified analyzed exposure or field monitoring hours.",
             "Manifest consistency does not establish annotation correctness, complete inference replay or independent validation.",
             "A matched fall has an alert within the annotated interval plus the existing two-second allowance; it does not prove person identity.",
+            "Outside-window alerts on fall clips need review; interval membership alone establishes neither true nor false alerts or detection latency.",
         ],
         "baselineModel": reports[0]["provenance"]["detector"]["model"],
         "candidateModel": reports[1]["provenance"]["detector"]["model"],
@@ -116,6 +149,10 @@ def compare_reports(manifest: dict, reports: list[dict]) -> dict:
         "dailyActivityExposure": {
             "baseline": activity_exposure(baseline),
             "candidate": activity_exposure(candidate),
+        },
+        "fallAlertTiming": {
+            "baseline": summarize_fall_alert_timing(baseline),
+            "candidate": summarize_fall_alert_timing(candidate),
         },
         "perClip": [{
             "id": case_id, "category": definition["category"],

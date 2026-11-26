@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 26 benchmark follow-up: the [fall-alert timing audit](fall-alert-timing-2026-11-26.md)
+shows that 14 of the fused CAUCAFall report's 20 matched fall clips relied on the
+existing two-second post-event allowance. The comparator now separates interval,
+allowance and outside-window alerts. Scores are unchanged; these are archived
+development results, not a new evaluation or verified detection latency.
+
 November 24 benchmark follow-up: [paired comparison output](pose-comparison-input-integrity.md)
 now exposes baseline and candidate outcomes for every clip and reports both
 activity-alert denominators as reported video duration. It explicitly does not

@@ -26,6 +26,55 @@ def fixture():
 
 
 class PoseComparisonTests(unittest.TestCase):
+    def test_fall_alert_partition_keeps_boundaries_allowance_and_extra_alerts_visible(self):
+        manifest, reports = fixture()
+        alerts = [0, 1.999, 2, 3, 3.001, 5, 5.001, 10]
+        reports[1]["results"][0]["detectedAtSeconds"] = alerts[:]
+        result = compare(manifest, reports)
+        row = result["perClip"][0]["candidate"]
+        self.assertTrue(row["matchedFall"])
+        self.assertEqual(row["fallAlertTiming"], {
+            "withinAnnotatedInterval": [2, 3],
+            "withinPostEventAllowance": [3.001, 5],
+            "outsideMatchingWindow": [0, 1.999, 5.001, 10],
+        })
+        self.assertEqual(result["fallAlertTiming"]["candidate"], {
+            "clips": 50, "alertCount": 8, "withinAnnotatedInterval": 2,
+            "withinPostEventAllowance": 2, "outsideMatchingWindow": 4,
+            "clipsWithOutsideAlerts": 1, "matchedClipsWithOutsideAlerts": 1,
+            "clipsMatchedOnlyInAllowance": 0,
+        })
+        row["fallAlertTiming"]["outsideMatchingWindow"].append(99)
+        self.assertEqual(reports[1]["results"][0]["detectedAtSeconds"], alerts)
+
+    def test_fall_partition_reconciles_each_side_without_counting_activity_alerts(self):
+        manifest, reports = fixture()
+        reports[0]["results"][0]["detectedAtSeconds"] = [1, 7]  # Miss with two outside alerts.
+        reports[1]["results"][1]["detectedAtSeconds"] = [4, 4]  # Preserve reported multiplicity.
+        reports[1]["results"][50]["detectedAtSeconds"] = [1, 2, 7]
+        result = compare(manifest, reports)
+        for side in ("baseline", "candidate"):
+            totals = result["fallAlertTiming"][side]
+            for key in ("withinAnnotatedInterval", "withinPostEventAllowance", "outsideMatchingWindow"):
+                self.assertEqual(totals[key], sum(len(row[side]["fallAlertTiming"][key])
+                    for row in result["perClip"] if row["category"] == "fall"))
+            self.assertEqual(totals["alertCount"], totals["withinAnnotatedInterval"] +
+                totals["withinPostEventAllowance"] + totals["outsideMatchingWindow"])
+            self.assertIsNone(result["perClip"][50][side]["fallAlertTiming"])
+        self.assertEqual(result["baselineMatchedFalls"], 0)
+        self.assertEqual(result["candidateMatchedFalls"], 1)
+        self.assertEqual(result["fallAlertTiming"]["baseline"]["matchedClipsWithOutsideAlerts"], 0)
+        self.assertEqual(result["fallAlertTiming"]["candidate"]["alertCount"], 2)
+        self.assertEqual(result["fallAlertTiming"]["candidate"]["clipsMatchedOnlyInAllowance"], 1)
+
+    def test_allowance_respects_short_clip_and_silent_fall_is_still_a_miss(self):
+        manifest, reports = fixture()
+        reports[1]["results"][0].update(durationSeconds=4, detectedAtSeconds=[4])
+        result = compare(manifest, reports)
+        self.assertEqual(result["perClip"][0]["candidate"]["fallAlertTiming"]["withinPostEventAllowance"], [4])
+        self.assertFalse(result["perClip"][1]["candidate"]["matchedFall"])
+        self.assertTrue(all(not values for values in result["perClip"][1]["candidate"]["fallAlertTiming"].values()))
+
     def test_valid_comparison_preserves_gains_losses_and_negative_exposure(self):
         manifest, reports = fixture()
         reports[0]["results"][0]["detectedAtSeconds"] = [2]
