@@ -5,6 +5,22 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 26 benchmark follow-up: the [fall-alert timing audit](fall-alert-timing-2026-11-26.md)
+shows that 14 of the fused CAUCAFall report's 20 matched fall clips relied on the
+existing two-second post-event allowance. The comparator now separates interval,
+allowance and outside-window alerts. Scores are unchanged; these are archived
+development results, not a new evaluation or verified detection latency.
+
+November 24 benchmark follow-up: [paired comparison output](pose-comparison-input-integrity.md)
+now exposes baseline and candidate outcomes for every clip and reports both
+activity-alert denominators as reported video duration. It explicitly does not
+claim verified analyzed hours; existing archived scores remain unchanged.
+
+November 18 benchmark follow-up: the [pose comparison input checks](pose-comparison-input-integrity.md)
+reject duplicate clips, manifest-label mismatches and invalid numeric metrics
+before scoring. All results on five existing CAUCAFall reports remain identical;
+this is scoring-integrity verification, not a new detector evaluation.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule

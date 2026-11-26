@@ -1,0 +1,29 @@
+name: Pose comparison integrity
+
+on:
+  pull_request:
+    paths:
+      - "scripts/compare-pose-models.py"
+      - "tests/benchmarks/test_pose_comparison.py"
+      - ".github/workflows/pose-comparison.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/compare-pose-models.py"
+      - "tests/benchmarks/test_pose_comparison.py"
+      - ".github/workflows/pose-comparison.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  comparison:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify scoring input integrity
+        run: python -m unittest discover -s tests/benchmarks -p 'test_pose_comparison.py' -v

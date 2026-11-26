@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Schema-v2 scorer verification on previously examined reports",
+  "newInference": false,
+  "promoted": false,
+  "previousRevision": "34c634c6a90961077cb940c3de3c7450295de1c5",
+  "comparatorSha256": "9cfb73d0f3dacaba5728291e553345c7419de8eaff99a7ab8fa907d3b016ada8",
+  "manifestSha256": "b984a772a641d225479b3416e0c77f75fe649827f8adb0e696fd844524bada54",
+  "baselineSha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+  "comparisons": [
+    {
+      "report": "evaluation-full.json",
+      "inputSha256": "174f93dc9f7eec232c8e899fb974f3d854fc59c655c4312e4109abf41792182d",
+      "outputSha256": "56febcdca7a77ae922ab40bf7f3a07880a0c1df3257a1e77d4c562a008337301",
+      "pairedClips": 100,
+      "existingScoresAndListsUnchanged": true,
+      "candidateRateValueUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 19,
+      "dailyActivityExposure": {
+        "baseline": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        },
+        "candidate": {
+          "clips": 50,
+          "clipsAlerted": 1,
+          "alertCount": 1,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 7.0,
+          "analyzedExposureVerified": false
+        }
+      }
+    },
+    {
+      "report": "evaluation-heavy.json",
+      "inputSha256": "ec881edb70e5c596b329524388b67b42f0e637ee83b0d74fefb19e3a973656a2",
+      "outputSha256": "c1e1d5045f16b7bfe08399a54bece9760c785e871c5c81e544e6d9d0405df1e4",
+      "pairedClips": 100,
+      "existingScoresAndListsUnchanged": true,
+      "candidateRateValueUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 22,
+      "dailyActivityExposure": {
+        "baseline": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        },
+        "candidate": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        }
+      }
+    },
+    {
+      "report": "evaluation-multiperson-unfused.json",
+      "inputSha256": "458235e4a377425b1f0a95e20b9ef63e1ec18fa8c80231db996ed04c9bcfff3a",
+      "outputSha256": "19fe1dbbd1b49df34fe1fa90ee360b549e8b4ccee7a161e29f231df0fd968a18",
+      "pairedClips": 100,
+      "existingScoresAndListsUnchanged": true,
+      "candidateRateValueUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 8,
+      "dailyActivityExposure": {
+        "baseline": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        },
+        "candidate": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        }
+      }
+    },
+    {
+      "report": "evaluation-multiperson.json",
+      "inputSha256": "35f1bf706228c138e86deb81cad00e92f9411178e07a2fa14b9714e2ed5e9c74",
+      "outputSha256": "8ea7fc30cb309ad18102098efb043392887c6cdc828f29144f372acddf202e2c",
+      "pairedClips": 100,
+      "existingScoresAndListsUnchanged": true,
+      "candidateRateValueUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 20,
+      "dailyActivityExposure": {
+        "baseline": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        },
+        "candidate": {
+          "clips": 50,
+          "clipsAlerted": 1,
+          "alertCount": 1,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 7.0,
+          "analyzedExposureVerified": false
+        }
+      }
+    },
+    {
+      "report": "evaluation.json",
+      "inputSha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+      "outputSha256": "aa5fbc53b262b817873d1618154c049622db796bdb423cf4f4a9abb53b6ea17c",
+      "pairedClips": 100,
+      "existingScoresAndListsUnchanged": true,
+      "candidateRateValueUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 17,
+      "dailyActivityExposure": {
+        "baseline": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        },
+        "candidate": {
+          "clips": 50,
+          "clipsAlerted": 0,
+          "alertCount": 0,
+          "reportedVideoSeconds": 514.05,
+          "alertsPerReportedVideoHour": 0.0,
+          "analyzedExposureVerified": false
+        }
+      }
+    }
+  ]
+}

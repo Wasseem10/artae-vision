@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Fall-clip alert timing on previously examined reports",
+  "newInference": false,
+  "promoted": false,
+  "previousRevision": "6500e0e394ee0a7e6ef1b596592f4d1c5aa45064",
+  "comparatorSha256": "85f337ab984a9986cb4e6d1b5543791563d3e13eccfafa78fb1456a4ecc06fc6",
+  "manifestSha256": "b984a772a641d225479b3416e0c77f75fe649827f8adb0e696fd844524bada54",
+  "baselineSha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+  "limitations": [
+    "Repeated development footage, not independent validation.",
+    "Outside-window alerts require review; these are not verified false positives.",
+    "Interval membership does not verify person identity, complete replay or detection latency."
+  ],
+  "comparisons": [
+    {
+      "report": "evaluation-full.json",
+      "inputSha256": "174f93dc9f7eec232c8e899fb974f3d854fc59c655c4312e4109abf41792182d",
+      "outputSha256": "451b53e1623f7545c72fcca555b581aac7ecf7b10a688c5e726660c10a282aaf",
+      "pairedClips": 100,
+      "allPreviousFieldsUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 19,
+      "fallAlertTiming": {
+        "baseline": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        },
+        "candidate": {
+          "clips": 50,
+          "alertCount": 19,
+          "withinAnnotatedInterval": 7,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        }
+      },
+      "outsideWindowClips": []
+    },
+    {
+      "report": "evaluation-heavy.json",
+      "inputSha256": "ec881edb70e5c596b329524388b67b42f0e637ee83b0d74fefb19e3a973656a2",
+      "outputSha256": "55acd92c629572752ef012dd22e84b2af384839ddc744ec3805429cdfb06bdac",
+      "pairedClips": 100,
+      "allPreviousFieldsUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 22,
+      "fallAlertTiming": {
+        "baseline": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        },
+        "candidate": {
+          "clips": 50,
+          "alertCount": 22,
+          "withinAnnotatedInterval": 9,
+          "withinPostEventAllowance": 13,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 13,
+          "matchedClipsWithOutsideAlerts": 0
+        }
+      },
+      "outsideWindowClips": []
+    },
+    {
+      "report": "evaluation-multiperson-unfused.json",
+      "inputSha256": "458235e4a377425b1f0a95e20b9ef63e1ec18fa8c80231db996ed04c9bcfff3a",
+      "outputSha256": "cd7e3d520a2e9299f2ae3504840f7258a62818259fe9c6567c9f338e2b2828e2",
+      "pairedClips": 100,
+      "allPreviousFieldsUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 8,
+      "fallAlertTiming": {
+        "baseline": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        },
+        "candidate": {
+          "clips": 50,
+          "alertCount": 8,
+          "withinAnnotatedInterval": 3,
+          "withinPostEventAllowance": 5,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 5,
+          "matchedClipsWithOutsideAlerts": 0
+        }
+      },
+      "outsideWindowClips": []
+    },
+    {
+      "report": "evaluation-multiperson.json",
+      "inputSha256": "35f1bf706228c138e86deb81cad00e92f9411178e07a2fa14b9714e2ed5e9c74",
+      "outputSha256": "e78baee90e13837a566cbbf3731320e303f61422aaed8dfc2d2e845419db0609",
+      "pairedClips": 100,
+      "allPreviousFieldsUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 20,
+      "fallAlertTiming": {
+        "baseline": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        },
+        "candidate": {
+          "clips": 50,
+          "alertCount": 20,
+          "withinAnnotatedInterval": 6,
+          "withinPostEventAllowance": 14,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 14,
+          "matchedClipsWithOutsideAlerts": 0
+        }
+      },
+      "outsideWindowClips": []
+    },
+    {
+      "report": "evaluation.json",
+      "inputSha256": "e53727129cf45478e9656440fd1f0488fb5f1a997b892e2ebd27f96fd6b92cbf",
+      "outputSha256": "a2c2931c34c8874f4a14714c88c3cec688c10edb24309e445567b15201b8ac53",
+      "pairedClips": 100,
+      "allPreviousFieldsUnchanged": true,
+      "baselineMatchedFalls": 17,
+      "candidateMatchedFalls": 17,
+      "fallAlertTiming": {
+        "baseline": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        },
+        "candidate": {
+          "clips": 50,
+          "alertCount": 17,
+          "withinAnnotatedInterval": 5,
+          "withinPostEventAllowance": 12,
+          "outsideMatchingWindow": 0,
+          "clipsWithOutsideAlerts": 0,
+          "clipsMatchedOnlyInAllowance": 12,
+          "matchedClipsWithOutsideAlerts": 0
+        }
+      },
+      "outsideWindowClips": []
+    }
+  ]
+}
