@@ -5,6 +5,12 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 27 reliability follow-up: [browser-storage connection setup](storage-open-timeout-2026-11-27.md)
+now fails after 15 seconds instead of leaving a review stuck saving indefinitely.
+Late connections are closed, drafts remain available for retry, and the browser
+regression verifies that a late callback cannot commit the failed review.
+This does not bound transactions after setup or change detector accuracy.
+
 November 25 accessibility follow-up: [pose guidance announcements](pose-guidance-announcements-2026-11-25.md)
 now separate changing percentages from live camera guidance. A controlled
 browser check verifies stable guidance text during metric updates while keeping

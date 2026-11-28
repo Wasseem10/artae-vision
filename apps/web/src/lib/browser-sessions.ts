@@ -1,4 +1,5 @@
 import { API_URL, request as apiRequest } from "./api";
+import { openSessionDatabase as database } from "./local-database";
 import type { BrowserJob } from "./browser-pose";
 export type MonitoringJob = BrowserJob | "custom";
 function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -153,25 +154,6 @@ export const formatTime = (t: number) =>
   `${Math.floor(t / 60)}:${Math.floor(t % 60)
     .toString()
     .padStart(2, "0")}`;
-function database(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const open = indexedDB.open("artae-browser-sessions", 2);
-    open.onupgradeneeded = () => {
-      const db = open.result;
-      const sessions = db.objectStoreNames.contains("sessions")
-        ? open.transaction!.objectStore("sessions")
-        : db.createObjectStore("sessions", { keyPath: "key" });
-      if (!sessions.indexNames.contains("scope")) sessions.createIndex("scope", "scope");
-      if (!db.objectStoreNames.contains("clips")) db.createObjectStore("clips", { keyPath: "key" });
-    };
-    open.onblocked = () => reject(new Error("Close older Artae tabs to upgrade recording storage, then reload."));
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      open.result.onversionchange = () => open.result.close();
-      resolve(open.result);
-    };
-  });
-}
 export async function saveLocal(value: BrowserSession) {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
