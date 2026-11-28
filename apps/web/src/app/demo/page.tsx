@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Try the Artae demo",
-  description: "Upload permitted video or connect a webcam and let Nova and Strands review a visible care condition.",
+  description: "Open the single Artae monitor to explore detection, recorded evidence, and human review.",
 };
 
 export default function DemoPage() {

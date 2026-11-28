@@ -1,0 +1,42 @@
+name: Browser API quality
+on:
+  pull_request:
+    paths: ["services/api/**", "tests/api/**", "pytest.ini", ".github/workflows/browser-api-quality.yml"]
+  push:
+    branches: [main]
+    paths: ["services/api/**", "tests/api/**", "pytest.ini", ".github/workflows/browser-api-quality.yml"]
+permissions:
+  contents: read
+jobs:
+  browser-api:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      AWS_EC2_METADATA_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: services/api/pyproject.toml
+      - name: Install API test dependencies
+        timeout-minutes: 5
+        run: python -m pip install --retries 2 --timeout 30 -e './services/api[dev]'
+      - name: Record resolved dependency versions
+        run: |
+          mkdir -p artifacts
+          python -m pip list --format=json > artifacts/browser-api-packages.json
+      - name: Verify browser session save, review and history
+        timeout-minutes: 3
+        run: python -m pytest tests/api/test_browser_sessions.py -q --junitxml=artifacts/browser-api-tests.xml
+      - name: Keep API test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-api-test-results
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            artifacts/browser-api-tests.xml
+            artifacts/browser-api-packages.json

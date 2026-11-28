@@ -5,6 +5,49 @@ operational gates; this page tracks the next engineering decisions and schedule.
 
 ## What works today
 
+November 27 reliability follow-up: [browser-storage connection setup](storage-open-timeout-2026-11-27.md)
+now fails after 15 seconds instead of leaving a review stuck saving indefinitely.
+Late connections are closed, drafts remain available for retry, and the browser
+regression verifies that a late callback cannot commit the failed review.
+This does not bound transactions after setup or change detector accuracy.
+
+November 25 accessibility follow-up: [pose guidance announcements](pose-guidance-announcements-2026-11-25.md)
+now separate changing percentages from live camera guidance. A controlled
+browser check verifies stable guidance text during metric updates while keeping
+incident announcements enabled. Actual screen-reader speech remains untested.
+
+November 23 workflow follow-up: [review without footage](review-without-footage-2026-11-23.md)
+lets reviewers acknowledge an incident and save observations when video is
+missing or pending. The same dialog explicitly discloses the limitation and
+offers footage if it arrives later, retaining the draft. Accuracy is unchanged.
+
+November 22 recording follow-up: [unexpected recorder stops](unexpected-recorder-stop-2026-11-22.md)
+now fail visibly without an automatic restart, retain usable final footage and
+leave detection running. Unit and controlled native-browser checks cover the
+failure and explicit fresh-session recovery; detector accuracy is unchanged.
+
+November 1 review follow-up: the [save-completion fix](review-save-completion-2026-11-01.md)
+keeps an incident visibly pending until its review save finishes. A controlled
+delay reproduces the premature closed status exposed by the playback CI test.
+This improves review-state clarity without changing detector accuracy.
+
+October 29 reliability follow-up: the [evidence playback readiness guard](playback-frame-readiness-2026-10-29.md)
+keeps loading bounded until a frame is available and the initial incident seek
+has finished. Metadata alone no longer dismisses loading. Controlled failure
+and retry checks preserve review notes; detector accuracy remains unchanged.
+
+October 28 reliability follow-up: the [hidden-tab guard](hidden-tab-recovery-2026-10-28.md)
+ends startup or monitoring when the document becomes hidden, retains available
+evidence, and requires an explicit fresh start. Three controlled browser cases
+cover loading, a staged sample, and a synthetic camera. This is a lifecycle fix,
+not improved detector accuracy or a guarantee of background monitoring.
+
+October 23 reliability follow-up: the [video-source guard](video-source-reliability-2026-10-23.md)
+stops a frozen input after 15 seconds without media-clock progress and handles
+ended camera tracks explicitly. Local browser checks preserve existing evidence
+and recover through a fresh session. This does not improve detector accuracy;
+reviewed person labels and independent multi-person validation remain required.
+
 `/live` runs pose inference in the browser, creates a possible-fall incident on
 the staged sample, records playable evidence, and supports local human review.
 The fall/sitting smoke test passes with the API unavailable. The current rule

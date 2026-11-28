@@ -1,4 +1,5 @@
 import { API_URL, request as apiRequest } from "./api";
+import { openSessionDatabase as database } from "./local-database";
 import type { BrowserJob } from "./browser-pose";
 export type MonitoringJob = BrowserJob | "custom";
 function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -40,6 +41,7 @@ export type IncidentReview = {
 export type IncidentReviewDetails = Pick<IncidentReview, "reviewer_note" | "response_checklist">;
 export type CloudEventResult = {
   details: {
+    detection_source?: "temporal_rule" | "temporal_and_pose_window";
     summary?: string;
     strands_agent?: { status: string; summary: string; tools_invoked?: string[] };
     review?: IncidentReview;
@@ -52,6 +54,9 @@ export type CloudEventResult = {
 };
 export function cloudEventFields(result: CloudEventResult) {
   return {
+    // Older API responses omit this field. Do not erase the device's source
+    // when applying save/review responses to an existing event.
+    ...(result.details.detection_source ? { detectionSource: result.details.detection_source } : {}),
     saved: true,
     coordinator: result.details.strands_agent?.status,
     summary: result.details.summary ?? result.details.strands_agent?.summary,
@@ -127,7 +132,12 @@ export function mergeSession(
     createdAt: local.createdAt,
     events: [
       ...local.events.filter((e) => !cloud.events.some((c) => c.id === e.id)),
-      ...cloud.events,
+      ...cloud.events.map((event) => ({
+        ...event,
+        // Account history may omit device inference provenance. Recover only
+        // this field from the same event; cloud review/delivery data stays authoritative.
+        detectionSource: event.detectionSource ?? local.events.find((item) => item.id === event.id)?.detectionSource,
+      })),
     ].sort((a, b) => a.at - b.at),
     clips: [
       ...local.clips.filter((c) => !cloud.clips.some((r) => r.id === c.id)),
@@ -144,25 +154,6 @@ export const formatTime = (t: number) =>
   `${Math.floor(t / 60)}:${Math.floor(t % 60)
     .toString()
     .padStart(2, "0")}`;
-function database(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const open = indexedDB.open("artae-browser-sessions", 2);
-    open.onupgradeneeded = () => {
-      const db = open.result;
-      const sessions = db.objectStoreNames.contains("sessions")
-        ? open.transaction!.objectStore("sessions")
-        : db.createObjectStore("sessions", { keyPath: "key" });
-      if (!sessions.indexNames.contains("scope")) sessions.createIndex("scope", "scope");
-      if (!db.objectStoreNames.contains("clips")) db.createObjectStore("clips", { keyPath: "key" });
-    };
-    open.onblocked = () => reject(new Error("Close older Artae tabs to upgrade recording storage, then reload."));
-    open.onerror = () => reject(open.error);
-    open.onsuccess = () => {
-      open.result.onversionchange = () => open.result.close();
-      resolve(open.result);
-    };
-  });
-}
 export async function saveLocal(value: BrowserSession) {
   const db = await database();
   await new Promise<void>((resolve, reject) => {
@@ -245,6 +236,7 @@ export async function saveCloudEvent(
       at_seconds: event.at,
       landmark_visibility: event.visibility,
       track_id: event.personTrackId ?? 1,
+      detection_source: event.detectionSource,
     }),
   });
 }

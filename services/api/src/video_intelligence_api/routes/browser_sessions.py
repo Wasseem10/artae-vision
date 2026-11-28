@@ -349,6 +349,7 @@ class BrowserObservation(BaseModel):
     at_seconds: float = Field(ge=0, le=3600, allow_inf_nan=False)
     landmark_visibility: float = Field(ge=0, le=1, allow_inf_nan=False)
     track_id: int = Field(default=1, ge=1, le=1000000)
+    detection_source: Literal["temporal_rule", "temporal_and_pose_window"] | None = None
 
 
 class IncidentReview(BaseModel):
@@ -1015,6 +1016,8 @@ async def record_observation(
         raise HTTPException(
             422, "Custom jobs require server-side image analysis, not client observations"
         )
+    if payload.detection_source is not None and rule.key != "browser-fall":
+        raise HTTPException(422, "Fall detection provenance requires a fall session")
     existing = await session.scalar(select(Event).where(Event.source_event_id == str(payload.id)))
     if existing:
         if existing.camera_id != camera.id:
@@ -1059,6 +1062,10 @@ async def record_observation(
             "model": "MediaPipe Pose Landmarker Lite",
             "job": rule.key,
             "person_track_id": payload.track_id if fall else None,
+            **({
+                "detection_source": payload.detection_source,
+                "detection_source_origin": "client_reported",
+            } if payload.detection_source is not None else {}),
         },
     )
     run = await coordinate_incident(

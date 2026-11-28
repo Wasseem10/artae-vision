@@ -8,8 +8,8 @@ const bodyFont = Geist({ subsets: ["latin"], variable: "--font-body" });
 const displayFont = Geist({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "Artae Vision · Tell your cameras what to watch for",
-  description: "Turn live cameras and uploaded video into plain-language visual alerts and real actions.",
+  title: "Artae Vision · Video, evidence, human review",
+  description: "Explore an experimental computer-vision monitor with on-device pose detection, recorded evidence, human review, and reproducible fall-detection evaluation.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

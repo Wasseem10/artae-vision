@@ -118,6 +118,51 @@ def test_fall_observation_keeps_session_person_track(api_client):
     assert api_client.get(path).json()[0]["track_id"] == 2
 
 
+@pytest.mark.parametrize("source", ["temporal_rule", "temporal_and_pose_window", None])
+def test_fall_provenance_survives_history_and_review_without_verifying_the_event(api_client, source):
+    session = create(api_client, job="fall")
+    path = f"/api/v1/browser-sessions/{session['id']}/events"
+    payload = {"id": str(uuid.uuid4()), "at_seconds": 3.5, "landmark_visibility": .83}
+    if source is not None:
+        payload["detection_source"] = source
+    created = api_client.post(path, json=payload)
+    assert created.status_code == 200, created.text
+    reviewed = api_client.patch(f"{path}/{payload['id']}/review", json={"outcome": "false_alarm"})
+    assert reviewed.status_code == 200, reviewed.text
+    for event in [created.json(), reviewed.json(), api_client.get(path).json()[0]]:
+        assert event["details"].get("detection_source") == source
+        assert event["details"].get("detection_source_origin") == (
+            "client_reported" if source else None
+        )
+        assert event["details"]["independently_verified"] is False
+    # Idempotent retry cannot rewrite the original provenance or create an alert twice.
+    retried = api_client.post(path, json={**payload, "detection_source": "temporal_rule"})
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["details"].get("detection_source") == source
+    assert len(api_client.get(path).json()) == 1
+    assert len(api_client.get("/api/v1/alerts").json()) == 1
+
+
+@pytest.mark.parametrize("source", ["pose_window_v1", "verified_fall", ""])
+def test_unsupported_fall_provenance_creates_no_event(api_client, source):
+    session = create(api_client, job="fall")
+    path = f"/api/v1/browser-sessions/{session['id']}/events"
+    response = api_client.post(path, json={"id": str(uuid.uuid4()), "at_seconds": 2,
+        "landmark_visibility": .8, "detection_source": source})
+    assert response.status_code == 422
+    assert api_client.get(path).json() == []
+    assert api_client.get("/api/v1/alerts").json() == []
+
+
+def test_presence_session_cannot_claim_fall_provenance(api_client):
+    session = create(api_client)
+    path = f"/api/v1/browser-sessions/{session['id']}/events"
+    response = api_client.post(path, json={"id": str(uuid.uuid4()), "at_seconds": 2,
+        "landmark_visibility": .8, "detection_source": "temporal_and_pose_window"})
+    assert response.status_code == 422
+    assert api_client.get(path).json() == []
+
+
 def test_caregiver_sms_fails_closed_when_provider_is_disabled(api_client):
     api_client.app.state.settings.sms_enabled = False
     assert api_client.get("/api/v1/browser-sessions/notification-capabilities").json() == {

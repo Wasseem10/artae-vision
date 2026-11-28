@@ -5,11 +5,11 @@ Artae analyzes permitted video in the browser, flags a possible fall, keeps a
 playable clip, and asks a person to review what happened. The [live demo](https://artae-vision.vercel.app/live)
 works with a staged sample without an account or an AWS connection.
 
-![Artae's live monitor showing a staged fall, pose overlay, and caregiver review alert](docs/screenshots/artae-live-monitor.png)
+![Artae incident review with staged fall evidence, pose overlay, and review controls](docs/screenshots/artae-incident-review.jpg)
 
-*Current `/live` workspace, captured with the cloud API unavailable. The visible
-alert came from the browser detector, not a scripted event. The footage is a
-licensed staged example.*
+*Current `/live` incident review, captured from a staged sample with the cloud API
+unavailable. Playback starts before the detected event so the reviewer can inspect
+the sequence. The footage is a licensed staged example.*
 
 **[Try the demo](https://artae-vision.vercel.app/live)** ·
 [Watch the workflow video (earlier UI)](https://artae-vision.vercel.app/media/fall-monitor-walkthrough.webm) ·
@@ -19,12 +19,21 @@ licensed staged example.*
 
 1. Open the [live monitor](https://artae-vision.vercel.app/live). Leave **A possible fall** and **Use a sample video** selected.
 2. Press **Start agent**. The staged video plays while MediaPipe estimates body poses on your device.
-3. When an alert appears, choose **Review footage** to inspect the recorded moment. You can acknowledge it, mark it reviewed, or label it a false alarm.
+3. When an alert appears, its recording becomes playable in about ten seconds. Choose **Review footage** to open the evidence and review controls together. You can acknowledge it, mark it reviewed, or label it a false alarm. Escape returns you to the event.
 4. Stop the run and select **Sitting · no fall expected** to see a negative-control clip.
 
 You can also upload a permitted video or use a webcam. The page must stay open
 while monitoring. Guest runs and review notes are kept on that device; signing in
 adds account-backed agents and history. Audio is not recorded.
+
+The staged guest sample may use optional AWS context when available. Guest
+uploads and webcams require explicit consent before event frames are sent for
+optional cloud review. See **Data & privacy** in the monitor for the complete
+storage and runtime limits.
+
+The site's **Engineering** page explains the live architecture, tools, measured
+results, rejected candidates, and remaining validation gates. It links directly
+to the source and evaluation reports.
 
 ## How it works
 
@@ -98,6 +107,12 @@ pnpm typecheck
 pnpm lint
 pnpm test
 ```
+
+Pull requests run web checks, a production build, and the browser demo/review
+smoke test through the **Web quality** GitHub Actions workflow. The browser test
+blocks real cloud requests and covers mobile navigation, legacy entry-point
+redirects, API failure, saved reviews, guest-upload consent, and delayed mocked
+cloud enrichment.
 
 With the dev server running and Chrome installed, `pnpm test:live` exercises the
 fall, sitting, evidence-review, and optional cloud-enrichment flows. It forces
